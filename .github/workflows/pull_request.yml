@@ -1,0 +1,31 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [main]
+  repository_dispatch:
+    types: [retrigger-workflows]
+
+permissions:
+  id-token: write
+  contents: read
+  deployments: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    if:
+      ${{ github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'content' }}
+    uses: ./.github/workflows/code_quality.yml
+    with:
+      runner: ubuntu-latest
+      build-command: pnpm nuxt:prepare
+      build-before-lint: true
+      build-before-typecheck: false
+      typecheck-command: pnpm typecheck
+      lint-command: pnpm lint
