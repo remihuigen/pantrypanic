@@ -10,3 +10,4 @@ node_modules
 content/
 .agent/skills
 .agents/skills
+PLAN.md

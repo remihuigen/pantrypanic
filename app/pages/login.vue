@@ -1,9 +1,125 @@
 <script lang="ts" setup>
+import * as z from 'zod'
 
+const loginSchema = z.object({
+	email: z.email(),
+	password: z.string().min(1)
+})
+
+type LoginSchema = z.output<typeof loginSchema>
+
+const route = useRoute()
+const { fetch, loggedIn } = useUserSession()
+const loading = ref(false)
+const errorMessage = ref('')
+const state = reactive<LoginSchema>({
+	email: '',
+	password: ''
+})
+
+const redirectPath = computed(() => {
+	const redirect = route.query.redirect
+
+	if (
+		typeof redirect === 'string'
+		&& redirect.startsWith('/')
+		&& !redirect.startsWith('//')
+		&& redirect !== '/login'
+	) {
+		return redirect
+	}
+
+	return '/'
+})
+
+onMounted(async () => {
+	await fetch()
+
+	if (loggedIn.value) {
+		await navigateTo(redirectPath.value)
+	}
+})
+
+async function onSubmit() {
+	loading.value = true
+	errorMessage.value = ''
+
+	try {
+		await $fetch('/api/auth/login', {
+			method: 'POST',
+			body: state
+		})
+		await fetch()
+		await navigateTo(redirectPath.value)
+	} catch {
+		errorMessage.value = 'Invalid email or password.'
+	} finally {
+		loading.value = false
+	}
+}
 </script>
 
 <template>
-  <div>
-    
-  </div>
+	<UContainer class="flex min-h-[calc(100vh-9rem)] items-center justify-center py-10">
+		<UCard class="w-full max-w-sm">
+			<template #header>
+				<div class="space-y-1">
+					<h1 class="text-lg font-semibold text-highlighted">
+						Sign in
+					</h1>
+					<p class="text-sm text-muted">
+						Use your Pantry Panic account.
+					</p>
+				</div>
+			</template>
+
+			<UAlert
+				v-if="errorMessage"
+				class="mb-4"
+				color="error"
+				icon="i-lucide-circle-alert"
+				:title="errorMessage"
+				variant="soft"
+			/>
+
+			<UForm
+				:schema="loginSchema"
+				:state="state"
+				class="space-y-4"
+				@submit="onSubmit"
+			>
+				<UFormField
+					label="Email"
+					name="email"
+				>
+					<UInput
+						v-model="state.email"
+						autocomplete="email"
+						class="w-full"
+						type="email"
+					/>
+				</UFormField>
+
+				<UFormField
+					label="Password"
+					name="password"
+				>
+					<UInput
+						v-model="state.password"
+						autocomplete="current-password"
+						class="w-full"
+						type="password"
+					/>
+				</UFormField>
+
+				<UButton
+					block
+					icon="i-lucide-log-in"
+					:loading="loading"
+					label="Sign in"
+					type="submit"
+				/>
+			</UForm>
+		</UCard>
+	</UContainer>
 </template>

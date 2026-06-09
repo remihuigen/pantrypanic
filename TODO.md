@@ -1,0 +1,6 @@
+- [ ] add app layout
+- [ ] add brand assets
+- [ ] integrate logo into login
+- [ ] add color tokens
+- [ ] table schema
+- [ ] meal planner

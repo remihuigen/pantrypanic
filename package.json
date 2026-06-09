@@ -2,6 +2,10 @@
 	"name": "pantrypanic",
 	"private": true,
 	"type": "module",
+	"imports": {
+		"#server/*": "./server/*.ts",
+		"#shared/*": "./shared/*.ts"
+	},
 	"scripts": {
 		"build": "nuxt build",
 		"dev": "nuxt dev",
@@ -10,9 +14,11 @@
 		"lint": "eslint .",
 		"typecheck": "nuxt typecheck",
 		"db:generate": "nuxt db generate",
-		"db:migrate": "nuxt db migrate"
+		"db:migrate": "nuxt db migrate",
+		"seed:admin": "node scripts/seed-admin-user.mjs"
 	},
 	"devDependencies": {
+		"@adonisjs/hash": "catalog:",
 		"@eslint/js": "catalog:",
 		"@eslint/json": "catalog:",
 		"@eslint/markdown": "catalog:",
@@ -32,6 +38,7 @@
 		"@vueuse/nuxt": "catalog:",
 		"better-sqlite3": "catalog:",
 		"defu": "catalog:",
+		"dotenv": "catalog:",
 		"drizzle-kit": "catalog:",
 		"drizzle-orm": "catalog:",
 		"eslint": "catalog:",
@@ -39,6 +46,7 @@
 		"eslint-plugin-jsdoc": "catalog:",
 		"husky": "catalog:",
 		"nuxt": "catalog:",
+		"nuxt-auth-utils": "catalog:",
 		"ofetch": "catalog:",
 		"prettier": "catalog:",
 		"prettier-plugin-mdc": "catalog:",

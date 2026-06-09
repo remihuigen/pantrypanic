@@ -2,21 +2,22 @@
 
 ## Core Policy
 
-- `docs/` is for humans.
+- `README.md` and `docs/` are for humans.
 - `.agents/` is for agents.
-- Active information must exist in both places.
+- Active implementation facts should exist in both human and agent-facing docs.
 
 ## Mandatory Rule
 
-Do not update one side without updating the mirror side in the same change.
+Do not update one side with active implementation facts while leaving the mirror side stale.
 
 ## Mirror Map
 
 - `README.md` <-> `.agents/context/project-overview.md`
-- `docs/content/README.md` <-> `.agents/context/content-and-routes.md`
-- `docs/config/README.md` + `docs/ci-cd/README.md` <-> `.agents/context/runtime-and-deployment.md`
-- `AGENTS.md` + `docs/conventions/README.md` <-> `.agents/rules/operational-contract.md`
-- `docs/agent-guide/README.md` <-> `.agents/README.md` + `.agents/patterns/*`
+- `docs/config/README.md` <-> `.agents/context/runtime-and-deployment.md`
+- `docs/server/README.md` <-> `.agents/context/runtime-and-deployment.md`
+- database schema and migrations <-> `.agents/context/database.md`
+- `AGENTS.md` <-> `.agents/rules/operational-contract.md`
+- `PLAN.md` <-> `.agents/context/project-overview.md`
 
 ## Skills Boundary
 

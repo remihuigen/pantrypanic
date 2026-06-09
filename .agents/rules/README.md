@@ -9,6 +9,6 @@
 
 ## Human Mirrors
 
-- `../AGENTS.md`
-- `../docs/agent-guide/README.md`
-- `../docs/conventions/README.md`
+- `../../AGENTS.md`
+- `../../README.md`
+- `../../docs/README.md`

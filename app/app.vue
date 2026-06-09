@@ -1,77 +1,73 @@
-<script setup>
+<script lang="ts" setup>
 useHead({
-  meta: [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1' }
-  ],
-  link: [
-    { rel: 'icon', href: '/favicon.ico' }
-  ],
-  htmlAttrs: {
-    lang: 'en'
-  }
+	meta: [
+		{ name: 'viewport', content: 'width=device-width, initial-scale=1' }
+	],
+	link: [
+		{ rel: 'icon', href: '/favicon.ico' }
+	],
+	htmlAttrs: {
+		lang: 'en'
+	}
 })
 
-const title = 'Nuxt Starter Template'
-const description = 'A production-ready starter template powered by Nuxt UI. Build beautiful, accessible, and performant applications in minutes, not hours.'
+const title = 'Pantry Panic'
+const description = 'A pantry-first meal planning app for reducing food waste.'
+const { loggedIn, user } = useUserSession()
 
 useSeoMeta({
-  title,
-  description,
-  ogTitle: title,
-  ogDescription: description,
-  ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/starter-light.png',
-  twitterCard: 'summary_large_image'
+	title,
+	description,
+	ogTitle: title,
+	ogDescription: description,
+	twitterCard: 'summary_large_image'
 })
 </script>
 
 <template>
-  <UApp>
-    <UHeader>
-      <template #left>
-        <NuxtLink to="/">
-          <AppLogo class="w-auto h-6 shrink-0" />
-        </NuxtLink>
+	<UApp>
+		<UHeader>
+			<template #left>
+				<NuxtLink to="/">
+					<AppLogo class="h-6 w-auto shrink-0" />
+				</NuxtLink>
 
-        <TemplateMenu />
-      </template>
+				<TemplateMenu v-if="loggedIn" />
+			</template>
 
-      <template #right>
-        <UColorModeButton />
+			<template #right>
+				<span
+					v-if="loggedIn && user"
+					class="hidden max-w-52 truncate text-sm text-muted sm:inline"
+				>
+					{{ user.email }}
+				</span>
 
-        <UButton
-          to="https://github.com/nuxt-ui-templates/starter"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
-        />
-      </template>
-    </UHeader>
+				<UColorModeButton />
 
-    <UMain>
-      <NuxtPage />
-    </UMain>
+				<UButton
+					v-if="loggedIn"
+					to="/logout"
+					icon="i-lucide-log-out"
+					label="Log out"
+					color="neutral"
+					variant="ghost"
+				/>
+			</template>
+		</UHeader>
 
-    <USeparator icon="i-simple-icons-nuxtdotjs" />
+		<UMain>
+			<NuxtPage />
+		</UMain>
 
-    <UFooter>
-      <template #left>
-        <p class="text-sm text-muted">
-          Built with Nuxt UI • © {{ new Date().getFullYear() }}
-        </p>
-      </template>
+		<USeparator icon="i-lucide-utensils" />
 
-      <template #right>
-        <UButton
-          to="https://github.com/nuxt-ui-templates/starter"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
-        />
-      </template>
-    </UFooter>
-  </UApp>
+		<UFooter>
+			<template #left>
+				<p class="text-sm text-muted">
+					Pantry Panic • © {{ new Date().getFullYear() }}
+				</p>
+			</template>
+		</UFooter>
+	</UApp>
 </template>

@@ -2,101 +2,159 @@
 
 ## Nuxt Runtime
 
-- `extends: ['docus']`
-- Nitro preset: `cloudflare_module`
-- Nuxt Content local DB for dev/prerender is memory-backed:
-  - `content._localDatabase = { type: 'sqlite', filename: ':memory:' }`
-  - prevents stale file reuse (`_content_docs` missing-table failures after `prepare/typecheck`)
-- production route rule prerenders `/**`
-- `/assets/**` served through blob route
-- `/stats` redirects to Plausible dashboard
-- temporary Docus patch active (locale, OG font, MCP transport, type compat, sitemap):
-  - `patches/docus@5.9.0.patch`
-  - `pnpm-workspace.yaml` patched dependency entry for `docus@5.9.0`
-  - full inventory tracked in `.agents/context/i18n-patches.md`
+- Nuxt 4.4.6
+- Vue 3
+- Nuxt UI 4
+- Nitro server
+- TypeScript
+- Tailwind CSS 4
+- Pinia
+- VueUse
+- NuxtHub
+- Nuxt Image
+- nuxt-auth-utils
 
-## Typecheck Compatibility
+There is no Docus/content layer in the current checkout.
 
-- Active Docus patch (`patches/docus@5.9.0.patch`) also contains Docus typecheck compatibility fixes
-  for Nuxt 4 tooling.
-- Temporary schema shim:
-  - `shared/types/docus-types-compat.d.ts`
-- Removal criteria:
-  - remove shim when upstream Docus/Nuxt type compatibility is fixed and `pnpm typecheck` passes
-    without local compatibility declarations.
-- `app/app.config.ts` uses a `uiConfig` variable (instead of inline literal typing casts) to keep
-  custom UI keys accepted without `any` in app code.
-- `app/app.config.ts` must keep `github` runtime-disabled (`false`) so Docus does not render GitHub
-  actions; a typed boundary cast is used to bridge current schema typing mismatch.
+## Frontend State
 
-## UI Runtime
+The app UI is still mostly the Nuxt UI starter template:
 
-- Core UI: Nuxt UI
-- Single local Inspira/shadcn-style component: `app/components/PatternBackground.vue` +
-  `app/composables/pattern-background.ts`
-- shadcn-style config: `components.json`
-- OG image templates are locally overridden:
-  - `app/components/OgImage/Docs.takumi.vue`
-  - `app/components/OgImage/Landing.takumi.vue`
-  - both force `font-family: 'Poppins', sans-serif`
+- `app/app.vue` contains the Pantry Panic app shell with session-aware header controls.
+- `app/pages/index.vue` contains starter landing-page content.
+- `app/pages/login.vue` contains the email/password sign-in form.
+- `app/pages/logout.vue` clears the session and redirects to login.
+- Pantry Panic grocery workflows are not implemented yet.
 
-## Cloudflare Bindings
+## Authentication
 
-Expected bindings:
+- `nuxt-auth-utils` provides the user session cookie and `useUserSession()`.
+- `POST /api/auth/login` validates email/password credentials and sets a session.
+- `POST /api/auth/logout` clears the session.
+- `app/middleware/auth.global.ts` protects app routes except `/login` and `/logout`.
+- `server/middleware/auth.ts` protects `/api/**` and `/images/**`, except `/api/auth/login` and `/api/_auth/session`.
+- `server/utils/auth.ts` exposes `isAuthenticated(event)` and `requireAuthenticated(event)`.
+- Server requests can authenticate with a session cookie or `x-api-token: ADMIN_API_KEY`.
+- `ADMIN_API_TOKEN` remains accepted as a legacy fallback for existing local environments.
+
+## NuxtHub Configuration
+
+Configured in `nuxt.config.ts`:
+
+- database: SQLite locally, D1 driver outside development
+- cache: Cloudflare KV binding outside development
+- blob: filesystem driver at `.data/blob` locally, Cloudflare R2 in production
+
+Production environment variables currently referenced:
+
+- `CLOUDFLARE_D1_DATABASE_ID`
+- `CLOUDFLARE_CACHE_NAMESPACE_ID`
+- `CLOUDFLARE_R2_BUCKET`
+- `ADMIN_USER_EMAIL`
+- `ADMIN_USER_PASSWORD`
+- `ADMIN_API_KEY`
+- `ADMIN_API_TOKEN` (legacy fallback)
+- `NUXT_PUBLIC_SITE_URL`
+- `NUXT_SESSION_PASSWORD`
+
+Expected production bindings:
 
 - D1: `DB`
-- KV: `CACHE`
-- R2: `BLOB`
+- KV/cache: `CACHE`
+- R2/blob: `BLOB`
 
-Configured in `nuxt.config.ts` under `nitro.cloudflare.wrangler`.
+## Nuxt Image And Blob Serving
 
-## Studio And Branching
+- Development uses `image.provider = 'none'` so `/images/**` blob URLs work directly.
+- `$production` switches Nuxt Image to the Cloudflare provider.
+- `GET /images/**` serves blob-backed raster images only.
+- SVG is intentionally not served from `/images/**`.
 
-Studio repository config points to branch `content`.
+## Blob API Routes
 
-Automation:
+Implemented routes:
 
-- `content_promote.yml` promotes `content/**` changes to `main`
-- `sync_main_to_content.yml` syncs `main` back into `content`
-- auto production deploys happen only for content-only pushes on `main`
+- `GET /api/blobs`: list blob metadata.
+- `POST /api/blobs`: upload multipart form files.
+- `POST /api/blobs/validate`: validate multipart form files without storing.
+- `GET /api/blobs/**`: read blob metadata.
+- `PUT /api/blobs/**`: write raw request body to an exact blob pathname.
+- `DELETE /api/blobs/**`: delete a blob.
+- `/api/blobs/multipart/:action/**`: delegate multipart upload actions to NuxtHub.
+- `GET /images/**`: serve safe raster image blobs.
 
-## AI Assistant
+Validation lives in `server/utils/blob-storage.ts`.
 
-- `assistant.model = 'mistral/mistral-medium'`
-- gateway key from `AI_GATEWAY_API_KEY`
-- assistant consumes MCP tools from `/mcp` (Docus + `@nuxtjs/mcp-toolkit`)
-- Cloudflare MCP transport requires runtime package `agents` (for `agents/mcp` import)
-- active Docus patch fixes MCP transport for Cloudflare Workers:
-  - uses `event.fetch` with relative paths for Nitro internal routing (avoids 522 self-fetch)
-  - sets `Accept: application/json, text/event-stream` header (avoids 406)
-  - see `.agents/context/i18n-patches.md` section 3 for full detail
-- custom project MCP tools:
-  - `search-knowledge`
-  - `list-insights`
-  - `recommend-insights`
-  - `list-faqs`
-- custom tools are fail-fast hardened:
-  - collection reads run with timeouts and fallback behavior to avoid assistant hangs
-- each custom MCP tool file has an inline top-level "File overview" comment documenting purpose and
-  usage:
-  - `server/mcp/tools/search-knowledge.ts`
-  - `server/mcp/tools/list-insights.ts`
-  - `server/mcp/tools/recommend-insights.ts`
-  - `server/mcp/tools/list-faqs.ts`
-- no custom `/api/ai/*` feature set currently present
+## User API Routes
 
-## OG Font Guardrails
+Implemented routes:
 
-- `@nuxt/fonts` provides `Poppins` with `global: true` in `nuxt.config.ts`.
-- Docus base OG generation requires explicit `fontFamily` to avoid fallback font rendering.
-- Active implementation:
-  - custom pages call `defineOgImage(..., { fontFamily: 'Poppins' })`
-  - `patches/docus@5.9.0.patch` injects `fontFamily: 'Poppins'` into Docus docs/landing OG calls
-- Removal criteria:
-  - only remove Docus patch lines when upstream Docus supports a stable OG font config route or no
-    longer needs explicit family to use configured project fonts.
+- `GET /api/users`: list users with optional `email`, `limit`, and `offset`.
+- `POST /api/users`: create a user from `name`, `email`, and `password`.
+- `GET /api/users/:userId`: read a user.
+- `PUT /api/users/:userId`: update one or more user fields.
+- `PATCH /api/users/:userId`: update one or more user fields.
+- `DELETE /api/users/:userId`: delete a user.
 
-## Testing State
+User logic lives in `server/utils/user-management.ts`.
 
-- no test scripts currently in `package.json`
-- `pnpm lint` and `pnpm typecheck` are the active local verification commands
+Current limitations:
+
+- no fine-grained permission checks
+- existing legacy plain-text passwords are rehashed after a successful login
+- user API responses omit `password`
+
+## Admin User Seed
+
+`nuxt.config.ts` registers a `build:done` hook that calls `scripts/seed-admin-user.mjs`.
+
+The seed:
+
+- reads `ADMIN_USER_EMAIL` and `ADMIN_USER_PASSWORD`
+- reads `ADMIN_API_KEY` and `NUXT_PUBLIC_SITE_URL`
+- normalizes the email to lowercase
+- calls `GET /api/users?email=<email>&limit=1` on `NUXT_PUBLIC_SITE_URL`
+- calls `POST /api/users` only when missing
+- authenticates both HTTP requests with `x-api-token: ADMIN_API_KEY`
+- logs a warning and skips when the configured instance is unreachable during build
+- can be run directly with `pnpm seed:admin`
+
+The deployment workflow sets `SKIP_ADMIN_SEED=1` during build and runs `pnpm seed:admin` after
+D1 migrations and Worker deployment complete.
+
+## Deployment Workflow
+
+`.github/workflows/deploy.yml` deploys production on pushes to `main`.
+
+The workflow:
+
+- builds with `NITRO_PRESET=cloudflare_module`
+- disables admin seeding during build with `SKIP_ADMIN_SEED=1`
+- applies remote D1 migrations with `wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json`
+- deploys the generated Worker with `wrangler --cwd .output deploy`
+- runs the HTTP admin seed after deploy
+
+Production D1 builds use `applyMigrationsDuringBuild: false`; migrations are handled by CI before
+deployment.
+
+## Build And Validation
+
+Package scripts:
+
+- `pnpm dev`
+- `pnpm build`
+- `pnpm preview`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm db:generate`
+- `pnpm db:migrate`
+- `pnpm seed:admin`
+
+`pnpm lint` and `pnpm typecheck` are the required baseline checks for meaningful changes.
+
+`pnpm build` also exercises the admin seed hook.
+
+## Known Local Runtime Note
+
+In this environment, `pnpm dev` has previously exited with `EMFILE: too many open files, watch`.
+Build and typecheck still complete successfully.
