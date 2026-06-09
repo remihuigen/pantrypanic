@@ -2,8 +2,8 @@
 import * as z from 'zod'
 
 const loginSchema = z.object({
-	email: z.email(),
-	password: z.string().min(1)
+	email: z.string().email({ message: 'Ongeldig e-mailadres.' }),
+	password: z.string().min(1, { message: 'Wachtwoord is verplicht.' })
 })
 
 type LoginSchema = z.output<typeof loginSchema>
@@ -21,10 +21,10 @@ const redirectPath = computed(() => {
 	const redirect = route.query.redirect
 
 	if (
-		typeof redirect === 'string'
-		&& redirect.startsWith('/')
-		&& !redirect.startsWith('//')
-		&& redirect !== '/login'
+		typeof redirect === 'string' &&
+		redirect.startsWith('/') &&
+		!redirect.startsWith('//') &&
+		redirect !== '/login'
 	) {
 		return redirect
 	}
@@ -52,7 +52,7 @@ async function onSubmit() {
 		await fetch()
 		await navigateTo(redirectPath.value)
 	} catch {
-		errorMessage.value = 'Invalid email or password.'
+		errorMessage.value = 'Ongeldig e-mailadres of wachtwoord.'
 	} finally {
 		loading.value = false
 	}
@@ -63,12 +63,10 @@ async function onSubmit() {
 	<UContainer class="flex min-h-[calc(100vh-9rem)] items-center justify-center py-10">
 		<UCard class="w-full max-w-sm">
 			<template #header>
-				<div class="space-y-1">
-					<h1 class="text-lg font-semibold text-highlighted">
-						Sign in
-					</h1>
-					<p class="text-sm text-muted">
-						Use your Pantry Panic account.
+				<div class="space-y-4">
+					<AppLogo class="mx-auto h-12 w-auto shrink-0" />
+					<p class="text-muted text-center text-sm">
+						Log in met je Pantry Panic account.
 					</p>
 				</div>
 			</template>
@@ -82,16 +80,8 @@ async function onSubmit() {
 				variant="soft"
 			/>
 
-			<UForm
-				:schema="loginSchema"
-				:state="state"
-				class="space-y-4"
-				@submit="onSubmit"
-			>
-				<UFormField
-					label="Email"
-					name="email"
-				>
+			<UForm :schema="loginSchema" :state="state" class="space-y-4" @submit="onSubmit">
+				<UFormField label="Email" name="email" size="xl">
 					<UInput
 						v-model="state.email"
 						autocomplete="email"
@@ -100,10 +90,7 @@ async function onSubmit() {
 					/>
 				</UFormField>
 
-				<UFormField
-					label="Password"
-					name="password"
-				>
+				<UFormField label="Password" name="password" size="xl">
 					<UInput
 						v-model="state.password"
 						autocomplete="current-password"
@@ -116,7 +103,8 @@ async function onSubmit() {
 					block
 					icon="i-lucide-log-in"
 					:loading="loading"
-					label="Sign in"
+					label="Inloggen"
+					size="xl"
 					type="submit"
 				/>
 			</UForm>

@@ -33,7 +33,14 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		adminApiKey: process.env.ADMIN_API_KEY ?? process.env.ADMIN_API_TOKEN ?? '',
-		adminApiToken: process.env.ADMIN_API_TOKEN ?? ''
+		adminApiToken: process.env.ADMIN_API_TOKEN ?? '',
+
+		public: {
+			identity: {
+				title: 'Pantry Panic',
+				description: "The grocery list manager that doesn't suck."
+			}
+		}
 	},
 
 	compatibilityDate: '2025-01-15',

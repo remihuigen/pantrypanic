@@ -1,18 +1,18 @@
 <script lang="ts" setup>
+import { nl } from '@nuxt/ui/locale'
+
 useHead({
-	meta: [
-		{ name: 'viewport', content: 'width=device-width, initial-scale=1' }
-	],
-	link: [
-		{ rel: 'icon', href: '/favicon.ico' }
-	],
+	meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+	link: [{ rel: 'icon', href: '/favicon.ico' }],
 	htmlAttrs: {
 		lang: 'en'
 	}
 })
 
-const title = 'Pantry Panic'
-const description = 'A pantry-first meal planning app for reducing food waste.'
+const { identity } = useRuntimeConfig().public
+
+const title = identity.title
+const description = identity.description
 const { loggedIn, user } = useUserSession()
 
 useSeoMeta({
@@ -25,20 +25,18 @@ useSeoMeta({
 </script>
 
 <template>
-	<UApp>
+	<UApp :locale="nl">
 		<UHeader>
 			<template #left>
 				<NuxtLink to="/">
-					<AppLogo class="h-6 w-auto shrink-0" />
+					<AppLogo class="h-9 w-auto shrink-0" />
 				</NuxtLink>
-
-				<TemplateMenu v-if="loggedIn" />
 			</template>
 
 			<template #right>
 				<span
 					v-if="loggedIn && user"
-					class="hidden max-w-52 truncate text-sm text-muted sm:inline"
+					class="text-muted hidden max-w-52 truncate text-sm sm:inline"
 				>
 					{{ user.email }}
 				</span>
@@ -60,13 +58,23 @@ useSeoMeta({
 			<NuxtPage />
 		</UMain>
 
-		<USeparator icon="i-lucide-utensils" />
+		<USeparator
+			:avatar="{
+				src: '/separator_icon.png',
+				size: 'lg',
+				class: 'object-contain',
+				ui: { root: 'bg-transparent' }
+			}"
+		/>
 
-		<UFooter>
+		<UFooter :ui="{ root: 'mb-3' }">
 			<template #left>
-				<p class="text-sm text-muted">
-					Pantry Panic • © {{ new Date().getFullYear() }}
+				<p class="text-muted text-sm">
+					{{ identity.title }} • © {{ new Date().getFullYear() }}
 				</p>
+			</template>
+			<template #right>
+				<p class="text-muted text-sm">{{ identity.description }}</p>
 			</template>
 		</UFooter>
 	</UApp>

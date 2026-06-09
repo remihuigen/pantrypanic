@@ -4,3 +4,5 @@
 - [ ] add color tokens
 - [ ] table schema
 - [ ] meal planner
+- [ ] implement dutch locale
+- [ ] why do we have two runtime config values for api key?! merge them
