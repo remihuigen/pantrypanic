@@ -5,7 +5,7 @@
 Pantry Panic is a fast, self-hostable grocery list app for households that want something smarter
 than a checkbox list, but less annoying than a family planner.
 
-## Why _another_ list manager app?
+## 🤔 Why _another_ list manager app?
 
 The answer is quite simple: to make my wife stop complaining about whatever list app she is using at
 the moment.
@@ -20,7 +20,7 @@ is smart enough to prevent repetitiveness. Due to its local-first strategy, it f
 Oh yeah — did I mention it's **free and self-hostable**? All you need is a (free) Cloudflare
 account.
 
-## Core Features
+## ✨ Core Features
 
 - 🛒 Shared household grocery lists with realtime collaboration
 - ✨ Smart item suggestions based on previous shopping behavior
@@ -28,11 +28,11 @@ account.
 - 🍽️ Meal planner to organize your week
 - ⚡ Local-first architecture and a snappy user experience
 
-## Deploy Pantry Panic
+## 🚀 Deploy Pantry Panic
 
 Deploying Pantry Panic takes about 10–15 minutes.
 
-### Prerequisites
+### 📋 Prerequisites
 
 Before you begin, make sure you have:
 
@@ -45,7 +45,7 @@ If you don't already have a Cloudflare account, you can create one at
 [https://dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up). The free tier is more
 than enough for most households.
 
-### Step 1: Create Cloudflare Resources
+### 1️⃣ Step 1: Create Cloudflare Resources
 
 Create the following resources in your Cloudflare dashboard:
 
@@ -58,7 +58,7 @@ Create the following resources in your Cloudflare dashboard:
 - [ ] A Workers KV namespace
   - Write down the `namespace ID`
 
-### Step 2: Create an API Token
+### 2️⃣ Step 2: Create an API Token
 
 Navigate to **Account API Tokens** in the Cloudflare dashboard and create a new token with
 read/write access to Worker-related resources.
@@ -66,7 +66,7 @@ read/write access to Worker-related resources.
 Make sure to copy the token immediately and store it somewhere safe. Cloudflare will not show it
 again after creation.
 
-### Step 3: Find Your Account ID
+### 3️⃣ Step 3: Find Your Account ID
 
 Locate your Cloudflare Account ID. You can find it in the dashboard URL:
 
@@ -74,11 +74,11 @@ Locate your Cloudflare Account ID. You can find it in the dashboard URL:
 https://dash.cloudflare.com/<account-id>
 ```
 
-### Step 4: Fork the Repository
+### 4️⃣ Step 4: Fork the Repository
 
 Fork this repository into your own GitHub account.
 
-### Step 5: Generate Secrets
+### 5️⃣ Step 5: Generate Secrets
 
 Generate a hashing secret and admin API key:
 
@@ -88,7 +88,7 @@ openssl rand -hex 32
 
 Run it twice and store both values somewhere safe.
 
-### Step 6: Configure GitHub Secrets and Variables
+### 6️⃣ Step 6: Configure GitHub Secrets and Variables
 
 In your fork, navigate to:
 
@@ -120,7 +120,7 @@ ADMIN_USER_EMAIL=<initial-user-email>
 ADMIN_USER_PASSWORD=<initial-user-password>
 ```
 
-### Step 7: Deploy
+### 7️⃣ Step 7: Deploy
 
 Navigate to **GitHub Actions** and manually run the **Deploy** workflow.
 
@@ -131,7 +131,7 @@ The deployment workflow will:
 3. Deploy the Cloudflare Worker
 4. Seed the initial admin user
 
-### Step 8: Configure Your Domain
+### 8️⃣ Step 8: Configure Your Domain
 
 After deployment finishes, determine how you want to access your instance.
 
@@ -148,7 +148,7 @@ Find the generated `workers.dev` URL:
 - In the Cloudflare dashboard
 - Or in the GitHub Actions deployment logs
 
-### Step 9: Update the Site URL
+### 9️⃣ Step 9: Update the Site URL
 
 Return to your GitHub repository variables and update:
 
@@ -156,7 +156,7 @@ Return to your GitHub repository variables and update:
 NUXT_PUBLIC_SITE_URL=<your-domain-or-workers-url>
 ```
 
-### Step 10: Redeploy
+### 🔟 Step 10: Redeploy
 
 Run the Deploy workflow one more time.
 
@@ -165,7 +165,7 @@ Your Pantry Panic instance should now be fully operational.
 Navigate to your domain (or `workers.dev` URL) and log in using the credentials you configured in
 Step 6.
 
-### Updating Pantry Panic
+### ⬆️ Updating Pantry Panic
 
 Pantry Panic currently does not publish official releases.
 
@@ -175,18 +175,18 @@ To update your instance:
 2. Push or merge the changes
 3. GitHub Actions will automatically redeploy if new commits are detected
 
-## Local Setup
+## 💻 Local Setup
 
 First, fork and clone the repository.
 
-### Requirements
+### 📦 Requirements
 
 - pnpm 10
 - Node.js 24
 
 Node.js 24 is configured through the included `.nvmrc` file.
 
-### Getting Started
+### 🏁 Getting Started
 
 Install dependencies:
 
@@ -214,7 +214,7 @@ CLOUDFLARE_CACHE_NAMESPACE_ID=<namespace-id>
 CLOUDFLARE_R2_BUCKET=<bucket-name>
 ```
 
-## Development
+## 🛠️ Development
 
 Start the development server:
 
@@ -235,7 +235,7 @@ Seed the initial admin user:
 pnpm seed:admin
 ```
 
-## Validation
+## ✅ Validation
 
 Run the project checks:
 
@@ -255,14 +255,14 @@ Production deployment runs through `.github/workflows/deploy.yml`. The workflow 
 application for Cloudflare, applies D1 migrations with Wrangler, deploys the Worker, and finally
 runs the HTTP admin seed.
 
-For a complete deployment guide, see [Deploy Pantry Panic](#deploy-pantry-panic).
+For a complete deployment guide, see [Deploy Pantry Panic](#-deploy-pantry-panic).
 
-## Documentation
+## 📚 Documentation
 
 - Human documentation: [docs/](./docs/README.md)
 - Agent documentation: [.agents/](./.agents/README.md)
 
-## Stack
+## 🧩 Stack
 
 This project is made possible by my favorite stack 💚.
 
@@ -280,7 +280,7 @@ Except Cloudflare. I don't like Cloudflare that much — but it's cheap.
 - Zod v4
 - Cloudflare D1, KV, and R2 (production)
 
-## License
+## 📝 License
 
 This project is licensed under the MIT License.
 

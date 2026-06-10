@@ -19,7 +19,8 @@ useSeoMeta({
 	description,
 	ogTitle: title,
 	ogDescription: description,
-	twitterCard: 'summary_large_image'
+	twitterCard: 'summary_large_image',
+	robots: 'noindex, nofollow'
 })
 </script>
 
