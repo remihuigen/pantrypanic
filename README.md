@@ -255,7 +255,7 @@ Production deployment runs through `.github/workflows/deploy.yml`. The workflow 
 application for Cloudflare, applies D1 migrations with Wrangler, deploys the Worker, and finally
 runs the HTTP admin seed.
 
-For a complete deployment guide, see [Deploy Pantry Panic](#deploy-pantry-panic).
+For a complete deployment guide, see [Deploy Pantry Panic](#-deploy-pantry-panic).
 
 ## 📚 Documentation
 
