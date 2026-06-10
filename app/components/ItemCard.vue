@@ -14,12 +14,42 @@ const emit = defineEmits<{
 
 const gestureTarget = useTemplateRef<HTMLElement>('gestureTarget')
 const ignoreNextClick = shallowRef(false)
+const isDraggingSwipe = shallowRef(false)
+const swipeOffsetX = shallowRef(0)
+
+const SWIPE_ACTION_DISTANCE = 40
+const MIN_DRAG_DISTANCE = 4
 
 const amountLabel = computed(() =>
 	[props.item.amount, props.item.unit]
 		.filter((value) => value !== undefined && String(value).trim().length > 0)
 		.join(' ')
 )
+const swipeProgress = computed(() => Math.abs(swipeOffsetX.value) / SWIPE_ACTION_DISTANCE)
+const swipeColor = computed(() =>
+	props.item.status === 'checked' ? '59 130 246' : '34 197 94'
+)
+const cardStyle = computed(() => {
+	const easedProgress = 1 - Math.pow(1 - swipeProgress.value, 2)
+	const colorOpacity = swipeProgress.value > 0 ? 0.08 + easedProgress * 0.22 : 0
+	const borderOpacity = swipeProgress.value > 0 ? 0.32 + easedProgress * 0.38 : 0
+	const shadowOpacity = swipeProgress.value > 0 ? 0.18 + easedProgress * 0.28 : 0
+	const opacity =
+		props.item.status === 'checked' ? 0.5 + easedProgress * 0.35 : 1 - easedProgress * 0.08
+
+	return {
+		transform: `translate3d(${swipeOffsetX.value}px, 0, 0)`,
+		backgroundColor:
+			colorOpacity > 0 ? `rgb(${swipeColor.value} / ${colorOpacity})` : undefined,
+		borderColor: borderOpacity > 0 ? `rgb(${swipeColor.value} / ${borderOpacity})` : undefined,
+		boxShadow:
+			shadowOpacity > 0 ? `0 0 0 1px rgb(${swipeColor.value} / ${shadowOpacity})` : undefined,
+		opacity,
+		transition: isDraggingSwipe.value
+			? 'background-color 60ms linear, border-color 60ms linear, box-shadow 60ms linear, opacity 60ms linear, transform 60ms linear'
+			: 'background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease, transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+	}
+})
 
 function handleEdit() {
 	if (ignoreNextClick.value) {
@@ -30,18 +60,52 @@ function handleEdit() {
 	emit('edit', props.item.id)
 }
 
+function clampSwipeOffset(movementX: number) {
+	return Math.min(0, Math.max(-SWIPE_ACTION_DISTANCE, movementX))
+}
+
+function isDragHandleEvent(event: Event) {
+	return event.target instanceof Element && Boolean(event.target.closest('.item-card__drag-handle'))
+}
+
+function suppressNextClick() {
+	ignoreNextClick.value = true
+	setTimeout(() => {
+		ignoreNextClick.value = false
+	}, 0)
+}
+
+function resetSwipeMotion() {
+	isDraggingSwipe.value = false
+	swipeOffsetX.value = 0
+}
+
 useGesture(
 	{
-		onDragEnd: ({ swipe: [swipeX] }) => {
-			if (swipeX >= 0) {
+		onDrag: ({ event, movement: [movementX], tap }) => {
+			if (tap || isDragHandleEvent(event)) {
+				resetSwipeMotion()
 				return
 			}
 
-			ignoreNextClick.value = true
-			emit('toggleChecked', props.item.id)
-			setTimeout(() => {
-				ignoreNextClick.value = false
-			}, 0)
+			isDraggingSwipe.value = true
+			swipeOffsetX.value = clampSwipeOffset(movementX)
+		},
+		onDragEnd: ({ event, movement: [movementX], tap }) => {
+			if (tap || isDragHandleEvent(event)) {
+				resetSwipeMotion()
+				return
+			}
+
+			if (Math.abs(movementX) > MIN_DRAG_DISTANCE) {
+				suppressNextClick()
+			}
+
+			if (movementX <= -SWIPE_ACTION_DISTANCE) {
+				emit('toggleChecked', props.item.id)
+			}
+
+			resetSwipeMotion()
 		}
 	},
 	{
@@ -49,7 +113,8 @@ useGesture(
 		drag: {
 			axis: 'x',
 			filterTaps: true,
-			swipeDistance: 60
+			swipeDistance: SWIPE_ACTION_DISTANCE,
+			threshold: [MIN_DRAG_DISTANCE, 0]
 		}
 	}
 )
@@ -60,24 +125,29 @@ useGesture(
 		ref="gestureTarget"
 		role="button"
 		tabindex="0"
-		class="item-card cursor-grab touch-pan-y"
+		class="item-card touch-pan-y"
 		@click="handleEdit"
 		@keydown.enter.prevent="handleEdit"
 		@keydown.space.prevent="handleEdit"
 	>
 		<UCard
-			class="transition-[ring,opacity]"
+			class="will-change-transform"
 			variant="outline"
+			:style="cardStyle"
 			:ui="{
 				body: 'p-3 sm:p-3',
 				root:
 					item.status === 'checked'
-						? 'ring-success bg-success-50 opacity-50'
+						? 'ring-success dark:ring-success-700 bg-success-50 dark:bg-success-900/20 opacity-50'
 						: 'ring-default'
 			}"
 		>
 			<div class="flex min-w-0 items-center gap-3">
-				<UIcon name="i-lucide-grip-vertical" class="text-muted size-4 shrink-0" />
+				<UIcon
+					name="i-lucide-grip-vertical"
+					class="item-card__drag-handle text-muted size-4 shrink-0 cursor-grab touch-none"
+					@click.stop
+				/>
 				<span class="text-highlighted min-w-0 grow truncate text-sm font-medium">
 					{{ props.item.name }}
 				</span>

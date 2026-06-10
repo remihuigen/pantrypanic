@@ -46,6 +46,7 @@ export {
 	archiveShoppingList,
 	deleteShoppingList,
 	clearShoppingList,
+	clearCheckedListItems,
 	addListItem,
 	reorderListItems,
 	updateListItem,

@@ -77,8 +77,15 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 	const drawer = options.drawer ?? useEditListDrawer()
 	const listsStore = options.store ?? useListsStore()
 	const toast = options.toast ?? useToast()
+	const formState = reactive<EditListDrawerFormInput>(
+		options.mode === 'edit'
+			? {
+					name: listsStore.listsById[toValue(options.listId) ?? '']?.name ?? '',
+					icon: listsStore.listsById[toValue(options.listId) ?? '']?.icon ?? undefined
+				}
+			: createDefaultFormState()
+	)
 
-	const formState = reactive<EditListDrawerFormInput>(createDefaultFormState())
 	const isSubmitting = ref(false)
 	const populatedContextKey = ref<string | null>(null)
 

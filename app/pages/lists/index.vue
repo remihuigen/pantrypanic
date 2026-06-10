@@ -7,7 +7,6 @@ definePageMeta({ layout: 'app' })
 
 const listsStore = useListsStore()
 const toast = useToast()
-const confirm = useConfirmDialog()
 const editListDrawer = useEditListDrawer()
 const editListDrawerMode = ref<EditListDrawerMode>('create')
 const editListDrawerListId = ref<string | null>(null)
@@ -51,12 +50,6 @@ function openCreateListDrawer() {
 	editListDrawer.open()
 }
 
-function openEditListDrawer(listId: string) {
-	editListDrawerMode.value = 'edit'
-	editListDrawerListId.value = listId
-	editListDrawer.open()
-}
-
 async function refreshLists() {
 	isLoadingLists.value = true
 
@@ -76,50 +69,6 @@ async function refreshLists() {
 		})
 	} finally {
 		isLoadingLists.value = false
-	}
-}
-
-async function handleDeleteList(listId: string) {
-	if (listsStore.activeListIds.length <= 1) {
-		return
-	}
-
-	const confirmed = await confirm({
-		title: 'Lijst verwijderen?',
-		description: `Weet je zeker dat je "${listName(listId)}" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.`,
-		color: 'error',
-		actions: [
-			{
-				label: 'Annuleren',
-				color: 'neutral',
-				variant: 'soft',
-				mode: 'cancel'
-			},
-			{
-				label: 'Verwijderen',
-				color: 'error',
-				variant: 'solid',
-				mode: 'confirm',
-				icon: 'i-lucide-trash-2'
-			}
-		]
-	})
-
-	if (!confirmed) {
-		return
-	}
-
-	try {
-		await listsStore.deleteList(listId)
-	} catch (error) {
-		toast.add({
-			title: getErrorMessage(error, 'Lijst kon niet worden verwijderd.'),
-			color: 'error',
-			duration: 8000,
-			icon: 'i-lucide-circle-alert'
-		})
-
-		await refreshLists()
 	}
 }
 
@@ -194,8 +143,6 @@ onMounted(() => {
 				:icon="listIcon(listId)"
 				:item-count="listItemCount(listId)"
 				:can-delete="listsStore.activeListIds.length > 1"
-				@delete="handleDeleteList"
-				@edit-settings="openEditListDrawer"
 			/>
 			<UButton
 				v-if="listsStore.activeListIds.length > 0"

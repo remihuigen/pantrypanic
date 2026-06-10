@@ -12,6 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	clear: []
+	clearChecked: []
 	edit: [listItemId: string]
 	reorder: [orderedIds: string[]]
 	toggleChecked: [listItemId: string]
@@ -23,6 +24,8 @@ type SortableUpdateEvent = {
 	oldIndex?: number
 	newIndex?: number
 }
+
+const checkedItems = computed(() => props.items.filter((item) => item.status === 'checked'))
 
 const itemGridRef = ref<HTMLElement | null>(null)
 const sortableItemIds = ref<string[]>([])
@@ -60,6 +63,7 @@ async function handleItemReorder(event: SortableUpdateEvent) {
 useSortable(itemGridRef, sortableItemIds, {
 	animation: 180,
 	draggable: '.item-card',
+	handle: '.item-card__drag-handle',
 	onUpdate: (event: SortableUpdateEvent) => {
 		void handleItemReorder(event)
 	}
@@ -91,6 +95,19 @@ function openCreateItemDrawer() {
 				<UButton color="primary" @click="openCreateItemDrawer">+ Nieuw item</UButton>
 			</template>
 		</UEmpty>
+
+		<UButton
+			v-if="checkedItems.length > 0"
+			block
+			color="success"
+			variant="soft"
+			size="lg"
+			:icon="getIcon('check')"
+			class="justify-center text-base"
+			@click="emit('clearChecked')"
+		>
+			Afgeronde items verwijderen
+		</UButton>
 
 		<UButton
 			v-if="props.items.length > 0"

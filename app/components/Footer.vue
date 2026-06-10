@@ -3,14 +3,7 @@ const { identity } = useRuntimeConfig().public
 </script>
 
 <template>
-	<USeparator
-		:avatar="{
-			src: '/separator_icon.png',
-			size: 'lg',
-			class: 'object-contain',
-			ui: { root: 'bg-transparent' }
-		}"
-	/>
+	<USeparator />
 	<UFooter :ui="{ root: 'mb-3' }">
 		<template #left>
 			<p class="text-muted text-sm">

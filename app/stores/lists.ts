@@ -47,6 +47,8 @@ export const useListsStore = defineStore(
 		const isSaving = ref(false)
 		const error = ref<AppError | null>(null)
 
+		const listCount = computed(() => activeListIds.value.length)
+
 		const activeLists = computed(() =>
 			activeListIds.value
 				.map((listId) => listsById.value[listId])
@@ -710,6 +712,39 @@ export const useListsStore = defineStore(
 			}
 		}
 
+		async function clearCheckedListItems(listId: string) {
+			error.value = null
+
+			const previousIds = [...(listItemIdsByListId.value[listId] ?? [])]
+			const checkedItems = previousIds
+				.map((id) => listItemsById.value[id])
+				.filter((item): item is ListItem => item?.status === 'checked')
+			const checkedItemIds = checkedItems.map((item) => item.id)
+
+			listItemsById.value = omitRecordKeys(listItemsById.value, checkedItemIds)
+			listItemIdsByListId.value[listId] = previousIds.filter(
+				(itemId) => !checkedItemIds.includes(itemId)
+			)
+
+			try {
+				const data = await apiFetch<{ archivedCount: number }>(
+					`/api/lists/${listId}/clear-checked`,
+					{
+						method: 'POST'
+					}
+				)
+
+				return data
+			} catch (err) {
+				for (const listItem of checkedItems) {
+					listItemsById.value[listItem.id] = listItem
+				}
+				listItemIdsByListId.value[listId] = previousIds
+
+				throw setStoreError(err)
+			}
+		}
+
 		async function addRecipeToList(recipeId: string, listId: string) {
 			error.value = null
 
@@ -866,6 +901,7 @@ export const useListsStore = defineStore(
 			error,
 			activeLists,
 			listSuggestions,
+			listCount,
 			listById,
 			listItemsForList,
 			fetchLists,
@@ -882,6 +918,7 @@ export const useListsStore = defineStore(
 			deleteListItem,
 			reorderListItems,
 			clearList,
+			clearCheckedListItems,
 			addRecipeToList,
 			fetchSuggestions,
 			searchItems,

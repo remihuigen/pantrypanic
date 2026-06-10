@@ -13,9 +13,17 @@ export default defineNuxtConfig({
 
 	$production: {
 		nitro: {
+			preset: 'cloudflare_module',
 			cloudflare: {
 				wrangler: {
-					name: process.env.CLOUDFLARE_WORKER_NAME ?? 'pantrypanic'
+					name: process.env.CLOUDFLARE_WORKER_NAME ?? 'pantrypanic',
+					observability: {
+						logs: {
+							enabled: true,
+							head_sampling_rate: 1,
+							invocation_logs: true
+						}
+					}
 				}
 			}
 		},
@@ -116,5 +124,5 @@ export default defineNuxtConfig({
 
 	image: {
 		provider: 'none'
-	},
+	}
 })

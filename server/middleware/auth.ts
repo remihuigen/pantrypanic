@@ -3,7 +3,7 @@ import { defineEventHandler, getRequestURL, setResponseStatus } from 'h3'
 
 const PROTECTED_PATH_PREFIXES = ['/api/', '/images/']
 const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/_auth/session'])
-const PUBLIC_PATH_PREFIXES = ['/api/_nuxt']
+const PUBLIC_PATH_PREFIXES = ['/api/_nuxt', '/api/_auth']
 
 /**
  * Protects server API and blob image routes with session or admin API key authentication.

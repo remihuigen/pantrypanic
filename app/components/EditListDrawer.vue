@@ -16,8 +16,8 @@ const editListDrawerFormId = 'edit-list-drawer-form'
 const { getIcon } = useIcon()
 const { formState, isSubmitting, canSubmit, submitForm, closeAndReset } = useEditListDrawerForm({
 	drawer: editListDrawer,
-	listId: () => props.listId,
-	mode: () => props.mode
+	listId: props.listId,
+	mode: props.mode
 })
 
 const drawerTitle = computed(() =>
@@ -79,7 +79,7 @@ function handleSubmit(payload: FormSubmitEvent<EditListFormSchema>) {
 						placeholder="Bijvoorbeeld weekendboodschappen"
 						:icon="getIcon('list')"
 						:disabled="isSubmitting"
-						autofocus
+						:autofocus="mode === 'create'"
 						:ui="{ leadingIcon: 'size-4' }"
 					/>
 				</UFormField>

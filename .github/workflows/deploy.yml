@@ -20,7 +20,7 @@ jobs:
     environment: production
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Setup node and pnpm
         uses: ./.github/actions/setup
@@ -31,12 +31,11 @@ jobs:
       - name: Build Cloudflare Worker
         run: pnpm build
         env:
-          NITRO_PRESET: cloudflare_module
           SKIP_ADMIN_SEED: '1'
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_DATABASE_ID }}
           CLOUDFLARE_CACHE_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_CACHE_NAMESPACE_ID }}
           CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
-          NUXT_PUBLIC_SITE_URL: ${{ secrets.NUXT_PUBLIC_SITE_URL }}
+          NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
 
@@ -62,4 +61,4 @@ jobs:
           ADMIN_USER_EMAIL: ${{ secrets.ADMIN_USER_EMAIL }}
           ADMIN_USER_PASSWORD: ${{ secrets.ADMIN_USER_PASSWORD }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-          NUXT_PUBLIC_SITE_URL: ${{ secrets.NUXT_PUBLIC_SITE_URL }}
+          NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}

@@ -101,7 +101,7 @@ onActivated(() => {
 				:id="editItemDrawerFormId"
 				:schema="editItemDrawerFormSchema"
 				:state="formState"
-				class="grid space-y-4"
+				class="grid min-h-[25rem] content-start gap-y-4"
 				:validate-on="['blur']"
 				@submit="handleSubmit"
 			>
@@ -122,7 +122,7 @@ onActivated(() => {
 						label-key="label"
 						ignore-filter
 						mode="autocomplete"
-						autofocus
+						:autofocus="editItemDrawer.mode.value === 'create'"
 						:placeholder="`Bijvoorbeeld ${currentExample?.toLowerCase()}`"
 						:disabled="isSubmitting"
 					/>
@@ -139,11 +139,11 @@ onActivated(() => {
 					/>
 				</UFormField>
 
-				<div class="grid grid-cols-2 gap-3">
+				<FieldRow>
 					<UFormField name="amount" size="lg">
 						<UInputNumber
 							v-model="formState.amount"
-							:step="0.1"
+							:step="0.5"
 							:min="0"
 							placeholder="Aantal"
 							:disabled="isSubmitting"
@@ -157,7 +157,7 @@ onActivated(() => {
 							:disabled="isSubmitting"
 						/>
 					</UFormField>
-				</div>
+				</FieldRow>
 
 				<UFormField name="note">
 					<UTextarea
