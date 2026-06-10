@@ -284,17 +284,41 @@ describe('useListsStore', () => {
 		const store = useListsStore()
 		store.listItemsById['li-1'] = createListItem({ id: 'li-1', amount: 1, unit: 'stuk' })
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
-			listItem: { id: 'li-1', amount: 2, unit: 'kg', note: 'vers', updatedAt: 9 }
+			listItem: createListItem({
+				id: 'li-1',
+				name: 'Tomaten',
+				amount: 2,
+				unit: 'kg',
+				note: 'vers',
+				updatedAt: 9
+			})
 		})
 
-		await store.updateListItem('li-1', { amount: 2, unit: 'kg', note: 'vers' })
+		await store.updateListItem('li-1', { name: 'Tomaten', amount: 2, unit: 'kg', note: 'vers' })
 
 		expect(store.listItemsById['li-1']).toMatchObject({
+			name: 'Tomaten',
 			amount: 2,
 			unit: 'kg',
 			note: 'vers',
 			updatedAt: 9
 		})
+	})
+
+	it('moves list item ids when an item is updated to another list', async () => {
+		const store = useListsStore()
+		store.listItemIdsByListId['list-1'] = ['li-1']
+		store.listItemIdsByListId['list-2'] = []
+		store.listItemsById['li-1'] = createListItem({ id: 'li-1', listId: 'list-1' })
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			listItem: createListItem({ id: 'li-1', listId: 'list-2', position: 0 })
+		})
+
+		await store.updateListItem('li-1', { listId: 'list-2', name: 'Tomaat' })
+
+		expect(store.listItemIdsByListId['list-1']).toEqual([])
+		expect(store.listItemIdsByListId['list-2']).toEqual(['li-1'])
+		expect(store.listItemsById['li-1']?.listId).toBe('list-2')
 	})
 
 	it('optimistically checks and unchecks list items with server timestamps', async () => {

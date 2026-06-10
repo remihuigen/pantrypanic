@@ -40,6 +40,7 @@
 		"@vitest/coverage-v8": "catalog:",
 		"@vue/test-utils": "catalog:",
 		"@vueuse/core": "catalog:",
+		"@vueuse/gesture": "catalog:",
 		"@vueuse/nuxt": "catalog:",
 		"better-sqlite3": "catalog:",
 		"defu": "catalog:",

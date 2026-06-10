@@ -2,9 +2,9 @@
 
 <template>
 	<div class="pb-20">
-		<AddItemDrawer />
+		<EditItemDrawer />
 		<AppNavigation class="z-10" />
-		<UContainer class="min-h-screen">
+		<UContainer class="flex min-h-screen flex-col">
 			<slot />
 		</UContainer>
 		<Footer />

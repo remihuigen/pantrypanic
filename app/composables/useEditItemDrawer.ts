@@ -1,10 +1,14 @@
-import type { OccurrenceInput } from '#shared/utils/schemas/domain'
+import type { OccurrenceInput, UpdateListItemInput } from '#shared/utils/schemas/domain'
 
 import { useListsStore } from '~/stores/lists'
 import { computed, onScopeDispose, reactive, readonly, ref, watch } from 'vue'
 
-type OpenAddItemDrawerOptions = {
+export type EditItemDrawerMode = 'create' | 'edit'
+
+type OpenEditItemDrawerOptions = {
 	listId?: string
+	listItemId?: string
+	mode?: EditItemDrawerMode
 }
 
 type NameOption = {
@@ -13,29 +17,32 @@ type NameOption = {
 	defaultUnit?: string
 }
 
-type AddItemDrawerToast = {
+type EditItemDrawerToast = {
 	add: (_message: { title: string; color: 'error'; duration: number; icon: string }) => void
 }
 
-type AddItemDrawerListsStore = Pick<
+type EditItemDrawerListsStore = Pick<
 	ReturnType<typeof useListsStore>,
 	| 'activeListId'
 	| 'activeLists'
 	| 'addListItem'
+	| 'deleteListItem'
 	| 'fetchLists'
 	| 'fetchSuggestions'
+	| 'listItemsById'
 	| 'searchItems'
+	| 'updateListItem'
 >
 
-type UseAddItemDrawerFormOptions = {
+type UseEditItemDrawerFormOptions = {
 	debounceMs?: number
-	drawer?: ReturnType<typeof useAddItemDrawer>
-	store?: AddItemDrawerListsStore
+	drawer?: ReturnType<typeof useEditItemDrawer>
+	store?: EditItemDrawerListsStore
 	suggestionLimit?: number
-	toast?: AddItemDrawerToast
+	toast?: EditItemDrawerToast
 }
 
-export type AddItemDrawerFormInput = {
+export type EditItemDrawerFormInput = {
 	listId: string
 	name: string
 	amount?: number
@@ -43,20 +50,25 @@ export type AddItemDrawerFormInput = {
 	note?: string
 }
 
-export type AddItemDrawerSubmitData = AddItemDrawerFormInput
+export type EditItemDrawerSubmitData = EditItemDrawerFormInput
 
-type AddItemDrawerSubmitPayload = {
-	data: AddItemDrawerSubmitData
+type EditItemDrawerSubmitPayload = {
+	data: EditItemDrawerSubmitData
 }
 
 /**
- * Provides shared drawer state so the add-item drawer can be opened programmatically.
+ * Provides shared drawer state so the edit-item drawer can be opened programmatically.
  *
  * @returns Drawer state and open/close controls.
  */
-export function useAddItemDrawer() {
-	const isOpen = useState<boolean>('add-item-drawer:is-open', () => false)
-	const preferredListId = useState<string | null>('add-item-drawer:preferred-list-id', () => null)
+export function useEditItemDrawer() {
+	const isOpen = useState<boolean>('edit-item-drawer:is-open', () => false)
+	const mode = useState<EditItemDrawerMode>('edit-item-drawer:mode', () => 'create')
+	const preferredListId = useState<string | null>(
+		'edit-item-drawer:preferred-list-id',
+		() => null
+	)
+	const listItemId = useState<string | null>('edit-item-drawer:list-item-id', () => null)
 
 	/**
 	 * Opens the drawer and records an optional preferred list selection.
@@ -64,8 +76,10 @@ export function useAddItemDrawer() {
 	 * @param options - Optional list context used as the initial selected list.
 	 * @returns Nothing.
 	 */
-	function open(options: OpenAddItemDrawerOptions = {}) {
+	function open(options: OpenEditItemDrawerOptions = {}) {
+		mode.value = options.mode ?? 'create'
 		preferredListId.value = options.listId ?? null
+		listItemId.value = options.listItemId ?? null
 		isOpen.value = true
 	}
 
@@ -80,7 +94,9 @@ export function useAddItemDrawer() {
 
 	return {
 		isOpen,
+		mode,
 		preferredListId,
+		listItemId,
 		open,
 		close
 	}
@@ -92,18 +108,20 @@ export function useAddItemDrawer() {
  * @param options - Optional dependencies and timing overrides for the form workflow.
  * @returns Form state, derived options, loading flags, and form action methods.
  */
-export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) {
-	const drawer = options.drawer ?? useAddItemDrawer()
+export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}) {
+	const drawer = options.drawer ?? useEditItemDrawer()
 	const listsStore = options.store ?? useListsStore()
 	const toast = options.toast ?? useToast()
 	const debounceMs = options.debounceMs ?? 220
 	const suggestionLimit = options.suggestionLimit ?? 8
 
-	const formState = reactive<AddItemDrawerFormInput>(createDefaultFormState())
+	const formState = reactive<EditItemDrawerFormInput>(createDefaultFormState())
 	const nameSearchTerm = ref('')
 	const nameOptions = ref<NameOption[]>([])
 	const isLoadingNameOptions = ref(false)
+	const isDeleting = ref(false)
 	const isSubmitting = ref(false)
+	const populatedContextKey = ref<string | null>(null)
 
 	let nameSearchDebounceHandle: ReturnType<typeof setTimeout> | undefined
 	let nameSearchRequestId = 0
@@ -117,27 +135,47 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 	)
 
 	const hasLists = computed(() => listOptions.value.length > 0)
+	const selectedListItem = computed(() =>
+		drawer.listItemId.value ? listsStore.listItemsById[drawer.listItemId.value] : undefined
+	)
 
 	const canSubmit = computed(
 		() =>
-			Boolean(formState.listId && formState.name.trim().length > 0 && hasLists.value) &&
-			!isSubmitting.value
+			Boolean(
+				formState.listId &&
+				formState.name.trim().length > 0 &&
+				hasLists.value &&
+				(drawer.mode.value === 'create' || drawer.listItemId.value)
+			) && !isSubmitting.value
 	)
 
 	watch(
-		() => drawer.isOpen.value,
-		async (isOpen) => {
-			if (!isOpen) {
+		() =>
+			drawer.isOpen.value
+				? `${drawer.mode.value}:${drawer.listItemId.value ?? drawer.preferredListId.value ?? ''}`
+				: null,
+		async (contextKey) => {
+			if (!contextKey) {
+				populatedContextKey.value = null
 				cancelNameOptionsRefresh()
 				nameOptions.value = []
 				return
 			}
 
+			if (contextKey === populatedContextKey.value) {
+				return
+			}
+
+			populatedContextKey.value = contextKey
 			isInitializingListSelection = true
 
 			try {
-				await initializeListSelection()
-				await refreshNameOptions('')
+				if (drawer.mode.value === 'edit') {
+					await initializeEditSelection()
+				} else {
+					await initializeListSelection()
+					await refreshNameOptions('')
+				}
 			} finally {
 				isInitializingListSelection = false
 			}
@@ -146,7 +184,7 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 	)
 
 	watch(nameSearchTerm, (next) => {
-		if (!drawer.isOpen.value) {
+		if (!drawer.isOpen.value || drawer.mode.value !== 'create') {
 			return
 		}
 
@@ -163,6 +201,7 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 			if (
 				isInitializingListSelection ||
 				!drawer.isOpen.value ||
+				drawer.mode.value !== 'create' ||
 				nameSearchTerm.value.trim().length > 0
 			) {
 				return
@@ -182,7 +221,10 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 	 * @returns Nothing.
 	 */
 	function resetForm() {
-		Object.assign(formState, createDefaultFormState())
+		Object.assign(formState, {
+			...createDefaultFormState(),
+			listId: drawer.preferredListId.value ?? ''
+		})
 		nameSearchTerm.value = ''
 		nameOptions.value = []
 	}
@@ -219,12 +261,12 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 	}
 
 	/**
-	 * Submits the add-item form and resets the form after a successful save.
+	 * Submits the item form and resets or closes the form after a successful save.
 	 *
 	 * @param payload - Validated Nuxt UI form payload.
 	 * @returns A promise that resolves after the save attempt completes.
 	 */
-	async function submitForm(payload: AddItemDrawerSubmitPayload) {
+	async function submitForm(payload: EditItemDrawerSubmitPayload) {
 		if (!canSubmit.value) {
 			return
 		}
@@ -232,25 +274,93 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 		isSubmitting.value = true
 
 		try {
-			const input: OccurrenceInput = {
-				name: payload.data.name,
-				amount: payload.data.amount,
-				unit: normalizeOptionalText(payload.data.unit),
-				note: normalizeOptionalText(payload.data.note)
+			if (drawer.mode.value === 'edit') {
+				await updateExistingListItem(payload.data)
+				closeAndReset()
+			} else {
+				await createNewListItem(payload.data)
+				resetForm()
 			}
-
-			await listsStore.addListItem(payload.data.listId, input)
-
-			resetForm()
 		} catch (error) {
 			toast.add({
-				title: error instanceof Error ? error.message : 'Item kon niet worden toegevoegd.',
+				title:
+					error instanceof Error
+						? error.message
+						: drawer.mode.value === 'edit'
+							? 'Item kon niet worden bijgewerkt.'
+							: 'Item kon niet worden toegevoegd.',
 				color: 'error',
 				duration: 8000,
 				icon: 'i-lucide-circle-alert'
 			})
 		} finally {
 			isSubmitting.value = false
+		}
+	}
+
+	/**
+	 * Creates a list item from submitted form data.
+	 *
+	 * @param data - Validated form data.
+	 * @returns A promise that resolves after the item has been created.
+	 */
+	async function createNewListItem(data: EditItemDrawerSubmitData) {
+		const input: OccurrenceInput = {
+			name: data.name,
+			amount: data.amount,
+			unit: normalizeOptionalText(data.unit),
+			note: normalizeOptionalText(data.note)
+		}
+
+		await listsStore.addListItem(data.listId, input)
+	}
+
+	/**
+	 * Updates the selected list item from submitted form data.
+	 *
+	 * @param data - Validated form data.
+	 * @returns A promise that resolves after the item has been updated.
+	 */
+	async function updateExistingListItem(data: EditItemDrawerSubmitData) {
+		if (!drawer.listItemId.value) {
+			return
+		}
+
+		const input: UpdateListItemInput = {
+			listId: data.listId,
+			name: data.name,
+			amount: data.amount ?? null,
+			unit: normalizeNullableText(data.unit),
+			note: normalizeNullableText(data.note)
+		}
+
+		await listsStore.updateListItem(drawer.listItemId.value, input)
+	}
+
+	/**
+	 * Soft-deletes the selected list item and closes the drawer after a successful delete.
+	 *
+	 * @returns A promise that resolves after the delete attempt completes.
+	 */
+	async function deleteExistingListItem() {
+		if (!drawer.listItemId.value || drawer.mode.value !== 'edit') {
+			return
+		}
+
+		isDeleting.value = true
+
+		try {
+			await listsStore.deleteListItem(drawer.listItemId.value)
+			closeAndReset()
+		} catch (error) {
+			toast.add({
+				title: error instanceof Error ? error.message : 'Item kon niet worden verwijderd.',
+				color: 'error',
+				duration: 8000,
+				icon: 'i-lucide-circle-alert'
+			})
+		} finally {
+			isDeleting.value = false
 		}
 	}
 
@@ -282,6 +392,30 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 	}
 
 	/**
+	 * Loads list options when needed and copies the selected list item into local form state.
+	 *
+	 * @returns A promise that resolves after edit-mode state has been prepared.
+	 */
+	async function initializeEditSelection() {
+		if (listsStore.activeLists.length === 0) {
+			await listsStore.fetchLists('active').catch(() => undefined)
+		}
+
+		const listItem = selectedListItem.value
+
+		Object.assign(formState, {
+			listId: listItem?.listId ?? '',
+			name: listItem?.name ?? '',
+			amount: listItem?.amount,
+			unit: listItem?.unit ?? '',
+			note: listItem?.note ?? ''
+		})
+
+		nameSearchTerm.value = ''
+		nameOptions.value = []
+	}
+
+	/**
 	 * Cancels pending autocomplete timers and marks in-flight option requests stale.
 	 *
 	 * @returns Nothing.
@@ -309,6 +443,7 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 		nameSearchTerm,
 		nameOptions,
 		isLoadingNameOptions: readonly(isLoadingNameOptions),
+		isDeleting: readonly(isDeleting),
 		isSubmitting: readonly(isSubmitting),
 		listOptions,
 		hasLists,
@@ -316,6 +451,9 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
 		resetForm,
 		refreshNameOptions,
 		submitForm,
+		createNewListItem,
+		updateExistingListItem,
+		deleteExistingListItem,
 		closeAndReset
 	}
 }
@@ -325,7 +463,7 @@ export function useAddItemDrawerForm(options: UseAddItemDrawerFormOptions = {}) 
  *
  * @returns A new form-state object with empty fields.
  */
-function createDefaultFormState(): AddItemDrawerFormInput {
+function createDefaultFormState(): EditItemDrawerFormInput {
 	return {
 		listId: '',
 		name: '',
@@ -378,6 +516,18 @@ export function normalizeOptionalText(value: string | undefined) {
 	const next = (value ?? '').trim()
 
 	return next.length > 0 ? next : undefined
+}
+
+/**
+ * Trims nullable edit text and converts empty strings to null.
+ *
+ * @param value - Optional form text entered by the user.
+ * @returns Trimmed text when present, otherwise null.
+ */
+export function normalizeNullableText(value: string | undefined) {
+	const next = (value ?? '').trim()
+
+	return next.length > 0 ? next : null
 }
 
 /**

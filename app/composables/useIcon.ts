@@ -9,7 +9,8 @@ export const useIcon = () => {
 		recipe: 'lucide-book',
 		planner: 'lucide-calendar',
 		settings: 'lucide-settings',
-		plus: 'lucide-plus'
+		plus: 'lucide-plus',
+		archive: 'i-lucide-archive'
 	} as const
 
 	/**

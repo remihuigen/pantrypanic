@@ -107,7 +107,7 @@ Validation and runtime failures return:
 | `POST`  | `/api/lists/:listId/clear`                                 | Archive visible list items.                                           |
 | `POST`  | `/api/lists/:listId/items`                                 | Add a manual item occurrence to a list.                               |
 | `POST`  | `/api/lists/:listId/items/reorder`                         | Reorder visible list items.                                           |
-| `PATCH` | `/api/list-items/:listItemId`                              | Update list-item occurrence metadata.                                 |
+| `PATCH` | `/api/list-items/:listItemId`                              | Update list assignment, item name, and occurrence metadata.           |
 | `POST`  | `/api/list-items/:listItemId/check`                        | Mark a list item checked.                                             |
 | `POST`  | `/api/list-items/:listItemId/uncheck`                      | Mark a list item unchecked.                                           |
 | `POST`  | `/api/list-items/:listItemId/delete`                       | Soft-delete a list item.                                              |
@@ -133,9 +133,10 @@ Validation and runtime failures return:
 | `PATCH` | `/api/meal-planner/day-items/:mealPlannerDayItemId`        | Update placeholder-day ingredient metadata.                           |
 | `POST`  | `/api/meal-planner/day-items/:mealPlannerDayItemId/delete` | Hard-delete a placeholder-day ingredient.                             |
 
-Domain write routes update audit fields. Lists, recipes, and list items use status-based soft
-deletion. Recipe items and meal-planner placeholder ingredients are hard-deleted because they are
-volatile child/draft data.
+Domain write routes update audit fields. List-item PATCH accepts `listId`, `name`, `amount`,
+`unit`, and `note`; moving to another list appends the item at the target list's next visible
+position. Lists, recipes, and list items use status-based soft deletion. Recipe items and
+meal-planner placeholder ingredients are hard-deleted because they are volatile child/draft data.
 
 ### Short-Lived Read Cache
 

@@ -19,6 +19,7 @@ export {
 	recipeQuerySchema,
 	reorderBodySchema,
 	updateListBodySchema,
+	updateListItemBodySchema,
 	updateOccurrenceBodySchema,
 	updateRecipeBodySchema
 } from '#shared/utils/schemas/domain'

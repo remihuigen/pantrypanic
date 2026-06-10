@@ -9,7 +9,7 @@ import type {
 	OccurrenceInput,
 	ShoppingList,
 	UpdateListInput,
-	UpdateOccurrenceInput
+	UpdateListItemInput
 } from '~~/shared/utils/schemas/domain'
 
 import { useStoreRefresh } from '~/composables/useStoreRefresh'
@@ -477,25 +477,28 @@ export const useListsStore = defineStore(
 			}
 		}
 
-		async function updateListItem(listItemId: string, input: UpdateOccurrenceInput) {
+		async function updateListItem(listItemId: string, input: UpdateListItemInput) {
 			error.value = null
 
 			try {
-				const data = await apiFetch<{
-					listItem: Pick<ListItem, 'id' | 'amount' | 'unit' | 'note' | 'updatedAt'>
-				}>(`/api/list-items/${listItemId}`, {
-					method: 'PATCH',
-					body: input
-				})
+				const data = await apiFetch<{ listItem: ListItem }>(
+					`/api/list-items/${listItemId}`,
+					{
+						method: 'PATCH',
+						body: input
+					}
+				)
 
 				const existing = listItemsById.value[listItemId]
 
-				if (existing) {
-					listItemsById.value[listItemId] = {
-						...existing,
-						...data.listItem
-					}
+				if (existing && existing.listId !== data.listItem.listId) {
+					const previousIds = listItemIdsByListId.value[existing.listId] ?? []
+					listItemIdsByListId.value[existing.listId] = previousIds.filter(
+						(id) => id !== listItemId
+					)
 				}
+
+				upsertListItem(data.listItem)
 
 				return data.listItem
 			} catch (err) {

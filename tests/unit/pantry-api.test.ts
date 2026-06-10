@@ -42,6 +42,7 @@ import {
 	uncheckListItem,
 	updateListBodySchema,
 	updateListItem,
+	updateListItemBodySchema,
 	updateMealPlannerDay,
 	updateMealPlannerDayItem,
 	updateOccurrenceBodySchema,
@@ -127,6 +128,21 @@ describe('pantry api domain helpers', () => {
 			name: 'Milk',
 			amount: 1,
 			unit: 'l'
+		})
+		expect(
+			updateListItemBodySchema.parse({
+				listId: 'list-2',
+				name: ' Bread ',
+				amount: null,
+				unit: ' ',
+				note: null
+			})
+		).toEqual({
+			listId: 'list-2',
+			name: 'Bread',
+			amount: null,
+			unit: '',
+			note: null
 		})
 		expect(createItemSearchQuerySchema().parse({ q: 'mi' })).toEqual({ q: 'mi', limit: 10 })
 		expect(createItemSuggestionsQuerySchema().parse({})).toEqual({ limit: 10 })
@@ -335,6 +351,7 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([itemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)

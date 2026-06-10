@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { ButtonProps } from '@nuxt/ui'
 
-import { useAddItemDrawer } from '~/composables/useAddItemDrawer'
+import { useEditItemDrawer } from '~/composables/useEditItemDrawer'
 
 const route = useRoute()
-const addItemDrawer = useAddItemDrawer()
+const editItemDrawer = useEditItemDrawer()
 const { getIcon } = useIcon()
 
 const leftContainer: ButtonProps[] = [
@@ -37,8 +37,8 @@ function isActive(btn: ButtonProps) {
 	return route.path.startsWith(String(btn.to))
 }
 
-function openAddItemDrawer() {
-	addItemDrawer.open()
+function openCreateItemDrawer() {
+	editItemDrawer.open({ mode: 'create' })
 }
 </script>
 
@@ -64,7 +64,7 @@ function openAddItemDrawer() {
 				color="primary"
 				:icon="getIcon('plus')"
 				size="xl"
-				@click="openAddItemDrawer"
+				@click="openCreateItemDrawer"
 			/>
 			<UButton
 				v-for="btn in rightContainer"

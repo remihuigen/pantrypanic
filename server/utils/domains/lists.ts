@@ -3,10 +3,10 @@ import type {
 	createListBodySchema,
 	createOccurrenceBodySchema,
 	updateListBodySchema,
-	updateOccurrenceBodySchema
+	updateListItemBodySchema
 } from './schemas'
 
-import { optional, throwApiError } from '#server/utils/api-core'
+import { throwApiError } from '#server/utils/api-core'
 import { createDomainId } from '#server/utils/api-helpers'
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
@@ -361,14 +361,41 @@ export async function reorderListItems(listId: string, orderedIds: string[], use
  */
 export async function updateListItem(
 	listItemId: string,
-	input: z.infer<typeof updateOccurrenceBodySchema>,
+	input: z.infer<typeof updateListItemBodySchema>,
 	userId: number
 ) {
-	await findListItemOrThrow(listItemId)
+	const existingListItem = await findListItemOrThrow(listItemId)
 	const audit = createAudit(userId)
+	const nextListId = input.listId ?? existingListItem.listId
+	const isMovingList = nextListId !== existingListItem.listId
+
+	if (isMovingList) {
+		await findListOrThrow(nextListId)
+	}
+
+	const item =
+		input.name === undefined
+			? assertRow(
+					(
+						await db
+							.select()
+							.from(schema.items)
+							.where(eq(schema.items.id, existingListItem.itemId))
+							.limit(1)
+					)[0]
+				)
+			: await findOrCreateItem({ name: input.name, auditUserId: userId })
+
 	const [row] = await db
 		.update(schema.listItems)
 		.set({
+			...(input.name === undefined ? {} : { itemId: item.id }),
+			...(isMovingList
+				? {
+						listId: nextListId,
+						position: await getNextListItemPosition(nextListId)
+					}
+				: {}),
 			...(input.amount === undefined ? {} : { amount: input.amount }),
 			...(input.unit === undefined ? {} : { unit: input.unit }),
 			...(input.note === undefined ? {} : { note: input.note }),
@@ -378,15 +405,8 @@ export async function updateListItem(
 		.where(eq(schema.listItems.id, listItemId))
 		.returning()
 
-	const listItem = assertRow(row)
 	return {
-		listItem: {
-			id: listItem.id,
-			amount: optional(listItem.amount),
-			unit: optional(listItem.unit),
-			note: optional(listItem.note),
-			updatedAt: listItem.updatedAt
-		}
+		listItem: serializeListItem(assertRow(row), item)
 	}
 }
 

@@ -151,6 +151,24 @@ export const updateOccurrenceBodySchema = z
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
 
+export const updateListItemBodySchema = z
+	.strictObject({
+		listId: domainIdSchema.optional(),
+		name: nameSchema.optional(),
+		amount: nullableAmountSchema,
+		unit: nullableUnitSchema,
+		note: nullableNoteSchema
+	})
+	.refine(
+		(value) =>
+			value.listId !== undefined ||
+			value.name !== undefined ||
+			value.amount !== undefined ||
+			value.unit !== undefined ||
+			value.note !== undefined,
+		{ error: 'Minimaal een veld is verplicht.' }
+	)
+
 const recipeIngredientSchema = createOccurrenceBodySchema.extend({
 	position: z
 		.number({ error: 'Positie moet een getal zijn.' })
@@ -353,6 +371,7 @@ export type CreateListInput = z.infer<typeof createListBodySchema>
 export type UpdateListInput = z.infer<typeof updateListBodySchema>
 export type OccurrenceInput = z.infer<typeof createOccurrenceBodySchema>
 export type UpdateOccurrenceInput = z.infer<typeof updateOccurrenceBodySchema>
+export type UpdateListItemInput = z.infer<typeof updateListItemBodySchema>
 export type CreateRecipeInput = z.infer<typeof createRecipeBodySchema>
 export type UpdateRecipeInput = z.infer<typeof updateRecipeBodySchema>
 export type MealPlannerDayInput = z.infer<typeof mealPlannerDayBodySchema>

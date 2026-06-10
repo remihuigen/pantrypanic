@@ -10,6 +10,7 @@ export {
 	updateListBodySchema,
 	reorderBodySchema,
 	createOccurrenceBodySchema,
+	updateListItemBodySchema,
 	updateOccurrenceBodySchema,
 	createItemSearchQuerySchema,
 	createItemSuggestionsQuerySchema,

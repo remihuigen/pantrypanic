@@ -133,7 +133,7 @@ Implemented route families:
 - `GET /api/me`
 - `/api/lists` for list CRUD, reorder, archive, soft-delete, clear, list-item create, and list-item
   reorder
-- `/api/list-items` for list-item update, check, uncheck, and soft-delete
+- `/api/list-items` for list-item list/name/metadata update, check, uncheck, and soft-delete
 - `/api/items` for canonical item search and historical suggestions
 - `/api/recipes` for recipe CRUD, archive, soft-delete, ingredients, reorder, and copy-to-list
 - `/api/recipe-items` for recipe-item update and hard-delete

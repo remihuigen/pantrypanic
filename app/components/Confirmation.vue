@@ -27,8 +27,11 @@ const emits = defineEmits<{
 	<UModal
 		:title="title"
 		:description="description"
-		:dismissible="false"
+		:dismissible="true"
 		:ui="{ footer: 'justify-end' }"
+		:close="{
+			size: 'xs'
+		}"
 	>
 		<template #footer>
 			<UButton

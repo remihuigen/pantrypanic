@@ -3,11 +3,12 @@ import type { EffectScope, Ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import {
 	mapNameOptions,
+	normalizeNullableText,
 	normalizeOptionalText,
 	selectInitialListId,
-	useAddItemDrawer,
-	useAddItemDrawerForm
-} from '~/composables/useAddItemDrawer'
+	useEditItemDrawer,
+	useEditItemDrawerForm
+} from '~/composables/useEditItemDrawer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, reactive, ref } from 'vue'
 
@@ -16,13 +17,25 @@ type TestList = {
 	name: string
 }
 
+type TestListItem = {
+	id: string
+	listId: string
+	name: string
+	amount?: number
+	unit?: string
+	note?: string
+}
+
 type TestStore = {
 	activeListId: string | null
 	activeLists: TestList[]
 	addListItem: ReturnType<typeof vi.fn>
+	deleteListItem: ReturnType<typeof vi.fn>
 	fetchLists: ReturnType<typeof vi.fn>
 	fetchSuggestions: ReturnType<typeof vi.fn>
+	listItemsById: Record<string, TestListItem>
 	searchItems: ReturnType<typeof vi.fn>
+	updateListItem: ReturnType<typeof vi.fn>
 }
 
 const activeLists: TestList[] = [
@@ -32,7 +45,7 @@ const activeLists: TestList[] = [
 
 let scopes: EffectScope[] = []
 
-describe('useAddItemDrawer', () => {
+describe('useEditItemDrawer', () => {
 	beforeEach(() => {
 		vi.useRealTimers()
 		vi.restoreAllMocks()
@@ -48,18 +61,26 @@ describe('useAddItemDrawer', () => {
 		vi.unstubAllGlobals()
 	})
 
-	it('opens with optional preferred list context and closes', () => {
-		const drawer = useAddItemDrawer()
+	it('opens with create or edit context and closes', () => {
+		const drawer = useEditItemDrawer()
 
 		drawer.open({ listId: 'list-1' })
 
 		expect(drawer.isOpen.value).toBe(true)
+		expect(drawer.mode.value).toBe('create')
 		expect(drawer.preferredListId.value).toBe('list-1')
+		expect(drawer.listItemId.value).toBeNull()
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+
+		expect(drawer.mode.value).toBe('edit')
+		expect(drawer.preferredListId.value).toBeNull()
+		expect(drawer.listItemId.value).toBe('li-1')
 
 		drawer.close()
 
 		expect(drawer.isOpen.value).toBe(false)
-		expect(drawer.preferredListId.value).toBe('list-1')
+		expect(drawer.preferredListId.value).toBeNull()
 	})
 
 	it('maps name options by trimming, filtering empty names, and deduplicating case-insensitively', () => {
@@ -80,6 +101,9 @@ describe('useAddItemDrawer', () => {
 		expect(normalizeOptionalText('  pak  ')).toBe('pak')
 		expect(normalizeOptionalText('   ')).toBeUndefined()
 		expect(normalizeOptionalText(undefined)).toBeUndefined()
+		expect(normalizeNullableText('  pak  ')).toBe('pak')
+		expect(normalizeNullableText('   ')).toBeNull()
+		expect(normalizeNullableText(undefined)).toBeNull()
 	})
 
 	it('selects preferred, active, first, or empty list ids in priority order', () => {
@@ -241,6 +265,181 @@ describe('useAddItemDrawer', () => {
 		expect(form.formState.listId).toBe('list-1')
 		expect(form.formState.name).toBe('Melk')
 	})
+
+	it('populates local form data from a selected list item in edit mode', async () => {
+		const store = createStore({
+			activeLists: [...activeLists],
+			listItemsById: {
+				'li-1': {
+					id: 'li-1',
+					listId: 'list-2',
+					name: 'Tomaten',
+					amount: 3,
+					unit: 'stuks',
+					note: 'rijp'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+		await flushFormUpdates()
+
+		expect(form.formState).toMatchObject({
+			listId: 'list-2',
+			name: 'Tomaten',
+			amount: 3,
+			unit: 'stuks',
+			note: 'rijp'
+		})
+		expect(store.fetchSuggestions).not.toHaveBeenCalled()
+	})
+
+	it('keeps local edit values when the store refreshes while editing', async () => {
+		const store = createStore({
+			activeLists: [...activeLists],
+			listItemsById: {
+				'li-1': {
+					id: 'li-1',
+					listId: 'list-2',
+					name: 'Tomaten',
+					unit: 'stuks'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+		await flushFormUpdates()
+
+		form.formState.name = 'Lokale tomaten'
+		form.formState.unit = 'bakje'
+		store.listItemsById['li-1'] = {
+			id: 'li-1',
+			listId: 'list-2',
+			name: 'Server tomaten',
+			unit: 'kilo'
+		}
+		await flushFormUpdates()
+
+		expect(form.formState.name).toBe('Lokale tomaten')
+		expect(form.formState.unit).toBe('bakje')
+	})
+
+	it('updates normalized edit form data and closes after a successful save', async () => {
+		const store = createStore({
+			activeLists: [...activeLists],
+			listItemsById: {
+				'li-1': {
+					id: 'li-1',
+					listId: 'list-1',
+					name: 'Melk',
+					amount: 1,
+					unit: 'pak'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+		await flushFormUpdates()
+
+		await form.submitForm({
+			data: {
+				listId: 'list-2',
+				name: 'Halfvolle melk',
+				amount: undefined,
+				unit: ' liter ',
+				note: '   '
+			}
+		})
+
+		expect(store.updateListItem).toHaveBeenCalledWith('li-1', {
+			listId: 'list-2',
+			name: 'Halfvolle melk',
+			amount: null,
+			unit: 'liter',
+			note: null
+		})
+		expect(store.addListItem).not.toHaveBeenCalled()
+		expect(drawer.isOpen.value).toBe(false)
+		expect(form.formState).toMatchObject({
+			listId: '',
+			name: '',
+			amount: undefined,
+			unit: '',
+			note: ''
+		})
+	})
+
+	it('shows a toast and keeps edit form data when update fails', async () => {
+		const error = new Error('Niet bijgewerkt.')
+		const store = createStore({
+			activeLists: [...activeLists],
+			listItemsById: {
+				'li-1': {
+					id: 'li-1',
+					listId: 'list-1',
+					name: 'Melk'
+				}
+			},
+			updateListItem: vi.fn(async () => {
+				throw error
+			})
+		})
+		const { drawer, form, toast } = createFormHarness(store)
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+		await flushFormUpdates()
+		form.formState.name = 'Melk aangepast'
+
+		await form.submitForm({
+			data: {
+				listId: 'list-1',
+				name: 'Melk aangepast',
+				unit: '',
+				note: ''
+			}
+		})
+
+		expect(toast.add).toHaveBeenCalledWith({
+			title: 'Niet bijgewerkt.',
+			color: 'error',
+			duration: 8000,
+			icon: 'i-lucide-circle-alert'
+		})
+		expect(drawer.isOpen.value).toBe(true)
+		expect(form.formState.name).toBe('Melk aangepast')
+	})
+
+	it('deletes the selected list item and closes the edit drawer', async () => {
+		const store = createStore({
+			activeLists: [...activeLists],
+			listItemsById: {
+				'li-1': {
+					id: 'li-1',
+					listId: 'list-1',
+					name: 'Melk'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+		await flushFormUpdates()
+
+		await form.deleteExistingListItem()
+
+		expect(store.deleteListItem).toHaveBeenCalledWith('li-1')
+		expect(drawer.isOpen.value).toBe(false)
+		expect(form.formState).toMatchObject({
+			listId: '',
+			name: '',
+			amount: undefined,
+			unit: '',
+			note: ''
+		})
+	})
 })
 
 /**
@@ -271,9 +470,12 @@ function createStore(overrides: Partial<TestStore> = {}) {
 		activeListId: null,
 		activeLists: [] as TestList[],
 		addListItem: vi.fn(async () => undefined),
+		deleteListItem: vi.fn(async () => undefined),
 		fetchLists: vi.fn(async () => []),
 		fetchSuggestions: vi.fn(async () => []),
+		listItemsById: {},
 		searchItems: vi.fn(async () => []),
+		updateListItem: vi.fn(async () => undefined),
 		...overrides
 	}) as TestStore
 }
@@ -288,12 +490,12 @@ function createStore(overrides: Partial<TestStore> = {}) {
 function createFormHarness(store: TestStore, options: { debounceMs?: number } = {}) {
 	const scope = effectScope()
 	const toast = { add: vi.fn() }
-	let drawer!: ReturnType<typeof useAddItemDrawer>
-	let form!: ReturnType<typeof useAddItemDrawerForm>
+	let drawer!: ReturnType<typeof useEditItemDrawer>
+	let form!: ReturnType<typeof useEditItemDrawerForm>
 
 	scope.run(() => {
-		drawer = useAddItemDrawer()
-		form = useAddItemDrawerForm({
+		drawer = useEditItemDrawer()
+		form = useEditItemDrawerForm({
 			debounceMs: options.debounceMs,
 			drawer,
 			store: store as never,

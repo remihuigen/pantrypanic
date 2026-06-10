@@ -3,6 +3,7 @@ import type { ListIconOption } from '~/utils/listIconOptions'
 
 import { LIST_ICON_OPTIONS } from '~/utils/listIconOptions'
 
+const ICON_PICKER_PLACEHOLDER_ICON = 'lucide:smile'
 const model = defineModel<string | undefined>()
 
 const { disabled = false } = defineProps<{
@@ -12,6 +13,7 @@ const { disabled = false } = defineProps<{
 const selectedOption = computed(() =>
 	LIST_ICON_OPTIONS.find((option) => option.value === model.value)
 )
+const leadingIcon = computed(() => selectedOption.value?.icon ?? ICON_PICKER_PLACEHOLDER_ICON)
 
 const selectedValue = computed<ListIconOption['value'] | null | undefined>({
 	get: () => selectedOption.value?.value,
@@ -33,7 +35,7 @@ const selectedValue = computed<ListIconOption['value'] | null | undefined>({
 		clear
 	>
 		<template #leading>
-			<UIcon v-if="selectedOption" :name="selectedOption.icon" class="size-4" />
+			<UIcon :name="leadingIcon" class="size-4" />
 		</template>
 	</USelectMenu>
 </template>

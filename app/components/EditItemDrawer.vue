@@ -1,35 +1,50 @@
 <script lang="ts" setup>
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { AddItemDrawerSubmitData } from '~/composables/useAddItemDrawer'
+import type { EditItemDrawerSubmitData } from '~/composables/useEditItemDrawer'
 import type { z } from 'zod'
 
 import { createOccurrenceBodySchema, domainIdSchema } from '#shared/utils/schemas/domain'
-import { useAddItemDrawer, useAddItemDrawerForm } from '~/composables/useAddItemDrawer'
-import { onActivated, onMounted, ref } from 'vue'
+import { useEditItemDrawer, useEditItemDrawerForm } from '~/composables/useEditItemDrawer'
+import { computed, onActivated, onMounted, ref } from 'vue'
 
-const addItemDrawer = useAddItemDrawer()
-const addItemDrawerFormId = 'add-item-drawer-form'
+const editItemDrawer = useEditItemDrawer()
+const editItemDrawerFormId = 'edit-item-drawer-form'
 const { getIcon } = useIcon()
 const {
 	formState,
 	nameSearchTerm,
 	nameOptions,
+	isDeleting,
 	isSubmitting,
 	listOptions,
 	hasLists,
 	canSubmit,
 	submitForm,
+	deleteExistingListItem,
 	closeAndReset
-} = useAddItemDrawerForm({ drawer: addItemDrawer })
+} = useEditItemDrawerForm({ drawer: editItemDrawer })
 
-const addListItemFormSchema = createOccurrenceBodySchema.extend({
+const drawerTitle = computed(() =>
+	editItemDrawer.mode.value === 'edit' ? 'Item wijzigen' : 'Item toevoegen'
+)
+const drawerDescription = computed(() =>
+	editItemDrawer.mode.value === 'edit'
+		? 'Pas de itemdetails of de lijst aan.'
+		: 'Voeg snel een item toe aan een lijst.'
+)
+const submitLabel = computed(() => (editItemDrawer.mode.value === 'edit' ? 'Opslaan' : 'Toevoegen'))
+const submitIcon = computed(() =>
+	editItemDrawer.mode.value === 'edit' ? 'i-lucide-save' : getIcon('plus')
+)
+
+const editItemDrawerFormSchema = createOccurrenceBodySchema.extend({
 	listId: domainIdSchema
 })
 
-type AddListItemFormSchema = z.output<typeof addListItemFormSchema>
+type EditItemDrawerFormSchema = z.output<typeof editItemDrawerFormSchema>
 
-function handleSubmit(payload: FormSubmitEvent<AddListItemFormSchema>) {
-	return submitForm({ data: payload.data as AddItemDrawerSubmitData })
+function handleSubmit(payload: FormSubmitEvent<EditItemDrawerFormSchema>) {
+	return submitForm({ data: payload.data as EditItemDrawerSubmitData })
 }
 
 const exampleItems = [
@@ -76,15 +91,15 @@ onActivated(() => {
 
 <template>
 	<UDrawer
-		v-model:open="addItemDrawer.isOpen.value"
-		title="Item toevoegen"
-		description="Voeg snel een item toe aan een lijst."
+		v-model:open="editItemDrawer.isOpen.value"
+		:title="drawerTitle"
+		:description="drawerDescription"
 		handle
 	>
 		<template #body>
 			<UForm
-				:id="addItemDrawerFormId"
-				:schema="addListItemFormSchema"
+				:id="editItemDrawerFormId"
+				:schema="editItemDrawerFormSchema"
 				:state="formState"
 				class="grid space-y-4"
 				:validate-on="['blur']"
@@ -156,25 +171,38 @@ onActivated(() => {
 		</template>
 
 		<template #footer>
-			<div class="flex w-full items-center justify-end gap-2 p-4">
+			<div class="flex w-full items-center justify-between gap-2">
 				<UButton
-					variant="ghost"
-					color="neutral"
+					v-if="editItemDrawer.mode.value === 'edit'"
+					variant="soft"
+					color="error"
+					:loading="isDeleting"
 					:disabled="isSubmitting"
-					@click="closeAndReset"
-				>
-					Annuleren
-				</UButton>
-				<UButton
-					color="primary"
-					type="submit"
-					:form="addItemDrawerFormId"
-					:loading="isSubmitting"
-					:disabled="!canSubmit"
-					:trailing-icon="getIcon('plus')"
-				>
-					Toevoegen
-				</UButton>
+					icon="i-lucide-trash-2"
+					@click="deleteExistingListItem"
+				/>
+				<span v-else />
+
+				<div class="flex items-center justify-end gap-2">
+					<UButton
+						variant="ghost"
+						color="neutral"
+						:disabled="isSubmitting || isDeleting"
+						@click="closeAndReset"
+					>
+						Annuleren
+					</UButton>
+					<UButton
+						color="primary"
+						type="submit"
+						:form="editItemDrawerFormId"
+						:loading="isSubmitting"
+						:disabled="!canSubmit || isDeleting"
+						:trailing-icon="submitIcon"
+					>
+						{{ submitLabel }}
+					</UButton>
+				</div>
 			</div>
 		</template>
 	</UDrawer>
