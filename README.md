@@ -2,7 +2,7 @@
 
 Pantry Panic is a publicly available, easy-to-host grocery list manager for your household.
 
-## Why _another_ list manager app...
+## Why _another_ list manager app?
 
 The answer is quite simple: to make my wife stop complaining about whatever list app she is using at
 the moment. List management apps tend to go one of two ways: either they are overengineered family
@@ -16,37 +16,38 @@ account.
 ## Deploy Pantry Panic
 
 To deploy your own Pantry Panic instance to Cloudflare, follow the steps below. For details on local
-development see the [Development](#development) section.
+development, see the [Development](#development) section.
 
-0. If you don't have a Cloudflare Account, [create one](https://dash.cloudflare.com/sign-up). The
+0. If you don't have a Cloudflare account, [create one](https://dash.cloudflare.com/sign-up). The
    free tier should be more than enough for small households.
-1. Create the required resources in the Cloudflare dashboard
-   - [ ] Create a D1 database, and write down the `database uuid` somewhere. If you are located in
-         the EU, it's sensible to opt-in to EU jurisdiction
+1. Create the required resources in the Cloudflare dashboard:
+   - [ ] Create a D1 database, and write down the `database UUID` somewhere. If you are located in
+         the EU, it's sensible to opt in to EU jurisdiction.
    - [ ] Create a new bucket in R2 Object Storage, and write down the `bucket name` somewhere.
-         Again: if you are located in the EU, it's sensible to opt-in to EU jurisdiction
-   - [ ] Create a new Workers KV instance, and write down the `namespace id` somewhere.
-2. In the Cloudflare dashboard, navigate to your Account Api Tokens, and create a new token with
-   `read and write` permissions for Worker related resources. Make sure to write down the Api token
-   and secrets somewhere, as they will not be shown again.
-3. Write down your Cloudflare Account ID. You can find it in the dashboard url
-   `https://dash.cloudflare.com/<account-id>`
-4. Fork this repository
-5. Generate a _hashing secret_ and _admin API key_ with `openssl rand -hex 32`
-6. In your Github repository, go to Settings and add these secrets and variables under `Actions`
+         Again, if you are located in the EU, it's sensible to opt in to EU jurisdiction.
+   - [ ] Create a new Workers KV instance, and write down the `namespace ID` somewhere.
 
-```
+2. In the Cloudflare dashboard, navigate to your Account API Tokens and create a new token with
+   `read and write` permissions for Worker-related resources. Make sure to write down the API token
+   and secrets somewhere, as they will not be shown again.
+3. Write down your Cloudflare Account ID. You can find it in the dashboard URL:
+   `https://dash.cloudflare.com/<account-id>`
+4. Fork this repository.
+5. Generate a _hashing secret_ and _admin API key_ with `openssl rand -hex 32`.
+6. In your GitHub repository, go to Settings and add these secrets and variables under `Actions`.
+
+```text
 # Repository variables
 CLOUDFLARE_WORKER_NAME=<worker-name> # Defaults to `pantrypanic`
 
-# Repository Secrets
+# Repository secrets
 CLOUDFLARE_DATABASE_ID=<database-id>
 CLOUDFLARE_CACHE_NAMESPACE_ID=<namespace-id>
 CLOUDFLARE_R2_BUCKET=<bucket-name>
 CLOUDFLARE_API_TOKEN=<api-token>
 CLOUDFLARE_ACCOUNT_ID=<account-id>
 
-NUXT_PUBLIC_SITE_URL=<instance-url> # Will become available after initial deploy
+NUXT_PUBLIC_SITE_URL=<instance-url> # Will become available after the initial deployment
 NUXT_SESSION_PASSWORD=<hashing-secret>
 ADMIN_API_KEY=<admin-api-key>
 
@@ -54,21 +55,21 @@ ADMIN_USER_EMAIL=<initial-user-email>
 ADMIN_USER_PASSWORD=<initial-user-password>
 ```
 
-7. Navigate to Github Action, and manually dispatch the Deploy Action. A new Cloudflare Worker will
-   be provisioned, with the resource bindings attached.
-8. Once deployment is finished A) Using a custom domain? Follow the Cloudflare documentation to
+7. Navigate to GitHub Actions and manually dispatch the Deploy Action. A new Cloudflare Worker will
+   be provisioned with the resource bindings attached.
+8. Once deployment is finished: A) Using a custom domain? Follow the Cloudflare documentation to
    [configure your custom domain DNS](https://developers.cloudflare.com/dns/). Then navigate to your
-   newly created worker, and attach the custom domain. B) otherwise find the `workers.dev` URL in
-   the Cloudflare dashboard, or in the Github Action Deployments logs
-9. Navigate back to Github Action Secrets, and update `NUXT_PUBLIC_SITE_URL`
-10. Trigger a manual redeploy
+   newly created Worker and attach the custom domain. B) Otherwise, find the `workers.dev` URL in
+   the Cloudflare dashboard or in the GitHub Actions deployment logs.
+9. Navigate back to GitHub Actions secrets and update `NUXT_PUBLIC_SITE_URL`.
+10. Trigger a manual redeployment.
 
 Now you can navigate to the `workers.dev` URL or your custom domain to access your Pantry Panic
-instance, and log in with the user credentials you provided at step 6.
+instance and log in with the user credentials you provided in step 6.
 
 ### Deploying the latest version of Pantry Panic
 
-At this moment Pantry Panic does not have official releases. To deploy the latest version of the
+At this moment, Pantry Panic does not have official releases. To deploy the latest version of the
 project, simply sync your fork. If new commits are detected, your Worker will automatically
 redeploy.
 
