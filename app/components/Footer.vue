@@ -8,7 +8,8 @@ const { identity } = useRuntimeConfig().public
 			src: '/separator_icon.png',
 			size: 'lg',
 			class: 'object-contain',
-			ui: { root: 'bg-transparent' }
+			ui: { root: 'bg-transparent' },
+			provider: 'none'
 		}"
 	/>
 	<UFooter :ui="{ root: 'mb-3' }">
