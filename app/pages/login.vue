@@ -37,15 +37,9 @@ const fields: AuthFormField[] = [
 	}
 ]
 
-type LoginSchema = z.output<typeof loginSchema>
-
 const route = useRoute()
 const { fetch, loggedIn } = useUserSession()
 const loading = ref(false)
-const state = reactive<LoginSchema>({
-	email: '',
-	password: ''
-})
 
 const redirectPath = computed(() => {
 	const redirect = route.query.redirect

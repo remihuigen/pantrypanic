@@ -13,7 +13,6 @@ const { identity } = useRuntimeConfig().public
 
 const title = identity.title
 const description = identity.description
-const { loggedIn, user } = useUserSession()
 
 useSeoMeta({
 	title,

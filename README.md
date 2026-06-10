@@ -147,9 +147,8 @@ Blob routes:
 - `GET /images/**`
 
 API responses for users omit `password`. Server API and image routes require either a user session
-or `x-api-token: ADMIN_API_KEY`, except `/api/auth/login` and `/api/_auth/session`. `ADMIN_API_TOKEN`
-remains accepted as a legacy environment fallback. Fine-grained authorization and permissions are
-deliberately deferred.
+or `x-api-token: ADMIN_API_KEY`, except `/api/auth/login` and `/api/_auth/session`. Fine-grained
+authorization and permissions are deliberately deferred.
 
 ## Documentation
 

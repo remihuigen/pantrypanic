@@ -20,8 +20,6 @@ Requests are authenticated when either:
 
 Public server paths are `/api/auth/login` and `/api/_auth/session`.
 
-`ADMIN_API_TOKEN` remains accepted as a legacy environment fallback.
-
 ## Blob Management
 
 Blob storage is managed through server-only API routes backed by `@nuxthub/blob`.

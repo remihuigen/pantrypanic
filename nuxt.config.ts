@@ -33,8 +33,7 @@ export default defineNuxtConfig({
 	css: ['~/assets/css/main.css'],
 
 	runtimeConfig: {
-		adminApiKey: process.env.ADMIN_API_KEY ?? process.env.ADMIN_API_TOKEN ?? '',
-		adminApiToken: process.env.ADMIN_API_TOKEN ?? '',
+		adminApiKey: process.env.ADMIN_API_KEY ?? '',
 
 		public: {
 			identity: {

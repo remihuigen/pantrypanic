@@ -10,9 +10,8 @@ describe('auth utilities', () => {
 		vi.stubGlobal('getUserSession', getUserSession)
 		vi.stubGlobal('useRuntimeConfig', useRuntimeConfig)
 		delete process.env.ADMIN_API_KEY
-		delete process.env.ADMIN_API_TOKEN
 		getUserSession.mockResolvedValue({})
-		useRuntimeConfig.mockReturnValue({ adminApiKey: '', adminApiToken: '' })
+		useRuntimeConfig.mockReturnValue({ adminApiKey: '' })
 	})
 
 	afterEach(() => {
@@ -27,13 +26,10 @@ describe('auth utilities', () => {
 		expect(getUserSession).not.toHaveBeenCalled()
 	})
 
-	it('falls back to configured runtime admin token names', async () => {
-		useRuntimeConfig.mockReturnValue({ adminApiKey: 'runtime-secret', adminApiToken: 'legacy-secret' })
+	it('falls back to the configured runtime admin API key', async () => {
+		useRuntimeConfig.mockReturnValue({ adminApiKey: 'runtime-secret' })
 
 		await expect(isAuthenticated(createEvent('runtime-secret'))).resolves.toBe(true)
-
-		useRuntimeConfig.mockReturnValue({ adminApiKey: '', adminApiToken: 'legacy-secret' })
-		await expect(isAuthenticated(createEvent('legacy-secret'))).resolves.toBe(true)
 	})
 
 	it('rejects missing or mismatched API keys and checks session user', async () => {

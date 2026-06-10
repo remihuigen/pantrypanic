@@ -35,7 +35,6 @@ The app UI is still mostly the Nuxt UI starter template:
 - `server/middleware/auth.ts` protects `/api/**` and `/images/**`, except `/api/auth/login` and `/api/_auth/session`.
 - `server/utils/auth.ts` exposes `isAuthenticated(event)` and `requireAuthenticated(event)`.
 - Server requests can authenticate with a session cookie or `x-api-token: ADMIN_API_KEY`.
-- `ADMIN_API_TOKEN` remains accepted as a legacy fallback for existing local environments.
 
 ## NuxtHub Configuration
 
@@ -53,7 +52,6 @@ Production environment variables currently referenced:
 - `ADMIN_USER_EMAIL`
 - `ADMIN_USER_PASSWORD`
 - `ADMIN_API_KEY`
-- `ADMIN_API_TOKEN` (legacy fallback)
 - `NUXT_PUBLIC_SITE_URL`
 - `NUXT_SESSION_PASSWORD`
 

@@ -15,7 +15,6 @@ describe('admin user seed script', () => {
 			'ADMIN_USER_EMAIL',
 			'ADMIN_USER_PASSWORD',
 			'ADMIN_API_KEY',
-			'ADMIN_API_TOKEN',
 			'NUXT_PUBLIC_SITE_URL'
 		]) {
 			Reflect.deleteProperty(process.env, key)
@@ -117,20 +116,6 @@ describe('admin user seed script', () => {
 		)
 	})
 
-	it('uses ADMIN_API_TOKEN as a fallback key', async () => {
-		setRequiredEnv()
-		delete process.env.ADMIN_API_KEY
-		process.env.ADMIN_API_TOKEN = 'legacy-key'
-		fetchMock.mockResolvedValueOnce(jsonResponse([{ email: 'admin@example.com' }]))
-
-		await seedAdminUser()
-
-		expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
-			headers: {
-				'x-api-token': 'legacy-key'
-			}
-		})
-	})
 })
 
 function setRequiredEnv() {

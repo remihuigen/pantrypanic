@@ -17,7 +17,6 @@ NUXT_SESSION_PASSWORD=<at-least-32-characters>
 - `ADMIN_USER_EMAIL` and `ADMIN_USER_PASSWORD` seed the initial user during the Nuxt `build:done` hook.
 - `ADMIN_API_KEY` authenticates server requests that send `x-api-token`.
 - `NUXT_PUBLIC_SITE_URL` is the instance base URL used by the HTTP seed script.
-- `ADMIN_API_TOKEN` remains accepted as a legacy fallback for existing local environments.
 - `NUXT_SESSION_PASSWORD` signs/encrypts session cookies. Development can auto-generate it, but production must set a stable value.
 
 ## Database Migrations

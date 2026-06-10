@@ -1,8 +1,10 @@
+<!-- eslint-disable -->
+
 - [ ] add app layout
-- [ ] add brand assets
-- [ ] integrate logo into login
-- [ ] add color tokens
-- [ ] table schema
-- [ ] meal planner
-- [ ] implement dutch locale
-- [ ] why do we have two runtime config values for api key?! merge them
+- [x] add brand assets
+- [x] integrate logo into login
+- [x] add color tokens
+- [x] table schema
+- [x] meal planner
+- [x] implement dutch locale
+- [x] why do we have two runtime config values for api key?! merge them
