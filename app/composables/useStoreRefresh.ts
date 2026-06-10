@@ -133,14 +133,6 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
 		void start()
 	})
 
-	onBeforeUnmount(() => {
-		if (import.meta.client && shouldPauseWhenHidden) {
-			document.removeEventListener('visibilitychange', handleVisibilityChange)
-		}
-
-		stop()
-	})
-
 	if (import.meta.client && shouldPauseWhenHidden) {
 		document.addEventListener('visibilitychange', handleVisibilityChange)
 	}

@@ -1,7 +1,7 @@
 <script lang="ts" setup></script>
 
 <template>
-	<div class="flex min-h-auto grow flex-col">
+	<div class="flex min-h-screen grow flex-col">
 		<UHeader :toggle="false">
 			<template #left>
 				<NuxtLink to="/">
@@ -17,5 +17,7 @@
 		<UMain class="flex min-h-auto grow flex-col justify-center">
 			<NuxtPage />
 		</UMain>
+
+		<Footer />
 	</div>
 </template>
