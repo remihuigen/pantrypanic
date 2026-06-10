@@ -28,9 +28,12 @@ Implemented:
 - `users` table and Pantry Panic domain tables/migrations
 - user CRUD API routes
 - blob CRUD/validation API routes
-- Pantry Panic domain API routes for lists, list items, items, recipes, recipe items, and meal planner workflows
+- Pantry Panic domain API routes for lists, list items, items, recipes, recipe items, and meal
+  planner workflows
 - safe raster image serving from blob storage
 - build-time HTTP admin-user seed from `.env`
+- Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
+  updates, and polling refresh controls
 - human docs under `docs/`
 
 Not implemented yet:
@@ -43,6 +46,12 @@ Not implemented yet:
 ## Core Directories
 
 - `app/`: current Nuxt UI starter frontend.
+- `app/stores/`: Pinia domain stores for lists, recipes, and meal planner.
+- `app/utils/api-client.ts`: shared frontend API wrapper with normalized app errors.
+- `app/composables/useStoreRefresh.ts`: reusable polling lifecycle helper.
+- `shared/utils/schemas/domain.ts`: shared Zod schemas and inferred domain types reused by backend
+  and frontend.
+- `shared/types/api.ts`: shared API envelope and app error type contracts.
 - `server/api/`: server API route handlers.
 - `server/routes/`: non-API server routes, currently image blob serving.
 - `server/utils/`: reusable server-side API logic and validation.

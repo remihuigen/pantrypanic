@@ -1,29 +1,25 @@
+import type { ApiErrorCode, ApiErrorResponse, ApiSuccessResponse } from '#shared/types/api'
 import type { H3Event } from 'h3'
 
 import { getFirstUserIdForDomainSeed } from '#server/utils/domains/seed'
+import {
+	domainIdSchema,
+	nullableAmountSchema,
+	nullableTextSchema,
+	optionalAmountSchema,
+	optionalTextSchema,
+	orderedIdsSchema
+} from '#shared/utils/schemas/domain'
 import { defineEventHandler, getQuery, getRouterParam, readBody, setResponseStatus } from 'h3'
 import { z } from 'zod'
 
-export type ApiErrorCode =
-	| 'UNAUTHORIZED'
-	| 'FORBIDDEN'
-	| 'VALIDATION_ERROR'
-	| 'NOT_FOUND'
-	| 'CONFLICT'
-	| 'INTERNAL_ERROR'
-
-export type ApiSuccessResponse<T> = {
-	success: true
-	data: T
-}
-
-export type ApiErrorResponse = {
-	success: false
-	error: {
-		code: ApiErrorCode
-		message: string
-		details?: unknown
-	}
+export {
+	domainIdSchema,
+	nullableAmountSchema,
+	nullableTextSchema,
+	optionalAmountSchema,
+	optionalTextSchema,
+	orderedIdsSchema
 }
 
 type ApiHandler<T> = (_event: H3Event) => Promise<T> | T
@@ -38,60 +34,6 @@ type ApiErrorOptions = {
 	statusCode: number
 	details?: unknown
 }
-
-/**
- * Common schema for domain text ids.
- */
-export const domainIdSchema = z
-	.string({ error: 'Id is verplicht.' })
-	.trim()
-	.min(1, { error: 'Id is verplicht.' })
-	.max(200, { error: 'Ongeldige id.' })
-
-/**
- * Common schema for optional short text fields.
- */
-export const optionalTextSchema = z
-	.string({ error: 'Waarde moet tekst zijn.' })
-	.trim()
-	.max(500, { error: 'Waarde mag maximaal 500 tekens bevatten.' })
-	.optional()
-
-/**
- * Common schema for nullable short text fields.
- */
-export const nullableTextSchema = z
-	.string({ error: 'Waarde moet tekst zijn.' })
-	.trim()
-	.max(500, { error: 'Waarde mag maximaal 500 tekens bevatten.' })
-	.nullable()
-	.optional()
-
-/**
- * Common schema for positive quantities.
- */
-export const optionalAmountSchema = z
-	.number({ error: 'Aantal moet een getal zijn.' })
-	.positive({ error: 'Aantal moet groter zijn dan 0.' })
-	.optional()
-
-/**
- * Common schema for nullable positive quantities.
- */
-export const nullableAmountSchema = z
-	.number({ error: 'Aantal moet een getal zijn.' })
-	.positive({ error: 'Aantal moet groter zijn dan 0.' })
-	.nullable()
-	.optional()
-
-/**
- * Common schema for manually ordered id arrays.
- */
-export const orderedIdsSchema = z.strictObject({
-	orderedIds: z
-		.array(domainIdSchema, { error: 'Volgorde is verplicht.' })
-		.min(1, { error: 'Volgorde is verplicht.' })
-})
 
 /**
  * Wraps a route handler with the Pantry Panic success/error envelope.

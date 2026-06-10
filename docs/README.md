@@ -7,3 +7,4 @@ This directory contains human-facing implementation notes for the PantryPanic Nu
 - [Server Routes](./server/README.md)
 - [Database](./database/README.md)
 - [Testing](./testing/README.md)
+- [Frontend Data Layer](./frontend/README.md)
