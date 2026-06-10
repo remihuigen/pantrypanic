@@ -57,6 +57,7 @@
 		"prettier": "catalog:",
 		"prettier-plugin-mdc": "catalog:",
 		"prettier-plugin-tailwindcss": "catalog:",
+		"sortablejs": "catalog:",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:",
 		"ufo": "catalog:",

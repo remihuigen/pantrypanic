@@ -1,18 +1,22 @@
 <script lang="ts" setup>
 import type { ButtonProps } from '@nuxt/ui'
 
+import { useAddItemDrawer } from '~/composables/useAddItemDrawer'
+
 const route = useRoute()
+const addItemDrawer = useAddItemDrawer()
+const { getIcon } = useIcon()
 
 const leftContainer: ButtonProps[] = [
 	{
 		name: 'Lijsten',
-		to: '/',
-		icon: 'lucide:list'
+		to: '/lists',
+		icon: getIcon('list')
 	},
 	{
 		name: 'Meal Planner',
 		to: '/meal-planner',
-		icon: 'lucide:utensils'
+		icon: getIcon('planner')
 	}
 ]
 
@@ -20,17 +24,21 @@ const rightContainer: ButtonProps[] = [
 	{
 		name: 'Recepten',
 		to: '/recipes',
-		icon: 'lucide:book'
+		icon: getIcon('recipe')
 	},
 	{
 		name: 'Instellingen',
 		to: '/settings',
-		icon: 'lucide:settings'
+		icon: getIcon('settings')
 	}
 ]
 
 function isActive(btn: ButtonProps) {
-	return route.path === btn.to
+	return route.path.startsWith(String(btn.to))
+}
+
+function openAddItemDrawer() {
+	addItemDrawer.open()
 }
 </script>
 
@@ -41,6 +49,7 @@ function isActive(btn: ButtonProps) {
 		<div class="relative flex items-center justify-center gap-3 px-4">
 			<UButton
 				v-for="btn in leftContainer"
+				:key="`left-${btn.to}`"
 				:color="isActive(btn) ? 'primary' : 'neutral'"
 				variant="ghost"
 				:icon="btn.icon"
@@ -53,11 +62,13 @@ function isActive(btn: ButtonProps) {
 			<UButton
 				class="mx-4 shrink-0 -translate-y-[calc(50%+8px)] rounded-full p-4"
 				color="primary"
-				icon="lucide:plus"
+				:icon="getIcon('plus')"
 				size="xl"
+				@click="openAddItemDrawer"
 			/>
 			<UButton
 				v-for="btn in rightContainer"
+				:key="`right-${btn.to}`"
 				:color="isActive(btn) ? 'primary' : 'neutral'"
 				variant="ghost"
 				:icon="btn.icon"

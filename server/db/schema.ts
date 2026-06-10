@@ -1,24 +1,11 @@
 import { relations } from 'drizzle-orm'
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
-export const listStatusValues = [
-	'active',
-	'archived',
-	'deleted'
-] as const
+export const listStatusValues = ['active', 'archived', 'deleted'] as const
 
-export const listItemStatusValues = [
-	'unchecked',
-	'checked',
-	'archived',
-	'deleted'
-] as const
+export const listItemStatusValues = ['unchecked', 'checked', 'archived', 'deleted'] as const
 
-export const recipeStatusValues = [
-	'active',
-	'archived',
-	'deleted'
-] as const
+export const recipeStatusValues = ['active', 'archived', 'deleted'] as const
 
 export const listItemSourceTypeValues = [
 	'manual',
@@ -27,17 +14,13 @@ export const listItemSourceTypeValues = [
 	'meal_planner_placeholder'
 ] as const
 
-export const mealPlannerDayTypeValues = [
-	'empty',
-	'recipe',
-	'placeholder'
-] as const
+export const mealPlannerDayTypeValues = ['empty', 'recipe', 'placeholder'] as const
 
-export type ListStatus = typeof listStatusValues[number]
-export type ListItemStatus = typeof listItemStatusValues[number]
-export type RecipeStatus = typeof recipeStatusValues[number]
-export type ListItemSourceType = typeof listItemSourceTypeValues[number]
-export type MealPlannerDayType = typeof mealPlannerDayTypeValues[number]
+export type ListStatus = (typeof listStatusValues)[number]
+export type ListItemStatus = (typeof listItemStatusValues)[number]
+export type RecipeStatus = (typeof recipeStatusValues)[number]
+export type ListItemSourceType = (typeof listItemSourceTypeValues)[number]
+export type MealPlannerDayType = (typeof mealPlannerDayTypeValues)[number]
 
 export const users = sqliteTable('users', {
 	id: integer().primaryKey({ autoIncrement: true }),
@@ -63,13 +46,14 @@ export const lists = sqliteTable(
 	{
 		id: text('id').primaryKey(),
 		name: text('name').notNull(),
+		icon: text('icon'),
 		status: text('status', { enum: listStatusValues }).notNull(),
 		position: integer('position').notNull(),
 		archivedAt: integer('archived_at'),
 		deletedAt: integer('deleted_at'),
 		...auditColumns
 	},
-	table => [
+	(table) => [
 		index('lists_status_position_idx').on(table.status, table.position),
 		index('lists_created_by_user_id_idx').on(table.createdByUserId),
 		index('lists_updated_by_user_id_idx').on(table.updatedByUserId)
@@ -87,7 +71,7 @@ export const items = sqliteTable(
 		notes: text('notes'),
 		...auditColumns
 	},
-	table => [
+	(table) => [
 		uniqueIndex('items_normalized_name_idx').on(table.normalizedName),
 		index('items_name_idx').on(table.name),
 		index('items_category_idx').on(table.category)
@@ -108,7 +92,7 @@ export const recipes = sqliteTable(
 		deletedAt: integer('deleted_at'),
 		...auditColumns
 	},
-	table => [
+	(table) => [
 		index('recipes_status_idx').on(table.status),
 		index('recipes_name_idx').on(table.name),
 		index('recipes_created_by_user_id_idx').on(table.createdByUserId)
@@ -126,7 +110,7 @@ export const mealPlannerDays = sqliteTable(
 		placeholderNotes: text('placeholder_notes'),
 		...auditColumns
 	},
-	table => [
+	(table) => [
 		uniqueIndex('meal_planner_days_day_of_week_idx').on(table.dayOfWeek),
 		index('meal_planner_days_type_idx').on(table.type),
 		index('meal_planner_days_recipe_id_idx').on(table.recipeId)
@@ -143,14 +127,13 @@ export const recipeItems = sqliteTable(
 		itemId: text('item_id')
 			.notNull()
 			.references(() => items.id),
-		label: text('label'),
 		amount: real('amount'),
 		unit: text('unit'),
 		note: text('note'),
 		position: integer('position').notNull(),
 		...auditColumns
 	},
-	table => [
+	(table) => [
 		index('recipe_items_recipe_id_position_idx').on(table.recipeId, table.position),
 		index('recipe_items_item_id_idx').on(table.itemId)
 	]
@@ -166,14 +149,13 @@ export const mealPlannerDayItems = sqliteTable(
 		itemId: text('item_id')
 			.notNull()
 			.references(() => items.id),
-		label: text('label'),
 		amount: real('amount'),
 		unit: text('unit'),
 		note: text('note'),
 		position: integer('position').notNull(),
 		...auditColumns
 	},
-	table => [
+	(table) => [
 		index('meal_planner_day_items_day_id_position_idx').on(
 			table.mealPlannerDayId,
 			table.position
@@ -194,13 +176,14 @@ export const listItems = sqliteTable(
 			.references(() => items.id),
 		status: text('status', { enum: listItemStatusValues }).notNull(),
 		position: integer('position').notNull(),
-		label: text('label'),
 		amount: real('amount'),
 		unit: text('unit'),
 		note: text('note'),
 		sourceType: text('source_type', { enum: listItemSourceTypeValues }).notNull(),
 		sourceRecipeId: text('source_recipe_id').references(() => recipes.id),
-		sourceMealPlannerDayId: text('source_meal_planner_day_id').references(() => mealPlannerDays.id),
+		sourceMealPlannerDayId: text('source_meal_planner_day_id').references(
+			() => mealPlannerDays.id
+		),
 		checkedAt: integer('checked_at'),
 		checkedByUserId: integer('checked_by_user_id').references(() => users.id),
 		archivedAt: integer('archived_at'),
@@ -209,7 +192,7 @@ export const listItems = sqliteTable(
 		deletedByUserId: integer('deleted_by_user_id').references(() => users.id),
 		...auditColumns
 	},
-	table => [
+	(table) => [
 		index('list_items_list_id_status_position_idx').on(
 			table.listId,
 			table.status,

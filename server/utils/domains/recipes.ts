@@ -86,7 +86,6 @@ export async function createRecipe(input: z.infer<typeof createRecipeBodySchema>
 				id: createDomainId(),
 				recipeId: createdRecipe.id,
 				itemId: item.id,
-				label: ingredient.label ?? null,
 				amount: ingredient.amount ?? null,
 				unit: ingredient.unit ?? null,
 				note: ingredient.note ?? null,
@@ -230,7 +229,6 @@ export async function addRecipeItem(
 			id: createDomainId(),
 			recipeId,
 			itemId: item.id,
-			label: input.label ?? null,
 			amount: input.amount ?? null,
 			unit: input.unit ?? null,
 			note: input.note ?? null,
@@ -300,7 +298,6 @@ export async function addRecipeToList(recipeId: string, listId: string, userId: 
 		userId,
 		rows: ingredients.map((row) => ({
 			item: row.item,
-			label: row.recipeItem.label,
 			amount: row.recipeItem.amount,
 			unit: row.recipeItem.unit,
 			note: row.recipeItem.note,
@@ -331,7 +328,6 @@ export async function updateRecipeItem(
 	const [row] = await db
 		.update(schema.recipeItems)
 		.set({
-			...(input.label === undefined ? {} : { label: input.label }),
 			...(input.amount === undefined ? {} : { amount: input.amount }),
 			...(input.unit === undefined ? {} : { unit: input.unit }),
 			...(input.note === undefined ? {} : { note: input.note }),

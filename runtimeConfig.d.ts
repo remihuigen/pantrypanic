@@ -1,6 +1,6 @@
 import type { BlobSize } from '@nuxthub/core/blob'
 
-declare module 'nuxt/schema' {
+declare module '@nuxt/schema' {
 	interface RuntimeConfig {
 		adminApiKey: string
 		pantry: {

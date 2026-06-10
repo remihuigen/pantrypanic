@@ -1,0 +1,1111 @@
+{
+	"version": "6",
+	"dialect": "sqlite",
+	"id": "a37561ca-6489-4fd9-b500-42aee284f365",
+	"prevId": "41c1a945-8700-40f4-841f-e28b65a328fa",
+	"tables": {
+		"items": {
+			"name": "items",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"normalized_name": {
+					"name": "normalized_name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"default_unit": {
+					"name": "default_unit",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"category": {
+					"name": "category",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"notes": {
+					"name": "notes",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_by_user_id": {
+					"name": "created_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_by_user_id": {
+					"name": "updated_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"items_normalized_name_idx": {
+					"name": "items_normalized_name_idx",
+					"columns": ["normalized_name"],
+					"isUnique": true
+				},
+				"items_name_idx": {
+					"name": "items_name_idx",
+					"columns": ["name"],
+					"isUnique": false
+				},
+				"items_category_idx": {
+					"name": "items_category_idx",
+					"columns": ["category"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"items_created_by_user_id_users_id_fk": {
+					"name": "items_created_by_user_id_users_id_fk",
+					"tableFrom": "items",
+					"tableTo": "users",
+					"columnsFrom": ["created_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"items_updated_by_user_id_users_id_fk": {
+					"name": "items_updated_by_user_id_users_id_fk",
+					"tableFrom": "items",
+					"tableTo": "users",
+					"columnsFrom": ["updated_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"list_items": {
+			"name": "list_items",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"list_id": {
+					"name": "list_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"item_id": {
+					"name": "item_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"status": {
+					"name": "status",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"position": {
+					"name": "position",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"amount": {
+					"name": "amount",
+					"type": "real",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"unit": {
+					"name": "unit",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"note": {
+					"name": "note",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"source_type": {
+					"name": "source_type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"source_recipe_id": {
+					"name": "source_recipe_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"source_meal_planner_day_id": {
+					"name": "source_meal_planner_day_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"checked_at": {
+					"name": "checked_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"checked_by_user_id": {
+					"name": "checked_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"archived_at": {
+					"name": "archived_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"archived_by_user_id": {
+					"name": "archived_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"deleted_at": {
+					"name": "deleted_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"deleted_by_user_id": {
+					"name": "deleted_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_by_user_id": {
+					"name": "created_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_by_user_id": {
+					"name": "updated_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"list_items_list_id_status_position_idx": {
+					"name": "list_items_list_id_status_position_idx",
+					"columns": ["list_id", "status", "position"],
+					"isUnique": false
+				},
+				"list_items_item_id_idx": {
+					"name": "list_items_item_id_idx",
+					"columns": ["item_id"],
+					"isUnique": false
+				},
+				"list_items_status_idx": {
+					"name": "list_items_status_idx",
+					"columns": ["status"],
+					"isUnique": false
+				},
+				"list_items_archived_at_idx": {
+					"name": "list_items_archived_at_idx",
+					"columns": ["archived_at"],
+					"isUnique": false
+				},
+				"list_items_source_recipe_id_idx": {
+					"name": "list_items_source_recipe_id_idx",
+					"columns": ["source_recipe_id"],
+					"isUnique": false
+				},
+				"list_items_source_meal_planner_day_id_idx": {
+					"name": "list_items_source_meal_planner_day_id_idx",
+					"columns": ["source_meal_planner_day_id"],
+					"isUnique": false
+				},
+				"list_items_created_by_user_id_idx": {
+					"name": "list_items_created_by_user_id_idx",
+					"columns": ["created_by_user_id"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"list_items_list_id_lists_id_fk": {
+					"name": "list_items_list_id_lists_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "lists",
+					"columnsFrom": ["list_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_item_id_items_id_fk": {
+					"name": "list_items_item_id_items_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "items",
+					"columnsFrom": ["item_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_source_recipe_id_recipes_id_fk": {
+					"name": "list_items_source_recipe_id_recipes_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "recipes",
+					"columnsFrom": ["source_recipe_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_source_meal_planner_day_id_meal_planner_days_id_fk": {
+					"name": "list_items_source_meal_planner_day_id_meal_planner_days_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "meal_planner_days",
+					"columnsFrom": ["source_meal_planner_day_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_checked_by_user_id_users_id_fk": {
+					"name": "list_items_checked_by_user_id_users_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "users",
+					"columnsFrom": ["checked_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_archived_by_user_id_users_id_fk": {
+					"name": "list_items_archived_by_user_id_users_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "users",
+					"columnsFrom": ["archived_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_deleted_by_user_id_users_id_fk": {
+					"name": "list_items_deleted_by_user_id_users_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "users",
+					"columnsFrom": ["deleted_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_created_by_user_id_users_id_fk": {
+					"name": "list_items_created_by_user_id_users_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "users",
+					"columnsFrom": ["created_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"list_items_updated_by_user_id_users_id_fk": {
+					"name": "list_items_updated_by_user_id_users_id_fk",
+					"tableFrom": "list_items",
+					"tableTo": "users",
+					"columnsFrom": ["updated_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"lists": {
+			"name": "lists",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"icon": {
+					"name": "icon",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"status": {
+					"name": "status",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"position": {
+					"name": "position",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"archived_at": {
+					"name": "archived_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"deleted_at": {
+					"name": "deleted_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_by_user_id": {
+					"name": "created_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_by_user_id": {
+					"name": "updated_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"lists_status_position_idx": {
+					"name": "lists_status_position_idx",
+					"columns": ["status", "position"],
+					"isUnique": false
+				},
+				"lists_created_by_user_id_idx": {
+					"name": "lists_created_by_user_id_idx",
+					"columns": ["created_by_user_id"],
+					"isUnique": false
+				},
+				"lists_updated_by_user_id_idx": {
+					"name": "lists_updated_by_user_id_idx",
+					"columns": ["updated_by_user_id"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"lists_created_by_user_id_users_id_fk": {
+					"name": "lists_created_by_user_id_users_id_fk",
+					"tableFrom": "lists",
+					"tableTo": "users",
+					"columnsFrom": ["created_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"lists_updated_by_user_id_users_id_fk": {
+					"name": "lists_updated_by_user_id_users_id_fk",
+					"tableFrom": "lists",
+					"tableTo": "users",
+					"columnsFrom": ["updated_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"meal_planner_day_items": {
+			"name": "meal_planner_day_items",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"meal_planner_day_id": {
+					"name": "meal_planner_day_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"item_id": {
+					"name": "item_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"amount": {
+					"name": "amount",
+					"type": "real",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"unit": {
+					"name": "unit",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"note": {
+					"name": "note",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"position": {
+					"name": "position",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_by_user_id": {
+					"name": "created_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_by_user_id": {
+					"name": "updated_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"meal_planner_day_items_day_id_position_idx": {
+					"name": "meal_planner_day_items_day_id_position_idx",
+					"columns": ["meal_planner_day_id", "position"],
+					"isUnique": false
+				},
+				"meal_planner_day_items_item_id_idx": {
+					"name": "meal_planner_day_items_item_id_idx",
+					"columns": ["item_id"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"meal_planner_day_items_meal_planner_day_id_meal_planner_days_id_fk": {
+					"name": "meal_planner_day_items_meal_planner_day_id_meal_planner_days_id_fk",
+					"tableFrom": "meal_planner_day_items",
+					"tableTo": "meal_planner_days",
+					"columnsFrom": ["meal_planner_day_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"meal_planner_day_items_item_id_items_id_fk": {
+					"name": "meal_planner_day_items_item_id_items_id_fk",
+					"tableFrom": "meal_planner_day_items",
+					"tableTo": "items",
+					"columnsFrom": ["item_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"meal_planner_day_items_created_by_user_id_users_id_fk": {
+					"name": "meal_planner_day_items_created_by_user_id_users_id_fk",
+					"tableFrom": "meal_planner_day_items",
+					"tableTo": "users",
+					"columnsFrom": ["created_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"meal_planner_day_items_updated_by_user_id_users_id_fk": {
+					"name": "meal_planner_day_items_updated_by_user_id_users_id_fk",
+					"tableFrom": "meal_planner_day_items",
+					"tableTo": "users",
+					"columnsFrom": ["updated_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"meal_planner_days": {
+			"name": "meal_planner_days",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"day_of_week": {
+					"name": "day_of_week",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"type": {
+					"name": "type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"recipe_id": {
+					"name": "recipe_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"placeholder_name": {
+					"name": "placeholder_name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"placeholder_notes": {
+					"name": "placeholder_notes",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_by_user_id": {
+					"name": "created_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_by_user_id": {
+					"name": "updated_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"meal_planner_days_day_of_week_idx": {
+					"name": "meal_planner_days_day_of_week_idx",
+					"columns": ["day_of_week"],
+					"isUnique": true
+				},
+				"meal_planner_days_type_idx": {
+					"name": "meal_planner_days_type_idx",
+					"columns": ["type"],
+					"isUnique": false
+				},
+				"meal_planner_days_recipe_id_idx": {
+					"name": "meal_planner_days_recipe_id_idx",
+					"columns": ["recipe_id"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"meal_planner_days_recipe_id_recipes_id_fk": {
+					"name": "meal_planner_days_recipe_id_recipes_id_fk",
+					"tableFrom": "meal_planner_days",
+					"tableTo": "recipes",
+					"columnsFrom": ["recipe_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"meal_planner_days_created_by_user_id_users_id_fk": {
+					"name": "meal_planner_days_created_by_user_id_users_id_fk",
+					"tableFrom": "meal_planner_days",
+					"tableTo": "users",
+					"columnsFrom": ["created_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"meal_planner_days_updated_by_user_id_users_id_fk": {
+					"name": "meal_planner_days_updated_by_user_id_users_id_fk",
+					"tableFrom": "meal_planner_days",
+					"tableTo": "users",
+					"columnsFrom": ["updated_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"recipe_items": {
+			"name": "recipe_items",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"recipe_id": {
+					"name": "recipe_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"item_id": {
+					"name": "item_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"amount": {
+					"name": "amount",
+					"type": "real",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"unit": {
+					"name": "unit",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"note": {
+					"name": "note",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"position": {
+					"name": "position",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_by_user_id": {
+					"name": "created_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_by_user_id": {
+					"name": "updated_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"recipe_items_recipe_id_position_idx": {
+					"name": "recipe_items_recipe_id_position_idx",
+					"columns": ["recipe_id", "position"],
+					"isUnique": false
+				},
+				"recipe_items_item_id_idx": {
+					"name": "recipe_items_item_id_idx",
+					"columns": ["item_id"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"recipe_items_recipe_id_recipes_id_fk": {
+					"name": "recipe_items_recipe_id_recipes_id_fk",
+					"tableFrom": "recipe_items",
+					"tableTo": "recipes",
+					"columnsFrom": ["recipe_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"recipe_items_item_id_items_id_fk": {
+					"name": "recipe_items_item_id_items_id_fk",
+					"tableFrom": "recipe_items",
+					"tableTo": "items",
+					"columnsFrom": ["item_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"recipe_items_created_by_user_id_users_id_fk": {
+					"name": "recipe_items_created_by_user_id_users_id_fk",
+					"tableFrom": "recipe_items",
+					"tableTo": "users",
+					"columnsFrom": ["created_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"recipe_items_updated_by_user_id_users_id_fk": {
+					"name": "recipe_items_updated_by_user_id_users_id_fk",
+					"tableFrom": "recipe_items",
+					"tableTo": "users",
+					"columnsFrom": ["updated_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"recipes": {
+			"name": "recipes",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"servings": {
+					"name": "servings",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"source_url": {
+					"name": "source_url",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"notes": {
+					"name": "notes",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"status": {
+					"name": "status",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"archived_at": {
+					"name": "archived_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"deleted_at": {
+					"name": "deleted_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_by_user_id": {
+					"name": "created_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"updated_by_user_id": {
+					"name": "updated_by_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"recipes_status_idx": {
+					"name": "recipes_status_idx",
+					"columns": ["status"],
+					"isUnique": false
+				},
+				"recipes_name_idx": {
+					"name": "recipes_name_idx",
+					"columns": ["name"],
+					"isUnique": false
+				},
+				"recipes_created_by_user_id_idx": {
+					"name": "recipes_created_by_user_id_idx",
+					"columns": ["created_by_user_id"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"recipes_created_by_user_id_users_id_fk": {
+					"name": "recipes_created_by_user_id_users_id_fk",
+					"tableFrom": "recipes",
+					"tableTo": "users",
+					"columnsFrom": ["created_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				},
+				"recipes_updated_by_user_id_users_id_fk": {
+					"name": "recipes_updated_by_user_id_users_id_fk",
+					"tableFrom": "recipes",
+					"tableTo": "users",
+					"columnsFrom": ["updated_by_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"users": {
+			"name": "users",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"email": {
+					"name": "email",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"password": {
+					"name": "password",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"createdAt": {
+					"name": "createdAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"users_email_unique": {
+					"name": "users_email_unique",
+					"columns": ["email"],
+					"isUnique": true
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		}
+	},
+	"views": {},
+	"enums": {},
+	"_meta": {
+		"schemas": {},
+		"tables": {},
+		"columns": {}
+	},
+	"internal": {
+		"indexes": {}
+	}
+}

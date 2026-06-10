@@ -290,7 +290,7 @@ export const useRecipesStore = defineStore(
 
 		async function addRecipeItem(
 			recipeId: string,
-			input: { name: string; label?: string; amount?: number; unit?: string; note?: string }
+			input: { name: string; amount?: number; unit?: string; note?: string }
 		) {
 			isSaving.value = true
 			error.value = null
@@ -302,7 +302,6 @@ export const useRecipesStore = defineStore(
 				recipeId,
 				itemId: temporaryItemId,
 				name: input.name,
-				label: input.label,
 				amount: input.amount,
 				unit: input.unit,
 				note: input.note,
@@ -345,7 +344,6 @@ export const useRecipesStore = defineStore(
 			if (existing) {
 				recipeItemsById.value[recipeItemId] = {
 					...existing,
-					...(input.label === undefined ? {} : { label: input.label ?? undefined }),
 					...(input.amount === undefined ? {} : { amount: input.amount ?? undefined }),
 					...(input.unit === undefined ? {} : { unit: input.unit ?? undefined }),
 					...(input.note === undefined ? {} : { note: input.note ?? undefined })

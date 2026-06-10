@@ -6,9 +6,9 @@ import type {
 	updateOccurrenceBodySchema
 } from './schemas'
 
-import { optional } from '#server/utils/api-core'
+import { optional, throwApiError } from '#server/utils/api-core'
 import { createDomainId } from '#server/utils/api-helpers'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
 
 import {
@@ -60,6 +60,7 @@ export async function createShoppingList(
 		.values({
 			id: createDomainId(),
 			name: input.name,
+			icon: input.icon ?? null,
 			status: 'active',
 			position,
 			archivedAt: null,
@@ -153,6 +154,7 @@ export async function updateShoppingList(
 		.update(schema.lists)
 		.set({
 			...(input.name === undefined ? {} : { name: input.name }),
+			...(input.icon === undefined ? {} : { icon: input.icon }),
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
@@ -202,6 +204,19 @@ export async function archiveShoppingList(listId: string, userId: number) {
  */
 export async function deleteShoppingList(listId: string, userId: number) {
 	await findListOrThrow(listId)
+	const [remainingLists] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(schema.lists)
+		.where(ne(schema.lists.status, 'deleted'))
+
+	if (Number(remainingLists?.count ?? 0) <= 1) {
+		throwApiError({
+			code: 'CONFLICT',
+			statusCode: 409,
+			message: 'Minimaal één lijst moet behouden blijven.'
+		})
+	}
+
 	const audit = createAudit(userId)
 	const [list] = await db
 		.update(schema.lists)
@@ -279,7 +294,6 @@ export async function addListItem(
 			itemId: item.id,
 			status: 'unchecked',
 			position,
-			label: input.label ?? null,
 			amount: input.amount ?? null,
 			unit: input.unit ?? null,
 			note: input.note ?? null,
@@ -355,7 +369,6 @@ export async function updateListItem(
 	const [row] = await db
 		.update(schema.listItems)
 		.set({
-			...(input.label === undefined ? {} : { label: input.label }),
 			...(input.amount === undefined ? {} : { amount: input.amount }),
 			...(input.unit === undefined ? {} : { unit: input.unit }),
 			...(input.note === undefined ? {} : { note: input.note }),
@@ -369,7 +382,6 @@ export async function updateListItem(
 	return {
 		listItem: {
 			id: listItem.id,
-			label: optional(listItem.label),
 			amount: optional(listItem.amount),
 			unit: optional(listItem.unit),
 			note: optional(listItem.note),

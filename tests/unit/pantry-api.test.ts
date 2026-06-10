@@ -40,6 +40,7 @@ import {
 	searchItems,
 	suggestItems,
 	uncheckListItem,
+	updateListBodySchema,
 	updateListItem,
 	updateMealPlannerDay,
 	updateMealPlannerDayItem,
@@ -112,7 +113,16 @@ describe('pantry api domain helpers', () => {
 
 	it('validates Dutch schemas', () => {
 		expect(listQuerySchema.parse({})).toEqual({ status: 'active' })
-		expect(createListBodySchema.parse({ name: ' Groceries ' })).toEqual({ name: 'Groceries' })
+		expect(createListBodySchema.parse({ name: ' Groceries ', icon: ' lucide:book ' })).toEqual({
+			name: 'Groceries',
+			icon: 'lucide:book'
+		})
+		expect(updateListBodySchema.parse({ icon: ' lucide:list ' })).toEqual({
+			icon: 'lucide:list'
+		})
+		expect(updateListBodySchema.parse({ icon: null })).toEqual({
+			icon: null
+		})
 		expect(createOccurrenceBodySchema.parse({ name: 'Milk', amount: 1, unit: 'l' })).toEqual({
 			name: 'Milk',
 			amount: 1,
@@ -186,7 +196,6 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(
 				createInsertBuilder([
 					listItemRow({
-						label: 'Carton',
 						amount: 2,
 						unit: 'l',
 						note: 'Whole milk'
@@ -198,7 +207,6 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(
 				createUpdateBuilder([
 					listItemRow({
-						label: 'Bottle',
 						amount: 3,
 						unit: 'l',
 						note: 'Organic',
@@ -208,7 +216,7 @@ describe('pantry api domain helpers', () => {
 			)
 			.mockReturnValueOnce(createUpdateBuilder([recipeRow({ updatedAt: 51 })]) as never)
 			.mockReturnValueOnce(createUpdateBuilder([recipeItemRow({ updatedAt: 52 })]) as never)
-
+			.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
 		await expect(createShoppingList({ name: 'Hardware' }, 1)).resolves.toMatchObject({
 			list: { id: 'empty-position-list', position: 0 }
 		})
@@ -217,7 +225,6 @@ describe('pantry api domain helpers', () => {
 				'list-1',
 				{
 					name: 'Milk',
-					label: 'Carton',
 					amount: 2,
 					unit: 'l',
 					note: 'Whole milk'
@@ -225,13 +232,12 @@ describe('pantry api domain helpers', () => {
 				1
 			)
 		).resolves.toMatchObject({
-			listItem: { label: 'Carton', amount: 2, unit: 'l', note: 'Whole milk' }
+			listItem: { amount: 2, unit: 'l', note: 'Whole milk' }
 		})
 		await expect(
 			updateListItem(
 				'li-1',
 				{
-					label: 'Bottle',
 					amount: 3,
 					unit: 'l',
 					note: 'Organic'
@@ -239,7 +245,7 @@ describe('pantry api domain helpers', () => {
 				1
 			)
 		).resolves.toMatchObject({
-			listItem: { label: 'Bottle', amount: 3, unit: 'l', note: 'Organic' }
+			listItem: { amount: 3, unit: 'l', note: 'Organic' }
 		})
 		await expect(listRecipes({ status: 'active', q: 'pas' })).resolves.toMatchObject({
 			recipes: [{ id: 'recipe-1' }]
@@ -261,7 +267,6 @@ describe('pantry api domain helpers', () => {
 			updateRecipeItem(
 				'ri-1',
 				{
-					label: 'Ingredient',
 					amount: 1,
 					unit: 'kg',
 					note: 'Fresh'
@@ -324,6 +329,7 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
@@ -335,7 +341,9 @@ describe('pantry api domain helpers', () => {
 
 		vi.mocked(db.insert)
 			.mockReturnValueOnce(
-				createInsertBuilder([listRow({ id: 'created-list', position: 2 })]) as never
+				createInsertBuilder([
+					listRow({ id: 'created-list', icon: 'lucide:book', position: 2 })
+				]) as never
 			)
 			.mockReturnValueOnce(
 				createInsertBuilder([listItemRow({ id: 'created-item', position: 3 })]) as never
@@ -343,7 +351,9 @@ describe('pantry api domain helpers', () => {
 
 		vi.mocked(db.update)
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'list-1', position: 0 }]) as never)
-			.mockReturnValueOnce(createUpdateBuilder([listRow({ name: 'Updated' })]) as never)
+			.mockReturnValueOnce(
+				createUpdateBuilder([listRow({ name: 'Updated', icon: 'lucide:list' })]) as never
+			)
 			.mockReturnValueOnce(
 				createUpdateBuilder([listRow({ status: 'archived', archivedAt: 10 })]) as never
 			)
@@ -353,7 +363,7 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'li-1' }, { id: 'li-2' }]) as never)
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'li-1', position: 0 }]) as never)
 			.mockReturnValueOnce(
-				createUpdateBuilder([listItemRow({ label: 'Two', updatedAt: 12 })]) as never
+				createUpdateBuilder([listItemRow({ note: 'Two', updatedAt: 12 })]) as never
 			)
 			.mockReturnValueOnce(
 				createUpdateBuilder([listItemRow({ status: 'checked', checkedAt: 13 })]) as never
@@ -373,8 +383,10 @@ describe('pantry api domain helpers', () => {
 		await expect(listShoppingLists('active')).resolves.toMatchObject({
 			lists: [{ id: 'list-1' }]
 		})
-		await expect(createShoppingList({ name: 'New' }, 1)).resolves.toMatchObject({
-			list: { id: 'created-list' }
+		await expect(
+			createShoppingList({ name: 'New', icon: 'lucide:book' }, 1)
+		).resolves.toMatchObject({
+			list: { id: 'created-list', icon: 'lucide:book' }
 		})
 		await expect(reorderShoppingLists(['list-1'], 1)).resolves.toEqual({
 			lists: [{ id: 'list-1', position: 0 }]
@@ -382,8 +394,10 @@ describe('pantry api domain helpers', () => {
 		await expect(getShoppingList('list-1')).resolves.toMatchObject({
 			list: { id: 'list-1', items: [{ id: 'li-1' }] }
 		})
-		await expect(updateShoppingList('list-1', { name: 'Updated' }, 1)).resolves.toMatchObject({
-			list: { name: 'Updated' }
+		await expect(
+			updateShoppingList('list-1', { name: 'Updated', icon: 'lucide:list' }, 1)
+		).resolves.toMatchObject({
+			list: { name: 'Updated', icon: 'lucide:list' }
 		})
 		await expect(archiveShoppingList('list-1', 1)).resolves.toMatchObject({
 			list: { status: 'archived' }
@@ -398,8 +412,8 @@ describe('pantry api domain helpers', () => {
 		await expect(reorderListItems('list-1', ['li-1'], 1)).resolves.toEqual({
 			items: [{ id: 'li-1', position: 0 }]
 		})
-		await expect(updateListItem('li-1', { label: 'Two' }, 1)).resolves.toMatchObject({
-			listItem: { label: 'Two' }
+		await expect(updateListItem('li-1', { note: 'Two' }, 1)).resolves.toMatchObject({
+			listItem: { note: 'Two' }
 		})
 		await expect(checkListItem('li-1', 1)).resolves.toMatchObject({
 			listItem: { status: 'checked' }
@@ -410,6 +424,16 @@ describe('pantry api domain helpers', () => {
 		await expect(deleteListItem('li-1', 1)).resolves.toMatchObject({
 			listItem: { status: 'deleted' }
 		})
+	})
+
+	it('prevents deleting the final remaining list', async () => {
+		vi.mocked(db.select)
+			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 1 }]) as never)
+
+		await expect(deleteShoppingList('list-1', 1)).rejects.toThrow(
+			'Minimaal één lijst moet behouden blijven.'
+		)
 	})
 
 	it('handles item search and suggestions', async () => {
@@ -626,6 +650,7 @@ function listRow(overrides: Partial<Record<string, unknown>> = {}) {
 	return {
 		id: 'list-1',
 		name: 'Groceries',
+		icon: null,
 		status: 'active',
 		position: 0,
 		archivedAt: null,
@@ -661,7 +686,6 @@ function listItemRow(overrides: Partial<Record<string, unknown>> = {}) {
 		itemId: 'item-1',
 		status: 'unchecked',
 		position: 0,
-		label: null,
 		amount: null,
 		unit: null,
 		note: null,
@@ -706,7 +730,6 @@ function recipeItemRow(overrides: Partial<Record<string, unknown>> = {}) {
 		id: 'ri-1',
 		recipeId: 'recipe-1',
 		itemId: 'item-1',
-		label: null,
 		amount: null,
 		unit: null,
 		note: null,
@@ -740,7 +763,6 @@ function mealPlannerDayItemRow(overrides: Partial<Record<string, unknown>> = {})
 		id: 'mdi-1',
 		mealPlannerDayId: 'day-2',
 		itemId: 'item-1',
-		label: null,
 		amount: null,
 		unit: null,
 		note: null,

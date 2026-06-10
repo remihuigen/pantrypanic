@@ -1,6 +1,6 @@
 import type { MaybeRefOrGetter } from 'vue'
 
-import { computed, onBeforeUnmount, readonly, ref, toValue, watch } from 'vue'
+import { computed, readonly, ref, toValue, watch } from 'vue'
 
 type RefreshCallback = () => Promise<void> | void
 
@@ -36,6 +36,11 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
 		return resolveRefreshInterval()
 	})
 
+	/**
+	 * Runs the refresh callback while sharing any already active refresh promise.
+	 *
+	 * @returns A promise that resolves after the active refresh callback completes.
+	 */
 	async function runRefresh() {
 		if (activeRun) {
 			await activeRun
@@ -56,6 +61,11 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
 		await activeRun
 	}
 
+	/**
+	 * Clears the current polling interval.
+	 *
+	 * @returns Nothing.
+	 */
 	function stopInterval() {
 		if (intervalHandle) {
 			clearInterval(intervalHandle)
@@ -63,6 +73,11 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
 		}
 	}
 
+	/**
+	 * Starts a polling interval when client runtime and visibility state allow it.
+	 *
+	 * @returns Nothing.
+	 */
 	function startInterval() {
 		if (!import.meta.client || !isRunning.value || !enabled.value) {
 			return
@@ -85,6 +100,11 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
 		}, delay)
 	}
 
+	/**
+	 * Enables polling and optionally performs the first refresh immediately.
+	 *
+	 * @returns A promise that resolves after any immediate refresh completes.
+	 */
 	async function start() {
 		if (!import.meta.client || isRunning.value || !enabled.value) {
 			return
@@ -99,11 +119,21 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
 		startInterval()
 	}
 
+	/**
+	 * Disables polling and clears the active interval.
+	 *
+	 * @returns Nothing.
+	 */
 	function stop() {
 		isRunning.value = false
 		stopInterval()
 	}
 
+	/**
+	 * Pauses or resumes polling when document visibility changes.
+	 *
+	 * @returns Nothing.
+	 */
 	function handleVisibilityChange() {
 		if (!isRunning.value || !shouldPauseWhenHidden) {
 			return
@@ -146,6 +176,11 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
 	}
 }
 
+/**
+ * Resolves the default store refresh interval from Nuxt runtime config.
+ *
+ * @returns A positive interval in milliseconds.
+ */
 function resolveRefreshInterval() {
 	try {
 		const runtimeConfig = useRuntimeConfig()

@@ -91,7 +91,8 @@ export default defineNuxtConfig({
 				'@tiptap/core',
 				'@tiptap/starter-kit',
 				'@tiptap/markdown',
-				'@tiptap/**'
+				'@tiptap/**',
+				'sortablejs'
 			]
 		}
 	},

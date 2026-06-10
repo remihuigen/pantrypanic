@@ -65,6 +65,12 @@ const nameSchema = z
 	.min(1, { error: 'Naam is verplicht.' })
 	.max(120, { error: 'Naam mag maximaal 120 tekens bevatten.' })
 
+const listIconSchema = z
+	.string({ error: 'Icoon moet tekst zijn.' })
+	.trim()
+	.min(1, { error: 'Icoon is verplicht.' })
+	.max(120, { error: 'Icoon mag maximaal 120 tekens bevatten.' })
+
 const unitSchema = z
 	.string({ error: 'Eenheid moet tekst zijn.' })
 	.trim()
@@ -111,14 +117,16 @@ export const listQuerySchema = z.strictObject({
 })
 
 export const createListBodySchema = z.strictObject({
-	name: nameSchema
+	name: nameSchema,
+	icon: listIconSchema.optional()
 })
 
 export const updateListBodySchema = z
 	.strictObject({
-		name: nameSchema.optional()
+		name: nameSchema.optional(),
+		icon: listIconSchema.nullable().optional()
 	})
-	.refine((value) => value.name !== undefined, {
+	.refine((value) => value.name !== undefined || value.icon !== undefined, {
 		error: 'Minimaal een veld is verplicht.'
 	})
 
@@ -126,7 +134,6 @@ export const reorderBodySchema = orderedIdsSchema
 
 export const createOccurrenceBodySchema = z.strictObject({
 	name: nameSchema,
-	label: optionalTextSchema,
 	amount: optionalAmountSchema,
 	unit: unitSchema,
 	note: noteSchema
@@ -134,17 +141,13 @@ export const createOccurrenceBodySchema = z.strictObject({
 
 export const updateOccurrenceBodySchema = z
 	.strictObject({
-		label: nullableTextSchema,
 		amount: nullableAmountSchema,
 		unit: nullableUnitSchema,
 		note: nullableNoteSchema
 	})
 	.refine(
 		(value) =>
-			value.label !== undefined ||
-			value.amount !== undefined ||
-			value.unit !== undefined ||
-			value.note !== undefined,
+			value.amount !== undefined || value.unit !== undefined || value.note !== undefined,
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
 
@@ -227,6 +230,7 @@ const timestampSchema = z.number().int()
 export const shoppingListSchema = z.strictObject({
 	id: domainIdSchema,
 	name: z.string(),
+	icon: z.string().optional(),
 	status: listStatusSchema,
 	position: z.number().int(),
 	createdAt: timestampSchema,
@@ -252,7 +256,6 @@ export const listItemSchema = z.strictObject({
 	listId: domainIdSchema,
 	itemId: domainIdSchema,
 	name: z.string(),
-	label: z.string().optional(),
 	amount: z.number().optional(),
 	unit: z.string().optional(),
 	note: z.string().optional(),
@@ -278,7 +281,6 @@ export const recipeItemSchema = z.strictObject({
 	recipeId: domainIdSchema,
 	itemId: domainIdSchema,
 	name: z.string(),
-	label: z.string().optional(),
 	amount: z.number().optional(),
 	unit: z.string().optional(),
 	note: z.string().optional(),
@@ -301,7 +303,6 @@ export const mealPlannerDayItemSchema = z.strictObject({
 	id: domainIdSchema,
 	itemId: domainIdSchema,
 	name: z.string(),
-	label: z.string().optional(),
 	amount: z.number().optional(),
 	unit: z.string().optional(),
 	note: z.string().optional(),

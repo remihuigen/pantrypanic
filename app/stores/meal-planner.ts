@@ -95,10 +95,18 @@ export const useMealPlannerStore = defineStore(
 			)
 
 			if (staleDayIds.length > 0) {
+				const staleItemIds = staleDayIds.flatMap(
+					(staleDayId) => mealPlannerDayItemIdsByDayId.value[staleDayId] ?? []
+				)
+
 				mealPlannerDaysById.value = omitRecordKeys(mealPlannerDaysById.value, staleDayIds)
 				mealPlannerDayItemIdsByDayId.value = omitRecordKeys(
 					mealPlannerDayItemIdsByDayId.value,
 					staleDayIds
+				)
+				mealPlannerDayItemsById.value = omitRecordKeys(
+					mealPlannerDayItemsById.value,
+					staleItemIds
 				)
 			}
 
@@ -228,7 +236,7 @@ export const useMealPlannerStore = defineStore(
 
 		async function addDayItem(
 			dayOfWeek: number,
-			input: { name: string; label?: string; amount?: number; unit?: string; note?: string }
+			input: { name: string; amount?: number; unit?: string; note?: string }
 		) {
 			error.value = null
 
@@ -240,7 +248,6 @@ export const useMealPlannerStore = defineStore(
 				id: tempItemId,
 				itemId: createTempId('item'),
 				name: input.name,
-				label: input.label,
 				amount: input.amount,
 				unit: input.unit,
 				note: input.note,
@@ -278,7 +285,6 @@ export const useMealPlannerStore = defineStore(
 			const snapshot = { ...existing }
 			mealPlannerDayItemsById.value[mealPlannerDayItemId] = {
 				...existing,
-				...(input.label === undefined ? {} : { label: input.label ?? undefined }),
 				...(input.amount === undefined ? {} : { amount: input.amount ?? undefined }),
 				...(input.unit === undefined ? {} : { unit: input.unit ?? undefined }),
 				...(input.note === undefined ? {} : { note: input.note ?? undefined })
@@ -410,7 +416,6 @@ export const useMealPlannerStore = defineStore(
 						listId,
 						itemId: item.itemId,
 						name: item.name,
-						label: item.label,
 						amount: item.amount,
 						unit: item.unit,
 						note: item.note,

@@ -89,6 +89,10 @@ export const useListsStore = defineStore(
 			}
 		})
 
+		function listById(listId: string) {
+			return listsById.value[listId] ?? null
+		}
+
 		function listItemsForList(listId: string) {
 			const ids = listItemIdsByListId.value[listId] ?? []
 
@@ -443,7 +447,6 @@ export const useListsStore = defineStore(
 				listId,
 				itemId: tempItemId,
 				name: input.name,
-				label: input.label,
 				amount: input.amount,
 				unit: input.unit,
 				note: input.note,
@@ -479,10 +482,7 @@ export const useListsStore = defineStore(
 
 			try {
 				const data = await apiFetch<{
-					listItem: Pick<
-						ListItem,
-						'id' | 'label' | 'amount' | 'unit' | 'note' | 'updatedAt'
-					>
+					listItem: Pick<ListItem, 'id' | 'amount' | 'unit' | 'note' | 'updatedAt'>
 				}>(`/api/list-items/${listItemId}`, {
 					method: 'PATCH',
 					body: input
@@ -722,7 +722,6 @@ export const useListsStore = defineStore(
 					listId,
 					itemId: recipeItem.itemId,
 					name: recipeItem.name,
-					label: recipeItem.label,
 					amount: recipeItem.amount,
 					unit: recipeItem.unit,
 					note: recipeItem.note,
@@ -864,6 +863,7 @@ export const useListsStore = defineStore(
 			error,
 			activeLists,
 			listSuggestions,
+			listById,
 			listItemsForList,
 			fetchLists,
 			createList,

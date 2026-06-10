@@ -15,10 +15,13 @@ Primary human source: `AGENTS.md`.
 
 - Keep UI logic in components/layouts and reusable behavior in composables.
 - Keep API boundary code in `server/api/*` and helper logic in `server/utils/*`.
-- Keep API routes folder-based by domain and segment; use `index.<method>.ts` for segment roots
-  such as `server/api/users/index.get.ts`, not `server/api/users.get.ts`.
+- Keep API routes folder-based by domain and segment; use `index.<method>.ts` for segment roots such
+  as `server/api/users/index.get.ts`, not `server/api/users.get.ts`.
 - Use Zod for boundary validation.
 - Prefer small scoped diffs.
+- For form submit API failures, show error feedback using toast notifications (`useToast`) instead
+  of inline error alerts inside the form body. Keep inline `UForm`/schema validation for field
+  validation errors.
 
 ## Validation Baseline
 

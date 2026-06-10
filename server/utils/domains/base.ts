@@ -28,6 +28,7 @@ export function serializeList(list: ListRow) {
 	return {
 		id: list.id,
 		name: list.name,
+		icon: optional(list.icon),
 		status: list.status,
 		position: list.position,
 		createdAt: list.createdAt,
@@ -63,7 +64,6 @@ export function serializeListItem(listItem: ListItemRow, item: ItemRow) {
 		listId: listItem.listId,
 		itemId: listItem.itemId,
 		name: item.name,
-		label: optional(listItem.label),
 		amount: optional(listItem.amount),
 		unit: optional(listItem.unit),
 		note: optional(listItem.note),
@@ -121,7 +121,6 @@ export function serializeRecipeItem(recipeItem: RecipeItemRow, item: ItemRow) {
 		recipeId: recipeItem.recipeId,
 		itemId: recipeItem.itemId,
 		name: item.name,
-		label: optional(recipeItem.label),
 		amount: optional(recipeItem.amount),
 		unit: optional(recipeItem.unit),
 		note: optional(recipeItem.note),
@@ -141,7 +140,6 @@ export function serializeMealPlannerDayItem(dayItem: MealPlannerDayItemRow, item
 		id: dayItem.id,
 		itemId: dayItem.itemId,
 		name: item.name,
-		label: optional(dayItem.label),
 		amount: optional(dayItem.amount),
 		unit: optional(dayItem.unit),
 		note: optional(dayItem.note),
@@ -392,7 +390,6 @@ export async function appendListItemsFromRows(options: {
 	userId: number
 	rows: Array<{
 		item: ItemRow
-		label: string | null
 		amount: number | null
 		unit: string | null
 		note: string | null
@@ -414,7 +411,6 @@ export async function appendListItemsFromRows(options: {
 				itemId: row.item.id,
 				status: 'unchecked',
 				position,
-				label: row.label,
 				amount: row.amount,
 				unit: row.unit,
 				note: row.note,

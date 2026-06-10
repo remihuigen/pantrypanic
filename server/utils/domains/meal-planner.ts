@@ -158,7 +158,6 @@ export async function addMealPlannerDayItem(
 			id: createDomainId(),
 			mealPlannerDayId: day.id,
 			itemId: item.id,
-			label: input.label ?? null,
 			amount: input.amount ?? null,
 			unit: input.unit ?? null,
 			note: input.note ?? null,
@@ -244,7 +243,6 @@ export async function addMealPlannerToList(listId: string, userId: number) {
 					userId,
 					rows: ingredients.map((row) => ({
 						item: row.item,
-						label: row.recipeItem.label,
 						amount: row.recipeItem.amount,
 						unit: row.recipeItem.unit,
 						note: row.recipeItem.note,
@@ -276,7 +274,6 @@ export async function addMealPlannerToList(listId: string, userId: number) {
 					userId,
 					rows: ingredients.map((row) => ({
 						item: row.item,
-						label: row.dayItem.label,
 						amount: row.dayItem.amount,
 						unit: row.dayItem.unit,
 						note: row.dayItem.note,
@@ -334,7 +331,6 @@ export async function updateMealPlannerDayItem(
 	const [row] = await db
 		.update(schema.mealPlannerDayItems)
 		.set({
-			...(input.label === undefined ? {} : { label: input.label }),
 			...(input.amount === undefined ? {} : { amount: input.amount }),
 			...(input.unit === undefined ? {} : { unit: input.unit }),
 			...(input.note === undefined ? {} : { note: input.note }),
