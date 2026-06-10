@@ -5,15 +5,17 @@ Pantry Panic is a publicly available, easy-to-host grocery list manager for your
 ## Why _another_ list manager app?
 
 The answer is quite simple: to make my wife stop complaining about whatever list app she is using at
-the moment. 
+the moment.
 
-List management apps tend to go one of two ways: either they are overengineered family
-planner apps, or they are simple checkbox apps with horrendous UX that lack the smart features
-that make grocery planning not suck. 
+List management apps tend to go one of two ways: either they are overengineered family planner apps,
+or they are simple checkbox apps with horrendous UX that lack the smart features that make grocery
+planning not suck.
 
-Pantry Panic tries to hit the sweet spot in between: we don't overindulge in complexity, but the app is smart enough to prevent repetitiveness. Due to it's local first strategy it feels super fast. 
+Pantry Panic tries to hit the sweet spot in between: we don't overindulge in complexity, but the app
+is smart enough to prevent repetitiveness. Due to it's local first strategy it feels super fast.
 
-Oh yeah — did I mention it's **free and self-hostable**? All you need is a (free) Cloudflare account.
+Oh yeah — did I mention it's **free and self-hostable**? All you need is a (free) Cloudflare
+account.
 
 ## Deploy Pantry Panic
 
@@ -53,6 +55,7 @@ NUXT_SESSION_PASSWORD=<hashing-secret>
 ADMIN_API_KEY=<admin-api-key>
 
 ADMIN_USER_EMAIL=<initial-user-email>
+# Choose a password with at least 8 characters
 ADMIN_USER_PASSWORD=<initial-user-password>
 ```
 
