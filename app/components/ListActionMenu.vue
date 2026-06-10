@@ -111,10 +111,8 @@ async function handleDeleteList(listId: string) {
 	}
 }
 
-const editListDrawer = useEditListDrawer()
-
 function openEditListDrawer() {
-	editListDrawer.open()
+	emit('editSettings', props.listId)
 }
 </script>
 
@@ -131,6 +129,5 @@ function openEditListDrawer() {
 				@click.stop
 			/>
 		</UDropdownMenu>
-		<EditListDrawer mode="edit" :list-id="props.listId" />
 	</div>
 </template>

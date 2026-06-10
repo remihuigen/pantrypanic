@@ -270,6 +270,31 @@ export async function clearShoppingList(listId: string, userId: number) {
 }
 
 /**
+ * Archives checked list items for a list.
+ *
+ * @param listId - List id.
+ * @param userId - Audit user id.
+ * @returns Number of archived checked items.
+ */
+export async function clearCheckedListItems(listId: string, userId: number) {
+	await findListOrThrow(listId)
+	const audit = createAudit(userId)
+	const rows = await db
+		.update(schema.listItems)
+		.set({
+			status: 'archived',
+			archivedAt: audit.now,
+			archivedByUserId: audit.userId,
+			updatedAt: audit.now,
+			updatedByUserId: audit.userId
+		})
+		.where(and(eq(schema.listItems.listId, listId), eq(schema.listItems.status, 'checked')))
+		.returning({ id: schema.listItems.id })
+
+	return { archivedCount: rows.length }
+}
+
+/**
  * Adds a manual item occurrence to a shopping list.
  *
  * @param listId - List id.

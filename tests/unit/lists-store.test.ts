@@ -471,6 +471,45 @@ describe('useListsStore', () => {
 		expect(store.listItemIdsByListId['list-1']).toEqual(['li-1'])
 	})
 
+	it('clears checked list items optimistically and rolls back on failure', async () => {
+		const store = useListsStore()
+		store.listItemsById.checked = createListItem({
+			id: 'checked',
+			listId: 'list-1',
+			status: 'checked'
+		})
+		store.listItemsById.unchecked = createListItem({
+			id: 'unchecked',
+			listId: 'list-1',
+			status: 'unchecked'
+		})
+		store.listItemIdsByListId['list-1'] = ['checked', 'unchecked']
+		vi.spyOn(apiClient, 'apiFetch')
+			.mockResolvedValueOnce({ archivedCount: 1 })
+			.mockRejectedValueOnce({ code: 'CONFLICT', message: 'Clear checked mislukt.' })
+
+		await expect(store.clearCheckedListItems('list-1')).resolves.toEqual({ archivedCount: 1 })
+		expect(apiClient.apiFetch).toHaveBeenCalledWith('/api/lists/list-1/clear-checked', {
+			method: 'POST'
+		})
+		expect(store.listItemsById.checked).toBeUndefined()
+		expect(store.listItemsById.unchecked).toBeDefined()
+		expect(store.listItemIdsByListId['list-1']).toEqual(['unchecked'])
+
+		store.listItemsById.checked = createListItem({
+			id: 'checked',
+			listId: 'list-1',
+			status: 'checked'
+		})
+		store.listItemIdsByListId['list-1'] = ['checked', 'unchecked']
+		await expect(store.clearCheckedListItems('list-1')).rejects.toEqual({
+			code: 'CONFLICT',
+			message: 'Clear checked mislukt.'
+		})
+		expect(store.listItemsById.checked).toBeDefined()
+		expect(store.listItemIdsByListId['list-1']).toEqual(['checked', 'unchecked'])
+	})
+
 	it('adds recipe items to a list optimistically, reconciles, and refreshes the list', async () => {
 		const listsStore = useListsStore()
 		const recipesStore = useRecipesStore()

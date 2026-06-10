@@ -101,7 +101,7 @@ onActivated(() => {
 				:id="editItemDrawerFormId"
 				:schema="editItemDrawerFormSchema"
 				:state="formState"
-				class="grid space-y-4"
+				class="grid min-h-[25rem] content-start gap-y-4"
 				:validate-on="['blur']"
 				@submit="handleSubmit"
 			>

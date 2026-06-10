@@ -10,6 +10,7 @@ const store = useListsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
 const editItemDrawer = useEditItemDrawer()
+const editListDrawer = useEditListDrawer()
 const list = computed(() => store.listById(id))
 const canDelete = computed(() => store.listCount > 0)
 
@@ -47,6 +48,10 @@ function openEditItemDrawer(listItemId: string) {
 		listItemId,
 		mode: 'edit'
 	})
+}
+
+function openEditListDrawer() {
+	editListDrawer.open()
 }
 
 async function refreshList() {
@@ -131,6 +136,21 @@ async function handleClearList() {
 	}
 }
 
+async function handleClearChecked() {
+	try {
+		await store.clearCheckedListItems(id)
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Afgeronde items konden niet worden verwijderd.'),
+			color: 'error',
+			duration: 8000,
+			icon: 'i-lucide-circle-alert'
+		})
+
+		await refreshList()
+	}
+}
+
 useGesture(
 	{
 		onDragEnd: ({ swipe: [swipeX] }) => {
@@ -159,7 +179,11 @@ useGesture(
 					<span class="truncate">{{ list?.name }}</span>
 				</span>
 				<template #tools>
-					<ListActionMenu :listId="id" :canDelete="canDelete" />
+					<ListActionMenu
+						:list-id="id"
+						:can-delete="canDelete"
+						@edit-settings="openEditListDrawer"
+					/>
 				</template>
 			</PageHeader>
 
@@ -167,10 +191,12 @@ useGesture(
 				:list-id="id"
 				:items="items"
 				@clear="handleClearList"
+				@clear-checked="handleClearChecked"
 				@edit="openEditItemDrawer"
 				@reorder="handleItemReorder"
 				@toggle-checked="handleToggleChecked"
 			/>
+			<EditListDrawer mode="edit" :list-id="id" />
 		</PageShell>
 	</div>
 </template>

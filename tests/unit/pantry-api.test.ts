@@ -10,6 +10,7 @@ import {
 	archiveRecipe,
 	archiveShoppingList,
 	checkListItem,
+	clearCheckedListItems,
 	clearMealPlanner,
 	clearShoppingList,
 	createItemSearchQuerySchema,
@@ -344,11 +345,12 @@ describe('pantry api domain helpers', () => {
 			)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-			.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
-			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-			.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
+				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+				.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
+				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+				.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([itemRow()]) as never)
@@ -378,6 +380,7 @@ describe('pantry api domain helpers', () => {
 				createUpdateBuilder([listRow({ status: 'deleted', deletedAt: 11 })]) as never
 			)
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'li-1' }, { id: 'li-2' }]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([{ id: 'li-1' }]) as never)
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'li-1', position: 0 }]) as never)
 			.mockReturnValueOnce(
 				createUpdateBuilder([listItemRow({ note: 'Two', updatedAt: 12 })]) as never
@@ -423,6 +426,7 @@ describe('pantry api domain helpers', () => {
 			list: { status: 'deleted' }
 		})
 		await expect(clearShoppingList('list-1', 1)).resolves.toEqual({ archivedCount: 2 })
+		await expect(clearCheckedListItems('list-1', 1)).resolves.toEqual({ archivedCount: 1 })
 		await expect(addListItem('list-1', { name: 'Milk' }, 1)).resolves.toMatchObject({
 			listItem: { id: 'created-item' }
 		})

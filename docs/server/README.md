@@ -105,6 +105,7 @@ Validation and runtime failures return:
 | `POST`  | `/api/lists/:listId/archive`                               | Soft-archive a list.                                                  |
 | `POST`  | `/api/lists/:listId/delete`                                | Soft-delete a list.                                                   |
 | `POST`  | `/api/lists/:listId/clear`                                 | Archive visible list items.                                           |
+| `POST`  | `/api/lists/:listId/clear-checked`                         | Archive checked list items.                                           |
 | `POST`  | `/api/lists/:listId/items`                                 | Add a manual item occurrence to a list.                               |
 | `POST`  | `/api/lists/:listId/items/reorder`                         | Reorder visible list items.                                           |
 | `PATCH` | `/api/list-items/:listItemId`                              | Update list assignment, item name, and occurrence metadata.           |
