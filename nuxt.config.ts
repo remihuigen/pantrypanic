@@ -13,6 +13,7 @@ export default defineNuxtConfig({
 
 	$production: {
 		nitro: {
+			preset: 'cloudflare_module',
 			cloudflare: {
 				wrangler: {
 					name: process.env.CLOUDFLARE_WORKER_NAME ?? 'pantrypanic',
