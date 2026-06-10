@@ -109,5 +109,13 @@ export default defineNuxtConfig({
 
 	image: {
 		provider: 'none'
+	},
+
+	nitro: {
+		cloudflare: {
+			wrangler: {
+				name: process.env.CLOUDFLARE_WORKER_NAME ?? 'pantrypanic'
+			}
+		}
 	}
 })

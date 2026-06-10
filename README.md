@@ -1,11 +1,76 @@
 # Pantry Panic
 
-Pantry Panic is a private, installable grocery list app for small households.
+Pantry Panic is a publicly available, easy-to-host grocery list manager for your household.
 
-The product goal, captured in [PLAN.md](./PLAN.md), is a fast mobile-first grocery list manager for
-two household users. The current codebase is still early in implementation: the frontend is mostly
-the Nuxt UI starter shell, while the backend now has authenticated user, blob, and Pantry Panic
-domain APIs.
+## Why _another_ list manager app...
+
+The answer is quite simple: to make my wife stop complaining about whatever list app she is using at
+the moment. List management apps tend to go one of two ways: either they are overengineered family
+planner apps, or they are simple checkbox apps (with horrendous UX) that lack the smart features
+that make grocery planning not suck. Pantry Panic tries to hit the sweet spot in between: we don't
+overindulge in complexity, but the app is smart enough to prevent repetitiveness.
+
+Oh yeah—and did I mention it's **free and self-hostable**? All you need is a (free) Cloudflare
+account.
+
+## Deploy Pantry Panic
+
+To deploy your own Pantry Panic instance to Cloudflare, follow the steps below. For details on local
+development see the [Development](#development) section.
+
+0. If you don't have a Cloudflare Account, [create one](https://dash.cloudflare.com/sign-up). The
+   free tier should be more than enough for small households.
+1. Create the required resources in the Cloudflare dashboard
+   - [ ] Create a D1 database, and write down the `database uuid` somewhere. If you are located in
+         the EU, it's sensible to opt-in to EU jurisdiction
+   - [ ] Create a new bucket in R2 Object Storage, and write down the `bucket name` somewhere.
+         Again: if you are located in the EU, it's sensible to opt-in to EU jurisdiction
+   - [ ] Create a new Workers KV instance, and write down the `namespace id` somewhere.
+2. In the Cloudflare dashboard, navigate to your Account Api Tokens, and create a new token with
+   `read and write` permissions for Worker related resources. Make sure to write down the Api token
+   and secrets somewhere, as they will not be shown again.
+3. Write down your Cloudflare Account ID. You can find it in the dashboard url
+   `https://dash.cloudflare.com/<account-id>`
+4. Fork this repository
+5. Generate a _hashing secret_ and _admin API key_ with `openssl rand -hex 32`
+6. In your Github repository, go to Settings and add these secrets and variables under `Actions`
+
+```
+# Repository variables
+CLOUDFLARE_WORKER_NAME=<worker-name> # Defaults to `pantrypanic`
+
+# Repository Secrets
+CLOUDFLARE_DATABASE_ID=<database-id>
+CLOUDFLARE_CACHE_NAMESPACE_ID=<namespace-id>
+CLOUDFLARE_R2_BUCKET=<bucket-name>
+CLOUDFLARE_API_TOKEN=<api-token>
+CLOUDFLARE_ACCOUNT_ID=<account-id>
+
+NUXT_PUBLIC_SITE_URL=<instance-url> # Will become available after initial deploy
+NUXT_SESSION_PASSWORD=<hashing-secret>
+ADMIN_API_KEY=<admin-api-key>
+
+ADMIN_USER_EMAIL=<initial-user-email>
+ADMIN_USER_PASSWORD=<initial-user-password>
+```
+
+7. Navigate to Github Action, and manually dispatch the Deploy Action. A new Cloudflare Worker will
+   be provisioned, with the resource bindings attached.
+8. Once deployment is finished A) Using a custom domain? Follow the Cloudflare documentation to
+   [configure your custom domain DNS](https://developers.cloudflare.com/dns/). Then navigate to your
+   newly created worker, and attach the custom domain. B) otherwise find the `workers.dev` URL in
+   the Cloudflare dashboard, or in the Github Action Deployments logs
+9. Navigate back to Github Action Secrets, and update `NUXT_PUBLIC_SITE_URL`
+10. Trigger a manual redeploy
+
+Now you can navigate to the `workers.dev` URL or your custom domain to access your Pantry Panic
+instance, and log in with the user credentials you provided at step 6.
+
+### Deploying the latest version of Pantry Panic
+
+At this moment Pantry Panic does not have official releases. To deploy the latest version of the
+project, simply sync your fork. If new commits are detected, your Worker will automatically
+redeploy.
 
 ## Current State
 
@@ -18,9 +83,11 @@ Implemented:
 - Pantry Panic domain tables for lists, items, recipes, list items, and meal planner data.
 - User CRUD API routes under `/api/users`.
 - Blob storage API routes under `/api/blobs`.
-- Pantry Panic domain API routes for lists, list items, items, recipes, recipe items, and meal planner workflows.
+- Pantry Panic domain API routes for lists, list items, items, recipes, recipe items, and meal
+  planner workflows.
 - Public safe raster image serving under `/images/**`.
-- Build-time HTTP admin-user seed from `ADMIN_USER_EMAIL`, `ADMIN_USER_PASSWORD`, `ADMIN_API_KEY`, and `NUXT_PUBLIC_SITE_URL`.
+- Build-time HTTP admin-user seed from `ADMIN_USER_EMAIL`, `ADMIN_USER_PASSWORD`, `ADMIN_API_KEY`,
+  and `NUXT_PUBLIC_SITE_URL`.
 
 Not implemented yet:
 
@@ -127,8 +194,8 @@ The build runs a Nuxt `build:done` hook that seeds the initial admin user by cal
 remote instance. If the configured email already exists, the seed is skipped. If the configured
 instance is unreachable during build, the seed logs a warning and skips without failing the build.
 
-Production deployment runs through `.github/workflows/deploy.yml`: it builds for Cloudflare,
-applies D1 migrations with Wrangler, deploys the Worker, then runs the HTTP admin seed.
+Production deployment runs through `.github/workflows/deploy.yml`: it builds for Cloudflare, applies
+D1 migrations with Wrangler, deploys the Worker, then runs the HTTP admin seed.
 
 ## API Snapshot
 
@@ -178,10 +245,9 @@ Domain routes:
 - `POST /api/meal-planner/day-items/:mealPlannerDayItemId/delete`
 
 New Pantry Panic domain endpoints return `{ success: true, data }` on success and
-`{ success: false, error }` on errors. API responses for users omit `password`. Server API and
-image routes require either a user session or `x-api-token: ADMIN_API_KEY`, except
-`/api/auth/login` and `/api/_auth/session`. Fine-grained authorization and permissions are
-deliberately deferred.
+`{ success: false, error }` on errors. API responses for users omit `password`. Server API and image
+routes require either a user session or `x-api-token: ADMIN_API_KEY`, except `/api/auth/login` and
+`/api/_auth/session`. Fine-grained authorization and permissions are deliberately deferred.
 
 Short-lived API caching is enabled for expensive/polled domain reads: lists, list detail, item
 search/suggestions, recipes, recipe detail, and meal planner. These routes use Nitro cached event
