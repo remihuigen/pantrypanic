@@ -18,6 +18,12 @@ export type RecipeItemRow = typeof schema.recipeItems.$inferSelect
 export type MealPlannerDayRow = typeof schema.mealPlannerDays.$inferSelect
 export type MealPlannerDayItemRow = typeof schema.mealPlannerDayItems.$inferSelect
 
+/**
+ * Converts a list row to API response shape.
+ *
+ * @param list - Persisted list row.
+ * @returns Public list payload.
+ */
 export function serializeList(list: ListRow) {
 	return {
 		id: list.id,
@@ -29,6 +35,12 @@ export function serializeList(list: ListRow) {
 	}
 }
 
+/**
+ * Converts an item row to API response shape.
+ *
+ * @param item - Persisted item row.
+ * @returns Public item payload.
+ */
 export function serializeItem(item: ItemRow) {
 	return {
 		id: item.id,
@@ -38,6 +50,13 @@ export function serializeItem(item: ItemRow) {
 	}
 }
 
+/**
+ * Combines list-item and item rows into API response shape.
+ *
+ * @param listItem - Persisted list-item row.
+ * @param item - Persisted canonical item row.
+ * @returns Public list-item payload.
+ */
 export function serializeListItem(listItem: ListItemRow, item: ItemRow) {
 	return {
 		id: listItem.id,
@@ -54,6 +73,12 @@ export function serializeListItem(listItem: ListItemRow, item: ItemRow) {
 	}
 }
 
+/**
+ * Converts a recipe row into list/summary payload.
+ *
+ * @param recipe - Persisted recipe row.
+ * @returns Recipe summary payload.
+ */
 export function serializeRecipeSummary(recipe: RecipeRow) {
 	return {
 		id: recipe.id,
@@ -65,6 +90,12 @@ export function serializeRecipeSummary(recipe: RecipeRow) {
 	}
 }
 
+/**
+ * Converts a recipe row into detail payload.
+ *
+ * @param recipe - Persisted recipe row.
+ * @returns Recipe detail payload.
+ */
 export function serializeRecipeDetail(recipe: RecipeRow) {
 	return {
 		id: recipe.id,
@@ -77,6 +108,13 @@ export function serializeRecipeDetail(recipe: RecipeRow) {
 	}
 }
 
+/**
+ * Combines recipe-item and item rows into API response shape.
+ *
+ * @param recipeItem - Persisted recipe-item row.
+ * @param item - Persisted canonical item row.
+ * @returns Public recipe-item payload.
+ */
 export function serializeRecipeItem(recipeItem: RecipeItemRow, item: ItemRow) {
 	return {
 		id: recipeItem.id,
@@ -91,6 +129,13 @@ export function serializeRecipeItem(recipeItem: RecipeItemRow, item: ItemRow) {
 	}
 }
 
+/**
+ * Combines meal-planner-day-item and item rows into API response shape.
+ *
+ * @param dayItem - Persisted meal-planner-day-item row.
+ * @param item - Persisted canonical item row.
+ * @returns Public meal-planner-day-item payload.
+ */
 export function serializeMealPlannerDayItem(dayItem: MealPlannerDayItemRow, item: ItemRow) {
 	return {
 		id: dayItem.id,
@@ -104,6 +149,12 @@ export function serializeMealPlannerDayItem(dayItem: MealPlannerDayItemRow, item
 	}
 }
 
+/**
+ * Creates audit metadata for mutations.
+ *
+ * @param userId - Acting user id.
+ * @returns Audit metadata with timestamp.
+ */
 export function createAudit(userId: number): Audit {
 	return {
 		userId,
@@ -111,6 +162,12 @@ export function createAudit(userId: number): Audit {
 	}
 }
 
+/**
+ * Builds common created/updated columns from audit metadata.
+ *
+ * @param audit - Audit metadata.
+ * @returns Shared mutation columns.
+ */
 export function auditFields(audit: Audit) {
 	return {
 		createdAt: audit.now,
@@ -120,6 +177,12 @@ export function auditFields(audit: Audit) {
 	}
 }
 
+/**
+ * Loads a non-deleted list or throws 404-style API error.
+ *
+ * @param listId - List id.
+ * @returns Existing list row.
+ */
 export async function findListOrThrow(listId: string) {
 	const [list] = await db
 		.select()
@@ -130,6 +193,12 @@ export async function findListOrThrow(listId: string) {
 	return assertFound(list)
 }
 
+/**
+ * Loads a non-deleted list item or throws 404-style API error.
+ *
+ * @param listItemId - List item id.
+ * @returns Existing list-item row.
+ */
 export async function findListItemOrThrow(listItemId: string) {
 	const [listItem] = await db
 		.select()
@@ -140,6 +209,12 @@ export async function findListItemOrThrow(listItemId: string) {
 	return assertFound(listItem)
 }
 
+/**
+ * Loads a non-deleted recipe or throws 404-style API error.
+ *
+ * @param recipeId - Recipe id.
+ * @returns Existing recipe row.
+ */
 export async function findRecipeOrThrow(recipeId: string) {
 	const [recipe] = await db
 		.select()
@@ -150,6 +225,12 @@ export async function findRecipeOrThrow(recipeId: string) {
 	return assertFound(recipe)
 }
 
+/**
+ * Loads a recipe item or throws 404-style API error.
+ *
+ * @param recipeItemId - Recipe item id.
+ * @returns Existing recipe-item row.
+ */
 export async function findRecipeItemOrThrow(recipeItemId: string) {
 	const [recipeItem] = await db
 		.select()
@@ -160,6 +241,12 @@ export async function findRecipeItemOrThrow(recipeItemId: string) {
 	return assertFound(recipeItem)
 }
 
+/**
+ * Loads a meal-planner day by weekday number or throws 404-style API error.
+ *
+ * @param dayOfWeek - Weekday number.
+ * @returns Existing meal-planner-day row.
+ */
 export async function findMealPlannerDayOrThrow(dayOfWeek: number) {
 	const [day] = await db
 		.select()
@@ -170,6 +257,12 @@ export async function findMealPlannerDayOrThrow(dayOfWeek: number) {
 	return assertFound(day)
 }
 
+/**
+ * Loads a meal-planner-day item or throws 404-style API error.
+ *
+ * @param mealPlannerDayItemId - Meal-planner-day item id.
+ * @returns Existing meal-planner-day-item row.
+ */
 export async function findMealPlannerDayItemOrThrow(mealPlannerDayItemId: string) {
 	const [dayItem] = await db
 		.select()
@@ -180,6 +273,11 @@ export async function findMealPlannerDayItemOrThrow(mealPlannerDayItemId: string
 	return assertFound(dayItem)
 }
 
+/**
+ * Calculates the next position for active lists.
+ *
+ * @returns Next zero-based list position.
+ */
 export async function getNextListPosition() {
 	const [last] = await db
 		.select({ position: schema.lists.position })
@@ -191,6 +289,12 @@ export async function getNextListPosition() {
 	return (last?.position ?? -1) + 1
 }
 
+/**
+ * Calculates the next position for visible list items.
+ *
+ * @param listId - Parent list id.
+ * @returns Next zero-based list-item position.
+ */
 export async function getNextListItemPosition(listId: string) {
 	const [last] = await db
 		.select({ position: schema.listItems.position })
@@ -207,6 +311,12 @@ export async function getNextListItemPosition(listId: string) {
 	return (last?.position ?? -1) + 1
 }
 
+/**
+ * Calculates the next position for recipe items.
+ *
+ * @param recipeId - Parent recipe id.
+ * @returns Next zero-based recipe-item position.
+ */
 export async function getNextRecipeItemPosition(recipeId: string) {
 	const [last] = await db
 		.select({ position: schema.recipeItems.position })
@@ -218,6 +328,12 @@ export async function getNextRecipeItemPosition(recipeId: string) {
 	return (last?.position ?? -1) + 1
 }
 
+/**
+ * Calculates the next position for meal-planner-day items.
+ *
+ * @param mealPlannerDayId - Parent meal-planner-day id.
+ * @returns Next zero-based day-item position.
+ */
 export async function getNextMealPlannerDayItemPosition(mealPlannerDayId: string) {
 	const [last] = await db
 		.select({ position: schema.mealPlannerDayItems.position })
@@ -229,6 +345,12 @@ export async function getNextMealPlannerDayItemPosition(mealPlannerDayId: string
 	return (last?.position ?? -1) + 1
 }
 
+/**
+ * Returns ordered recipe items with joined canonical item rows.
+ *
+ * @param recipeId - Recipe id.
+ * @returns Serialized recipe items.
+ */
 export async function getRecipeItems(recipeId: string) {
 	const rows = await db
 		.select({
@@ -243,6 +365,11 @@ export async function getRecipeItems(recipeId: string) {
 	return rows.map((row) => serializeRecipeItem(row.recipeItem, row.item))
 }
 
+/**
+ * Returns meal-planner days ordered by configured weekday sequence.
+ *
+ * @returns Existing meal-planner-day rows.
+ */
 export async function getMealPlannerDays() {
 	const rows = await db
 		.select()
@@ -254,6 +381,12 @@ export async function getMealPlannerDays() {
 		.filter((day): day is MealPlannerDayRow => Boolean(day))
 }
 
+/**
+ * Appends one or more rows to a shopping list using source metadata.
+ *
+ * @param options - Parent list, actor, and row payloads to append.
+ * @returns Added list-item summaries.
+ */
 export async function appendListItemsFromRows(options: {
 	listId: string
 	userId: number
@@ -312,6 +445,13 @@ export async function appendListItemsFromRows(options: {
 	return added
 }
 
+/**
+ * Asserts a row exists or throws a not-found API error.
+ *
+ * @template T - Row type.
+ * @param row - Row candidate.
+ * @returns Existing row.
+ */
 export function assertFound<T>(row: T | undefined): T {
 	if (!row) {
 		throwNotFound()
@@ -320,6 +460,13 @@ export function assertFound<T>(row: T | undefined): T {
 	return row
 }
 
+/**
+ * Asserts a row exists or throws an internal API error.
+ *
+ * @template T - Row type.
+ * @param row - Row candidate.
+ * @returns Existing row.
+ */
 export function assertRow<T>(row: T | undefined): T {
 	if (!row) {
 		throwApiError({
@@ -332,6 +479,11 @@ export function assertRow<T>(row: T | undefined): T {
 	return row
 }
 
+/**
+ * Throws the shared domain not-found API error.
+ *
+ * @throws API error with 404 status.
+ */
 export function throwNotFound(): never {
 	throwApiError({
 		code: 'NOT_FOUND',
