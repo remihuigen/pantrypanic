@@ -15,7 +15,6 @@ const emit = defineEmits<{
 const gestureTarget = useTemplateRef<HTMLElement>('gestureTarget')
 const ignoreNextClick = shallowRef(false)
 
-const isChecked = computed(() => props.item.status === 'checked')
 const amountLabel = computed(() =>
 	[props.item.amount, props.item.unit]
 		.filter((value) => value !== undefined && String(value).trim().length > 0)

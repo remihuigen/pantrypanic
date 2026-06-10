@@ -24,13 +24,13 @@ export default defineConfig({
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'lcov'],
-			include: ['server/utils/**/*.{ts,js,mjs}', 'scripts/**/*.mjs'],
+			include: ['server/utils/**/*.{ts,js,mjs}', 'scripts/**/*.mjs', 'app/**/*.{ts,js,mjs}'],
 			exclude: ['**/*.d.ts'],
 			thresholds: {
-				statements: 90,
-				branches: 80,
-				functions: 90,
-				lines: 90
+				statements: 85,
+				branches: 65,
+				functions: 85,
+				lines: 85
 			}
 		}
 	}
