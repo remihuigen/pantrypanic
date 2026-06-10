@@ -26,7 +26,6 @@ development, see the [Development](#development) section.
    - [ ] Create a new bucket in R2 Object Storage, and write down the `bucket name` somewhere.
          Again, if you are located in the EU, it's sensible to opt in to EU jurisdiction.
    - [ ] Create a new Workers KV instance, and write down the `namespace ID` somewhere.
-
 2. In the Cloudflare dashboard, navigate to your Account API Tokens and create a new token with
    `read and write` permissions for Worker-related resources. Make sure to write down the API token
    and secrets somewhere, as they will not be shown again.

@@ -1,5 +1,3 @@
-<!-- eslint-disable -->
-
 - [x] add app layout
 - [x] add brand assets
 - [x] integrate logo into login

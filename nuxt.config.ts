@@ -11,21 +11,6 @@ export default defineNuxtConfig({
 		'@vueuse/nuxt'
 	],
 
-	$production: {
-		hub: {
-			// R2 bucket (binding defaults to 'BLOB')
-			blob: {
-				driver: 'cloudflare-r2',
-				bucketName: process.env.CLOUDFLARE_R2_BUCKET,
-				binding: 'BLOB'
-			}
-		},
-
-		image: {
-			provider: 'cloudflare'
-		}
-	},
-
 	devtools: {
 		enabled: true
 	},
@@ -58,27 +43,49 @@ export default defineNuxtConfig({
 
 	hub: {
 		// D1 database
-		db: {
-			dialect: 'sqlite',
-			driver: process.env.NODE_ENV !== 'development' ? 'd1' : undefined,
-			applyMigrationsDuringBuild: process.env.NODE_ENV !== 'development' ? false : undefined,
-			connection:
-				process.env.NODE_ENV !== 'development'
-					? { databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID }
-					: undefined
-		},
+		db: 'sqlite',
 		// Cache KV namespace (binding defaults to 'CACHE')
-		cache:
-			process.env.NODE_ENV !== 'development'
-				? {
-						driver: 'cloudflare-kv-binding',
-						namespaceId: process.env.CLOUDFLARE_CACHE_NAMESPACE_ID
-					}
-				: undefined,
+		cache: true,
 		// Local blob storage for development
 		blob: {
 			driver: 'fs',
 			dir: '.data/blob'
+		}
+	},
+
+	$production: {
+		nitro: {
+			cloudflare: {
+				wrangler: {
+					name: process.env.CLOUDFLARE_WORKER_NAME ?? 'pantrypanic'
+				}
+			}
+		},
+		hub: {
+			// D1 Database (binding defaults to 'DB')
+			db: {
+				dialect: 'sqlite',
+				driver: 'd1',
+				applyMigrationsDuringBuild: false,
+				connection: { databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID }
+			},
+
+			// KV Storage (binding defaults to 'CACHE')
+			cache: {
+				driver: 'cloudflare-kv-binding',
+				namespaceId: process.env.CLOUDFLARE_CACHE_NAMESPACE_ID
+			},
+
+			// R2 bucket (binding defaults to 'BLOB')
+			blob: {
+				driver: 'cloudflare-r2',
+				bucketName: process.env.CLOUDFLARE_R2_BUCKET,
+				binding: 'BLOB'
+			}
+		},
+
+		image: {
+			provider: 'cloudflare'
 		}
 	},
 
@@ -109,13 +116,5 @@ export default defineNuxtConfig({
 
 	image: {
 		provider: 'none'
-	},
-
-	nitro: {
-		cloudflare: {
-			wrangler: {
-				name: process.env.CLOUDFLARE_WORKER_NAME ?? 'pantrypanic'
-			}
-		}
 	}
 })

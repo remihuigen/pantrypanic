@@ -118,7 +118,8 @@ export default withNuxt(
 	{
 		files: ['**/*.md'],
 		rules: {
-			'no-irregular-whitespace': 'off'
+			'no-irregular-whitespace': 'off',
+			'markdown/no-missing-label-refs': 'off'
 		}
 	},
 	// Markdown JS blocks
