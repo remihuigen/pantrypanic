@@ -4,11 +4,6 @@ const props = defineProps<{
 	canDelete: boolean
 }>()
 
-const emit = defineEmits<{
-	delete: [listId: string]
-	editSettings: [listId: string]
-}>()
-
 const listsStore = useListsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
