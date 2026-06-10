@@ -16,7 +16,7 @@ account.
 ## Deploy Pantry Panic
 
 To deploy your own Pantry Panic instance to Cloudflare, follow the steps below. For details on local
-development, see the [Development](#development) section.
+development, see the [Local Setup](#local-setup) section.
 
 0. If you don't have a Cloudflare account, [create one](https://dash.cloudflare.com/sign-up). The
    free tier should be more than enough for small households.
@@ -38,6 +38,7 @@ development, see the [Development](#development) section.
 ```text
 # Repository variables
 CLOUDFLARE_WORKER_NAME=<worker-name> # Defaults to `pantrypanic`
+NUXT_PUBLIC_SITE_URL=<instance-url> # Will become available after the initial deployment
 
 # Repository secrets
 CLOUDFLARE_DATABASE_ID=<database-id>
@@ -46,7 +47,6 @@ CLOUDFLARE_R2_BUCKET=<bucket-name>
 CLOUDFLARE_API_TOKEN=<api-token>
 CLOUDFLARE_ACCOUNT_ID=<account-id>
 
-NUXT_PUBLIC_SITE_URL=<instance-url> # Will become available after the initial deployment
 NUXT_SESSION_PASSWORD=<hashing-secret>
 ADMIN_API_KEY=<admin-api-key>
 
