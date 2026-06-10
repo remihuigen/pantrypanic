@@ -1,21 +1,35 @@
-import { db, schema } from 'hub:db'
+import type { H3Event } from 'h3'
+
+import { seedInitialDomainData } from '#server/utils/domains/seed'
 import { and, asc, eq, ne } from 'drizzle-orm'
 import { createError } from 'h3'
+import { db, schema } from 'hub:db'
 import { z } from 'zod'
-
-import { hashUserPassword } from './password-hashing'
 
 const userIdSchema = z.coerce.number().int().positive()
 
 const userEmailSchema = z.email().trim().toLowerCase()
 
-export const userListQuerySchema = z.object({
-	limit: z
-		.preprocess(firstQueryValue, z.coerce.number().int().min(1).max(100).default(50)),
-	offset: z
-		.preprocess(firstQueryValue, z.coerce.number().int().min(0).default(0)),
-	email: z.preprocess(firstQueryValue, userEmailSchema.optional())
-})
+/**
+ * Creates the user-list query schema with runtime-configured pagination defaults.
+ *
+ * @param event - Optional request event used to read runtime config.
+ * @returns Zod schema for user list query strings.
+ */
+export function createUserListQuerySchema(event?: H3Event) {
+	const { pantry } = useRuntimeConfig(event)
+	const defaultLimit = pantry.defaultUserListLimit
+	const maxLimit = pantry.maxUserListLimit
+
+	return z.object({
+		limit: z.preprocess(
+			firstQueryValue,
+			z.coerce.number().int().min(1).max(maxLimit).default(defaultLimit)
+		),
+		offset: z.preprocess(firstQueryValue, z.coerce.number().int().min(0).default(0)),
+		email: z.preprocess(firstQueryValue, userEmailSchema.optional())
+	})
+}
 
 export const createUserBodySchema = z.strictObject({
 	name: z.string().trim().min(1).max(120),
@@ -29,9 +43,13 @@ export const updateUserBodySchema = z
 		email: userEmailSchema.optional(),
 		password: z.string().min(1).max(1024).optional()
 	})
-	.refine(value => value.name !== undefined || value.email !== undefined || value.password !== undefined, {
-		error: 'At least one user field must be provided'
-	})
+	.refine(
+		(value) =>
+			value.name !== undefined || value.email !== undefined || value.password !== undefined,
+		{
+			error: 'At least one user field must be provided'
+		}
+	)
 
 type UserRow = typeof schema.users.$inferSelect
 
@@ -91,7 +109,7 @@ export function parseUserQuery<T>(schema: z.ZodType<T>, query: unknown, message:
  * @param options - Pagination and filter options.
  * @returns Public user records.
  */
-export async function listUsers(options: { limit: number, offset: number, email?: string }) {
+export async function listUsers(options: { limit: number; offset: number; email?: string }) {
 	const rows = await db
 		.select()
 		.from(schema.users)
@@ -121,7 +139,11 @@ export async function getUserById(userId: number) {
 		})
 	}
 
-	return serializeUser(assertReturnedUser(user))
+	const createdUser = assertReturnedUser(user)
+
+	await seedInitialDomainData(createdUser.id)
+
+	return serializeUser(createdUser)
 }
 
 /**
@@ -133,7 +155,7 @@ export async function getUserById(userId: number) {
  */
 export async function createUser(input: z.infer<typeof createUserBodySchema>) {
 	await assertEmailAvailable(input.email)
-	const hashedPassword = await hashUserPassword(input.password)
+	const hashedPassword = await hashPassword(input.password)
 
 	const [user] = await db
 		.insert(schema.users)
@@ -177,7 +199,9 @@ export async function updateUser(userId: number, input: z.infer<typeof updateUse
 		.set({
 			...(input.name !== undefined ? { name: input.name } : {}),
 			...(input.email !== undefined ? { email: input.email } : {}),
-			...(input.password !== undefined ? { password: await hashUserPassword(input.password) } : {})
+			...(input.password !== undefined
+				? { password: await hashPassword(input.password) }
+				: {})
 		})
 		.where(eq(schema.users.id, userId))
 		.returning()
@@ -192,10 +216,7 @@ export async function updateUser(userId: number, input: z.infer<typeof updateUse
  * @throws HTTP 404 when the user does not exist.
  */
 export async function deleteUser(userId: number) {
-	const [user] = await db
-		.delete(schema.users)
-		.where(eq(schema.users.id, userId))
-		.returning()
+	const [user] = await db.delete(schema.users).where(eq(schema.users.id, userId)).returning()
 
 	if (!user) {
 		throw createError({
@@ -229,18 +250,11 @@ export async function findUserForAuthentication(email: string) {
  * @param passwordHash - PHC-formatted scrypt password hash.
  */
 export async function updateUserPasswordHash(userId: number, passwordHash: string) {
-	await db
-		.update(schema.users)
-		.set({ password: passwordHash })
-		.where(eq(schema.users.id, userId))
+	await db.update(schema.users).set({ password: passwordHash }).where(eq(schema.users.id, userId))
 }
 
 async function findUserById(userId: number) {
-	const [user] = await db
-		.select()
-		.from(schema.users)
-		.where(eq(schema.users.id, userId))
-		.limit(1)
+	const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1)
 
 	return user
 }

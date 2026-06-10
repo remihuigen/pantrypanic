@@ -21,6 +21,8 @@ Operational contract for AI coding agents working in this repository.
 
 - You SHOULD keep presentational concerns in components and reusable logic in composables.
 - You SHOULD keep route handlers in `server/api/*` and helper logic in `server/utils/*`.
+- You SHOULD keep API routes folder-based by domain and route segment, using `index.<method>.ts`
+  for segment roots such as `server/api/users/index.get.ts` instead of `server/api/users.get.ts`.
 - You SHOULD use Zod for boundary validation.
 - You SHOULD prefer small, scoped changes following existing patterns.
 

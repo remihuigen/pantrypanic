@@ -1,4 +1,6 @@
-import type { BlobEnsureOptions, BlobPutOptions, BlobSize } from '@nuxthub/core/blob'
+import type { BlobEnsureOptions, BlobPutOptions, BlobSize, BlobType } from '@nuxthub/core/blob'
+import type { H3Event } from 'h3'
+
 import { ensureBlob } from '@nuxthub/blob'
 import { createError } from 'h3'
 import { z } from 'zod'
@@ -43,16 +45,11 @@ const blobSizeSchema = z.enum([
 
 const queryBooleanSchema = z
 	.preprocess(firstQueryValue, z.enum(['true', 'false', '1', '0']).default('false'))
-	.transform(value => value === 'true' || value === '1')
+	.transform((value) => value === 'true' || value === '1')
 
 const optionalQueryStringSchema = z.preprocess(
 	firstQueryValue,
-	z
-		.string()
-		.trim()
-		.min(1)
-		.max(MAX_PATHNAME_LENGTH)
-		.optional()
+	z.string().trim().min(1).max(MAX_PATHNAME_LENGTH).optional()
 )
 
 const blobPathnameSchema = z
@@ -60,48 +57,74 @@ const blobPathnameSchema = z
 	.trim()
 	.min(1)
 	.max(MAX_PATHNAME_LENGTH)
-	.refine(value => !value.startsWith('/') && !value.startsWith('\\'), {
+	.refine((value) => !value.startsWith('/') && !value.startsWith('\\'), {
 		error: 'Pathname must be relative'
 	})
-	.refine(value => !value.includes('\\'), {
+	.refine((value) => !value.includes('\\'), {
 		error: 'Pathname cannot contain backslashes'
 	})
-	.refine(value => !hasControlCharacter(value), {
+	.refine((value) => !hasControlCharacter(value), {
 		error: 'Pathname cannot contain control characters'
 	})
 	.refine(
-		value =>
+		(value) =>
 			value
 				.split('/')
-				.every(segment => segment.length > 0 && segment !== '.' && segment !== '..'),
+				.every((segment) => segment.length > 0 && segment !== '.' && segment !== '..'),
 		{ error: 'Pathname cannot contain empty, current, or parent segments' }
 	)
 
 const blobPrefixSchema = blobPathnameSchema.optional()
 
-export const managedBlobEnsureOptions = {
-	maxSize: '32MB',
-	types: [
-		'image/jpeg',
-		'image/png',
-		'image/webp',
-		'image/gif',
-		'image/avif',
-		'video',
-		'audio',
-		'pdf',
-		'text',
-		'application/json'
-	]
-} satisfies BlobEnsureOptions
+const managedBlobContentTypes: BlobType[] = [
+	'image/jpeg',
+	'image/png',
+	'image/webp',
+	'image/gif',
+	'image/avif',
+	'video',
+	'audio',
+	'pdf',
+	'text',
+	'application/json'
+]
 
-export const blobListQuerySchema = z.object({
-	limit: z
-		.preprocess(firstQueryValue, z.coerce.number().int().min(1).max(1000).default(100)),
-	prefix: optionalQueryStringSchema.pipe(blobPrefixSchema),
-	cursor: optionalQueryStringSchema,
-	folded: queryBooleanSchema
-})
+/**
+ * Creates shared blob validation options with the configured max upload size.
+ *
+ * @param event - Optional request event used to read runtime config.
+ * @returns NuxtHub blob validation options.
+ */
+export function createManagedBlobEnsureOptions(event?: H3Event): BlobEnsureOptions {
+	const maxSize = useRuntimeConfig(event).pantry.managedBlobMaxUploadSize as BlobSize
+
+	return {
+		maxSize,
+		types: managedBlobContentTypes
+	}
+}
+
+/**
+ * Creates the blob-list query schema with runtime-configured pagination limits.
+ *
+ * @param event - Optional request event used to read runtime config.
+ * @returns Zod schema for blob list query strings.
+ */
+export function createBlobListQuerySchema(event?: H3Event) {
+	const { pantry } = useRuntimeConfig(event)
+	const defaultLimit = pantry.defaultBlobListLimit
+	const maxLimit = pantry.maxBlobListLimit
+
+	return z.object({
+		limit: z.preprocess(
+			firstQueryValue,
+			z.coerce.number().int().min(1).max(maxLimit).default(defaultLimit)
+		),
+		prefix: optionalQueryStringSchema.pipe(blobPrefixSchema),
+		cursor: optionalQueryStringSchema,
+		folded: queryBooleanSchema
+	})
+}
 
 export const blobUploadQuerySchema = z.object({
 	formKey: optionalQueryStringSchema.default('files'),
@@ -138,10 +161,11 @@ export function assertBlobPathname(value: unknown): string {
  * Enforces the shared API upload rules before storage writes.
  *
  * @param file - Blob or File value submitted through the API.
+ * @param event - Optional request event used to read runtime config.
  * @throws HTTP 400 when the file does not match size or type constraints.
  */
-export function assertManagedBlob(file: Blob): void {
-	ensureBlob(file, managedBlobEnsureOptions)
+export function assertManagedBlob(file: Blob, event?: H3Event): void {
+	ensureBlob(file, createManagedBlobEnsureOptions(event))
 }
 
 /**
@@ -174,7 +198,10 @@ export function assertManagedContentType(contentType: string | undefined): strin
 export function assertPublicImageContentType(contentType: string | undefined): void {
 	const normalized = contentType?.split(';')[0]?.trim().toLowerCase()
 
-	if (!normalized || !['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(normalized)) {
+	if (
+		!normalized ||
+		!['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(normalized)
+	) {
 		throw createError({
 			statusCode: 415,
 			statusMessage: 'Unsupported Media Type',
@@ -191,7 +218,7 @@ export function assertPublicImageContentType(contentType: string | undefined): v
  * @returns The original content length header when valid.
  * @throws HTTP 411, 400, or 413 for missing, invalid, or oversized bodies.
  */
-export function assertContentLength(value: string | undefined, maxSize: BlobSize = managedBlobEnsureOptions.maxSize): string {
+export function assertContentLength(value: string | undefined, maxSize?: BlobSize): string {
 	if (!value) {
 		throw createError({
 			statusCode: 411,
@@ -210,13 +237,16 @@ export function assertContentLength(value: string | undefined, maxSize: BlobSize
 		})
 	}
 
-	const maxBytes = blobSizeToBytes(maxSize)
+	const resolvedMaxSize = (maxSize ??
+		useRuntimeConfig().pantry.managedBlobMaxUploadSize) as BlobSize
+
+	const maxBytes = blobSizeToBytes(resolvedMaxSize)
 
 	if (contentLength > maxBytes) {
 		throw createError({
 			statusCode: 413,
 			statusMessage: 'Payload Too Large',
-			message: `Blob uploads must be ${maxSize} or smaller.`
+			message: `Blob uploads must be ${resolvedMaxSize} or smaller.`
 		})
 	}
 
@@ -250,7 +280,13 @@ export function createBlobPutOptions(options: {
  * @returns Whether the value behaves like a `File`.
  */
 export function isUploadFile(value: unknown): value is File {
-	return typeof value === 'object' && value !== null && 'size' in value && 'type' in value && 'name' in value
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'size' in value &&
+		'type' in value &&
+		'name' in value
+	)
 }
 
 /**
@@ -304,12 +340,12 @@ function isManagedContentType(value: string): boolean {
 	const [family] = value.split('/')
 
 	return (
-		['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(value)
-		|| family === 'video'
-		|| family === 'audio'
-		|| value === 'application/pdf'
-		|| value === 'application/json'
-		|| family === 'text'
+		['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(value) ||
+		family === 'video' ||
+		family === 'audio' ||
+		value === 'application/pdf' ||
+		value === 'application/json' ||
+		family === 'text'
 	)
 }
 

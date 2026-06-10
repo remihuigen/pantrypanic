@@ -27,6 +27,11 @@ on:
         required: false
         default: pnpm typecheck
         type: string
+      test-command:
+        description: 'Test command to run instead of default'
+        required: false
+        default: pnpm test:coverage
+        type: string
 
       runner:
         description: 'Runner to execute the job on'
@@ -69,3 +74,15 @@ jobs:
 
       - name: Typecheck
         run: ${{ inputs.typecheck-command }}
+
+  test:
+    runs-on: ${{ inputs.runner }}
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup node, pnpm, GitHub packages authentication and install dependencies
+        uses: ./.github/actions/setup
+
+      - name: Test
+        run: ${{ inputs.test-command }}

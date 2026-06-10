@@ -32,10 +32,10 @@ The app UI is still mostly the Nuxt UI starter template:
 - `POST /api/auth/login` validates email/password credentials and sets a session.
 - `POST /api/auth/logout` clears the session.
 - `app/middleware/auth.global.ts` protects app routes except `/login` and `/logout`.
-- `server/middleware/auth.ts` protects `/api/**` and `/images/**`, except `/api/auth/login` and `/api/_auth/session`.
+- `server/middleware/auth.ts` protects `/api/**` and `/images/**`, except `/api/auth/login` and
+  `/api/_auth/session`.
 - `server/utils/auth.ts` exposes `isAuthenticated(event)` and `requireAuthenticated(event)`.
 - Server requests can authenticate with a session cookie or `x-api-token: ADMIN_API_KEY`.
-- `ADMIN_API_TOKEN` remains accepted as a legacy fallback for existing local environments.
 
 ## NuxtHub Configuration
 
@@ -53,9 +53,21 @@ Production environment variables currently referenced:
 - `ADMIN_USER_EMAIL`
 - `ADMIN_USER_PASSWORD`
 - `ADMIN_API_KEY`
-- `ADMIN_API_TOKEN` (legacy fallback)
 - `NUXT_PUBLIC_SITE_URL`
+- `NUXT_PUBLIC_REFRESH_INTERVAL`
 - `NUXT_SESSION_PASSWORD`
+- optional `NUXT_PANTRY_*` overrides for `runtimeConfig.pantry`
+
+Runtime-configured Pantry defaults:
+
+- `NUXT_PANTRY_DEFAULT_LIST_NAME` controls the seeded list name.
+- `NUXT_PANTRY_DEFAULT_USER_LIST_LIMIT` and `NUXT_PANTRY_MAX_USER_LIST_LIMIT` control user-list
+  pagination.
+- `NUXT_PANTRY_DEFAULT_ITEM_SEARCH_LIMIT` and `NUXT_PANTRY_MAX_ITEM_SEARCH_LIMIT` control item
+  search/suggestions.
+- `NUXT_PANTRY_DEFAULT_BLOB_LIST_LIMIT` and `NUXT_PANTRY_MAX_BLOB_LIST_LIMIT` control blob metadata
+  listing.
+- `NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE` controls managed blob upload validation.
 
 Expected production bindings:
 
@@ -72,6 +84,9 @@ Expected production bindings:
 
 ## Blob API Routes
 
+API route files are organized by domain and route segment. Segment roots use `index.<method>.ts`,
+for example `server/api/blobs/index.get.ts` for `GET /api/blobs`.
+
 Implemented routes:
 
 - `GET /api/blobs`: list blob metadata.
@@ -86,6 +101,9 @@ Implemented routes:
 Validation lives in `server/utils/blob-storage.ts`.
 
 ## User API Routes
+
+User route files follow the domain-folder convention, for example `server/api/users/index.get.ts`
+for `GET /api/users` and `server/api/users/[userId]/index.get.ts` for `GET /api/users/:userId`.
 
 Implemented routes:
 
@@ -104,6 +122,48 @@ Current limitations:
 - existing legacy plain-text passwords are rehashed after a successful login
 - user API responses omit `password`
 
+## Pantry Panic Domain API Routes
+
+Pantry Panic domain routes are implemented under `server/api` with domain-folder route files and
+shared helper logic in `server/utils/api-core.ts` and `server/domains.ts` (re-exporting
+`server/utils/domains/*` concern modules).
+
+Implemented route families:
+
+- `GET /api/me`
+- `/api/lists` for list CRUD, reorder, archive, soft-delete, clear, list-item create, and list-item
+  reorder
+- `/api/list-items` for list-item list/name/metadata update, check, uncheck, and soft-delete
+- `/api/items` for canonical item search and historical suggestions
+- `/api/recipes` for recipe CRUD, archive, soft-delete, ingredients, reorder, and copy-to-list
+- `/api/recipe-items` for recipe-item update and hard-delete
+- `/api/meal-planner` for singleton seven-day planner reads, day updates, placeholder ingredients,
+  clear, and copy-to-list
+
+New domain routes use the shared response envelope:
+
+- success: `{ success: true, data }`
+- error: `{ success: false, error: { code, message, details? } }`
+
+Zod validates params, query strings, and bodies. Validation messages are Dutch. Current
+authorization is coarse authentication only; fine-grained permissions are still deferred.
+
+Short-lived read caching is enabled for expensive or commonly polled domain GET routes:
+
+- `GET /api/lists`
+- `GET /api/lists/:listId`
+- `GET /api/items/search`
+- `GET /api/items/suggestions`
+- `GET /api/recipes`
+- `GET /api/recipes/:recipeId`
+- `GET /api/meal-planner`
+
+The cache helper is `defineCachedApiHandler()` in `server/utils/api-core.ts`. It wraps Nitro's
+`defineCachedEventHandler`, leaving request URL and query-param cache keys to Nitro. SWR is disabled
+for domain API reads, and runtime intervals under one second bypass caching. Cached API data must
+not be served after `runtimeConfig.public.refreshInterval` (`NUXT_PUBLIC_REFRESH_INTERVAL`,
+milliseconds).
+
 ## Admin User Seed
 
 `nuxt.config.ts` registers a `build:done` hook that calls `scripts/seed-admin-user.mjs`.
@@ -119,8 +179,8 @@ The seed:
 - logs a warning and skips when the configured instance is unreachable during build
 - can be run directly with `pnpm seed:admin`
 
-The deployment workflow sets `SKIP_ADMIN_SEED=1` during build and runs `pnpm seed:admin` after
-D1 migrations and Worker deployment complete.
+The deployment workflow sets `SKIP_ADMIN_SEED=1` during build and runs `pnpm seed:admin` after D1
+migrations and Worker deployment complete.
 
 ## Deployment Workflow
 
@@ -130,7 +190,8 @@ The workflow:
 
 - builds with `NITRO_PRESET=cloudflare_module`
 - disables admin seeding during build with `SKIP_ADMIN_SEED=1`
-- applies remote D1 migrations with `wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json`
+- applies remote D1 migrations with
+  `wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json`
 - deploys the generated Worker with `wrangler --cwd .output deploy`
 - runs the HTTP admin seed after deploy
 
@@ -145,12 +206,20 @@ Package scripts:
 - `pnpm build`
 - `pnpm preview`
 - `pnpm lint`
+- `pnpm test`
+- `pnpm test:run`
+- `pnpm test:coverage`
 - `pnpm typecheck`
 - `pnpm db:generate`
 - `pnpm db:migrate`
 - `pnpm seed:admin`
 
-`pnpm lint` and `pnpm typecheck` are the required baseline checks for meaningful changes.
+`pnpm test:coverage` runs Vitest against TypeScript/JavaScript logic in `server/utils/**/*` and
+`scripts/**/*.mjs`. Coverage thresholds are 90% for statements, lines, and functions, and 80% for
+branches. Vue single-file components are intentionally excluded from coverage.
+
+`pnpm lint`, `pnpm test:coverage`, and `pnpm typecheck` are the required baseline checks for
+meaningful changes.
 
 `pnpm build` also exercises the admin seed hook.
 

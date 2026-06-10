@@ -47,9 +47,8 @@ function hasValidAdminApiKey(event: H3Event): boolean {
 function getConfiguredAdminApiKey(event: H3Event): string {
 	const runtimeConfig = useRuntimeConfig(event)
 	const runtimeKey = typeof runtimeConfig.adminApiKey === 'string' ? runtimeConfig.adminApiKey : ''
-	const legacyRuntimeToken = typeof runtimeConfig.adminApiToken === 'string' ? runtimeConfig.adminApiToken : ''
 
-	return process.env.ADMIN_API_KEY || runtimeKey || process.env.ADMIN_API_TOKEN || legacyRuntimeToken
+	return process.env.ADMIN_API_KEY || runtimeKey
 }
 
 function constantTimeEqual(left: string | undefined, right: string | undefined): boolean {
