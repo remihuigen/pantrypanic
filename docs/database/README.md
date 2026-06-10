@@ -47,7 +47,8 @@ foreign keys.
 
 ## Table Purposes
 
-`lists` stores reusable shopping lists such as `Groceries`.
+`lists` stores reusable shopping lists. The seeded list name comes from
+`runtimeConfig.pantry.defaultListName` and defaults to `Boodschappen`.
 
 `items` stores canonical grocery items. The `normalized_name` unique index supports reuse and
 autocomplete.
@@ -69,7 +70,7 @@ deleted when planner days are reset or changed.
 Migration `0001_worried_jasper_sitwell.sql` seeds default domain data when at least one user
 already exists:
 
-- one active `Groceries` list
+- one active list using `runtimeConfig.pantry.defaultListName`
 - seven `meal_planner_days` rows with `type = empty`
 
 For fresh deployments where migrations run before the first user exists, `createUser()` calls

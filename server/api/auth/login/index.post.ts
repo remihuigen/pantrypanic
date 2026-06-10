@@ -1,17 +1,10 @@
-import { createError, defineEventHandler, readValidatedBody } from 'h3'
-import { z } from 'zod'
-
 import {
 	findUserForAuthentication,
 	serializeUser,
 	updateUserPasswordHash
 } from '#server/utils/user-management'
-import {
-	hashUserPassword,
-	isUserPasswordHash,
-	userPasswordNeedsRehash,
-	verifyUserPasswordHash
-} from '#server/utils/password-hashing'
+import { createError, defineEventHandler, readValidatedBody } from 'h3'
+import { z } from 'zod'
 
 const loginBodySchema = z.strictObject({
 	email: z.email().trim().toLowerCase(),
@@ -29,14 +22,14 @@ export default defineEventHandler(async (event) => {
 		throwInvalidCredentials()
 	}
 
-	const passwordMatches = await verifyStoredPassword(user.password, body.password)
+	const passwordVerification = await verifyStoredPassword(user.password, body.password)
 
-	if (!passwordMatches) {
+	if (!passwordVerification.matches) {
 		throwInvalidCredentials()
 	}
 
-	if (!isUserPasswordHash(user.password) || userPasswordNeedsRehash(user.password)) {
-		await updateUserPasswordHash(user.id, await hashUserPassword(body.password))
+	if (passwordVerification.needsRehash) {
+		await updateUserPasswordHash(user.id, await hashPassword(body.password))
 	}
 
 	await setUserSession(event, {
@@ -53,12 +46,35 @@ export default defineEventHandler(async (event) => {
 	}
 })
 
-async function verifyStoredPassword(storedPassword: string, plainPassword: string): Promise<boolean> {
-	if (!isUserPasswordHash(storedPassword)) {
-		return storedPassword === plainPassword
-	}
+async function verifyStoredPassword(
+	storedPassword: string,
+	plainPassword: string
+): Promise<{
+	matches: boolean
+	needsRehash: boolean
+}> {
+	try {
+		const matches = await verifyPassword(storedPassword, plainPassword)
 
-	return verifyUserPasswordHash(storedPassword, plainPassword)
+		if (!matches) {
+			return {
+				matches: false,
+				needsRehash: false
+			}
+		}
+
+		return {
+			matches: true,
+			needsRehash: passwordNeedsReHash(storedPassword)
+		}
+	} catch {
+		const matches = storedPassword === plainPassword
+
+		return {
+			matches,
+			needsRehash: matches
+		}
+	}
 }
 
 function throwInvalidCredentials(): never {

@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { db } from 'hub:db'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
 	createUser,
 	createUserBodySchema,
+	createUserListQuerySchema,
 	deleteUser,
 	findUserForAuthentication,
 	getUserById,
@@ -14,21 +14,21 @@ import {
 	serializeUser,
 	updateUser,
 	updateUserBodySchema,
-	updateUserPasswordHash,
-	userListQuerySchema
+	updateUserPasswordHash
 } from '../../server/utils/user-management'
-import { createDeleteBuilder, createInsertBuilder, createSelectBuilder, createUpdateBuilder } from './test-db'
+import {
+	createDeleteBuilder,
+	createInsertBuilder,
+	createSelectBuilder,
+	createUpdateBuilder
+} from './test-db'
 
 const mocks = vi.hoisted(() => ({
-	hashUserPassword: vi.fn(async (password: string) => `hashed:${password}`),
+	hashPassword: vi.fn(async (password: string) => `hashed:${password}`),
 	seedInitialDomainData: vi.fn()
 }))
 
-vi.mock('../../server/utils/password-hashing', () => ({
-	hashUserPassword: mocks.hashUserPassword
-}))
-
-vi.mock('#server/utils/domain-data', () => ({
+vi.mock('#server/utils/domains/seed', () => ({
 	seedInitialDomainData: mocks.seedInitialDomainData
 }))
 
@@ -38,14 +38,33 @@ describe('user management utilities', () => {
 		vi.mocked(db.insert).mockReset()
 		vi.mocked(db.update).mockReset()
 		vi.mocked(db.delete).mockReset()
-		mocks.hashUserPassword.mockClear()
+		mocks.hashPassword.mockClear()
 		mocks.seedInitialDomainData.mockClear()
+		vi.stubGlobal('hashPassword', mocks.hashPassword)
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			pantry: {
+				defaultUserListLimit: 50,
+				maxUserListLimit: 100
+			}
+		}))
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
 	})
 
 	it('serializes user rows without passwords', () => {
 		const createdAt = new Date('2026-01-01T00:00:00Z')
 
-		expect(serializeUser({ id: 1, name: 'Admin', email: 'admin@example.com', password: 'secret', createdAt })).toEqual({
+		expect(
+			serializeUser({
+				id: 1,
+				name: 'Admin',
+				email: 'admin@example.com',
+				password: 'secret',
+				createdAt
+			})
+		).toEqual({
 			id: 1,
 			name: 'Admin',
 			email: 'admin@example.com',
@@ -60,19 +79,41 @@ describe('user management utilities', () => {
 	})
 
 	it('parses user query defaults and normalizes email', () => {
-		expect(parseUserQuery(userListQuerySchema, { email: ['ADMIN@EXAMPLE.COM'] }, 'Invalid query')).toEqual({
+		expect(
+			parseUserQuery(
+				createUserListQuerySchema(),
+				{ email: ['ADMIN@EXAMPLE.COM'] },
+				'Invalid query'
+			)
+		).toEqual({
 			limit: 50,
 			offset: 0,
 			email: 'admin@example.com'
 		})
 	})
 
+	it('parses user query defaults from runtime config', () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			pantry: {
+				defaultUserListLimit: 12,
+				maxUserListLimit: 20
+			}
+		}))
+
+		expect(parseUserQuery(createUserListQuerySchema(), {}, 'Invalid query')).toEqual({
+			limit: 12,
+			offset: 0
+		})
+	})
+
 	it('validates create and update user bodies', () => {
-		expect(createUserBodySchema.parse({
-			name: ' Admin ',
-			email: 'ADMIN@EXAMPLE.COM',
-			password: 'secret'
-		})).toEqual({
+		expect(
+			createUserBodySchema.parse({
+				name: ' Admin ',
+				email: 'ADMIN@EXAMPLE.COM',
+				password: 'secret'
+			})
+		).toEqual({
 			name: 'Admin',
 			email: 'admin@example.com',
 			password: 'secret'
@@ -112,17 +153,19 @@ describe('user management utilities', () => {
 		vi.mocked(db.select).mockReturnValue(createSelectBuilder([]) as never)
 		vi.mocked(db.insert).mockReturnValue(createInsertBuilder([user]) as never)
 
-		await expect(createUser({ name: 'New', email: 'new@example.com', password: 'secret' })).resolves.toEqual(
-			serializeUser(user)
-		)
+		await expect(
+			createUser({ name: 'New', email: 'new@example.com', password: 'secret' })
+		).resolves.toEqual(serializeUser(user))
 
-		expect(mocks.hashUserPassword).toHaveBeenCalledWith('secret')
+		expect(mocks.hashPassword).toHaveBeenCalledWith('secret')
 	})
 
 	it('rejects duplicate user emails', async () => {
 		vi.mocked(db.select).mockReturnValue(createSelectBuilder([{ id: 1 }]) as never)
 
-		await expect(createUser({ name: 'Admin', email: 'admin@example.com', password: 'secret' })).rejects.toMatchObject({
+		await expect(
+			createUser({ name: 'Admin', email: 'admin@example.com', password: 'secret' })
+		).rejects.toMatchObject({
 			statusCode: 409,
 			message: 'A user with this email already exists.'
 		})
@@ -132,7 +175,9 @@ describe('user management utilities', () => {
 		vi.mocked(db.select).mockReturnValue(createSelectBuilder([]) as never)
 		vi.mocked(db.insert).mockReturnValue(createInsertBuilder([]) as never)
 
-		await expect(createUser({ name: 'New', email: 'new@example.com', password: 'secret' })).rejects.toMatchObject({
+		await expect(
+			createUser({ name: 'New', email: 'new@example.com', password: 'secret' })
+		).rejects.toMatchObject({
 			statusCode: 500,
 			message: 'User write did not return a row.'
 		})
@@ -146,13 +191,15 @@ describe('user management utilities', () => {
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
 		vi.mocked(db.update).mockReturnValue(createUpdateBuilder([updated]) as never)
 
-		await expect(updateUser(1, {
-			name: 'Updated',
-			email: 'updated@example.com',
-			password: 'new-secret'
-		})).resolves.toEqual(serializeUser(updated))
+		await expect(
+			updateUser(1, {
+				name: 'Updated',
+				email: 'updated@example.com',
+				password: 'new-secret'
+			})
+		).resolves.toEqual(serializeUser(updated))
 
-		expect(mocks.hashUserPassword).toHaveBeenCalledWith('new-secret')
+		expect(mocks.hashPassword).toHaveBeenCalledWith('new-secret')
 	})
 
 	it('rejects updates for missing users or duplicate emails', async () => {
@@ -164,11 +211,15 @@ describe('user management utilities', () => {
 			.mockReturnValueOnce(createSelectBuilder([createUserRow({ id: 1 })]) as never)
 			.mockReturnValueOnce(createSelectBuilder([{ id: 2 }]) as never)
 
-		await expect(updateUser(1, { email: 'taken@example.com' })).rejects.toMatchObject({ statusCode: 409 })
+		await expect(updateUser(1, { email: 'taken@example.com' })).rejects.toMatchObject({
+			statusCode: 409
+		})
 	})
 
 	it('deletes users and reports missing rows', async () => {
-		vi.mocked(db.delete).mockReturnValueOnce(createDeleteBuilder([createUserRow({ id: 1 })]) as never)
+		vi.mocked(db.delete).mockReturnValueOnce(
+			createDeleteBuilder([createUserRow({ id: 1 })]) as never
+		)
 
 		await expect(deleteUser(1)).resolves.toBeUndefined()
 
@@ -189,13 +240,15 @@ describe('user management utilities', () => {
 	})
 })
 
-function createUserRow(overrides: Partial<{
-	id: number
-	name: string
-	email: string
-	password: string
-	createdAt: Date
-}> = {}) {
+function createUserRow(
+	overrides: Partial<{
+		id: number
+		name: string
+		email: string
+		password: string
+		createdAt: Date
+	}> = {}
+) {
 	return {
 		id: 1,
 		name: 'Admin',
@@ -206,7 +259,7 @@ function createUserRow(overrides: Partial<{
 	}
 }
 
-function expectHttpError(fn: () => unknown, expected: { statusCode: number, message?: string }) {
+function expectHttpError(fn: () => unknown, expected: { statusCode: number; message?: string }) {
 	try {
 		fn()
 		throw new Error('Expected function to throw.')

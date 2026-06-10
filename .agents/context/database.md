@@ -30,8 +30,10 @@ Current migration files live under `server/db/migrations/sqlite/`.
 
 - Runtime API access uses NuxtHub DB through `hub:db`.
 - User query/mutation logic lives in `server/utils/user-management.ts`.
-- Domain id, item normalization, canonical item reuse, and domain seed helpers live in
-  `server/utils/domain-ids.ts` and `server/utils/domain-data.ts`.
+- Domain id helper logic lives in `server/utils/api-helpers.ts`.
+- Pantry item normalization, canonical item reuse, seed logic, and domain query/mutation logic are
+  split across `server/utils/domains/*` with a route-facing re-export in `server/domains.ts`.
+- Route envelope and API-boundary helpers live in `server/utils/api-core.ts`.
 - Build-time admin seeding uses `scripts/seed-admin-user.mjs` to call the configured HTTP instance
   at `NUXT_PUBLIC_SITE_URL` with `x-api-token: ADMIN_API_KEY`.
 - The admin seed runs from Nuxt `build:done` and creates the user through `POST /api/users` only
@@ -55,7 +57,7 @@ Current migration files live under `server/db/migrations/sqlite/`.
 
 Seeded domain data:
 
-- one active `Groceries` list
+- one active list using `runtimeConfig.pantry.defaultListName` (default `Boodschappen`)
 - seven `meal_planner_days` rows, day 1 through day 7, all `empty`
 
 Seed audit user:
@@ -70,21 +72,25 @@ Seed audit user:
 - Seed data is split between migration SQL and user-creation helper for idempotency across existing
   and fresh deployments.
 
-## Planned API Work
+## Implemented Domain API Work
 
-`PLAN.md` describes future behavior that is not implemented yet:
+The database layer is currently exercised through authenticated API routes for:
 
-- list APIs
-- item search/autocomplete APIs
-- recipe APIs
-- meal-planner APIs
+- shopping lists and list items
+- canonical item search and suggestions
+- recipes and recipe items
+- the singleton seven-day meal planner
+
+Lists, recipes, and list items use status fields for soft deletion. Recipe items and
+meal-planner-day placeholder items are hard-deleted as volatile child/draft data.
 
 ## Migration Rules
 
 - Modify schema in `server/db/schema.ts` or `server/db/schema/**`.
 - Generate migrations with `pnpm db:generate`.
 - Apply migrations with `pnpm db:migrate` or by running Nuxt/NuxtHub dev/build flows.
-- Production D1 deployments apply migrations in `.github/workflows/deploy.yml` before `wrangler deploy`.
+- Production D1 deployments apply migrations in `.github/workflows/deploy.yml` before
+  `wrangler deploy`.
 - Do not hand-write files in `server/db/migrations/**` unless explicitly requested.
 
 ## Runtime Constraints

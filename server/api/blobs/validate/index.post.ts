@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
 	return {
 		valid: true,
 		files: files.map((file) => {
-			assertManagedBlob(file)
+			assertManagedBlob(file, event)
 
 			return {
 				name: file.name,

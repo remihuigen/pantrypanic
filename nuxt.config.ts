@@ -34,8 +34,19 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		adminApiKey: process.env.ADMIN_API_KEY ?? '',
+		pantry: {
+			defaultListName: 'Boodschappen',
+			defaultUserListLimit: 50,
+			maxUserListLimit: 100,
+			defaultItemSearchLimit: 10,
+			maxItemSearchLimit: 50,
+			defaultBlobListLimit: 100,
+			maxBlobListLimit: 1000,
+			managedBlobMaxUploadSize: '32MB'
+		},
 
 		public: {
+			refreshInterval: 5000,
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."

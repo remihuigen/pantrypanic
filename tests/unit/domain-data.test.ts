@@ -1,19 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { db } from 'hub:db'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
-	defaultListName,
 	findItemByNormalizedName,
 	findOrCreateItem,
 	getFirstUserIdForDomainSeed,
 	mealPlannerDayNumbers,
 	normalizeItemName,
 	seedInitialDomainData
-} from '../../server/utils/domain-data'
+} from '../../server/domains'
 import { createInsertBuilder, createSelectBuilder } from './test-db'
 
-vi.mock('#server/utils/domain-ids', () => ({
+vi.mock('#server/utils/api-helpers', () => ({
 	createDomainId: vi.fn(() => 'domain-id')
 }))
 
@@ -21,6 +19,15 @@ describe('domain data helpers', () => {
 	beforeEach(() => {
 		vi.mocked(db.select).mockReset()
 		vi.mocked(db.insert).mockReset()
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			pantry: {
+				defaultListName: 'Boodschappen'
+			}
+		}))
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
 	})
 
 	it('normalizes item names for canonical reuse', () => {
@@ -81,7 +88,9 @@ describe('domain data helpers', () => {
 			throw new Error('database unavailable')
 		})
 
-		await expect(findOrCreateItem({ name: 'Milk', auditUserId: 1 })).rejects.toThrow('database unavailable')
+		await expect(findOrCreateItem({ name: 'Milk', auditUserId: 1 })).rejects.toThrow(
+			'database unavailable'
+		)
 	})
 
 	it('seeds the default list and missing meal planner days', async () => {
@@ -101,7 +110,9 @@ describe('domain data helpers', () => {
 		vi.mocked(db.select)
 			.mockReturnValueOnce(createSelectBuilder([{ id: 'list-1' }]) as never)
 			.mockReturnValueOnce(
-				createSelectBuilder(mealPlannerDayNumbers.map(dayOfWeek => ({ dayOfWeek }))) as never
+				createSelectBuilder(
+					mealPlannerDayNumbers.map((dayOfWeek) => ({ dayOfWeek }))
+				) as never
 			)
 
 		await seedInitialDomainData(12)
@@ -119,9 +130,5 @@ describe('domain data helpers', () => {
 		vi.mocked(db.select).mockReturnValue(createSelectBuilder([]) as never)
 
 		await expect(getFirstUserIdForDomainSeed()).resolves.toBeUndefined()
-	})
-
-	it('exposes the default seed list name', () => {
-		expect(defaultListName).toBe('Groceries')
 	})
 })

@@ -1,8 +1,15 @@
+/**
+ * Creates a chainable mocked Drizzle select builder.
+ *
+ * @param rows - Rows resolved by the builder.
+ * @returns Thenable select builder mock.
+ */
 export function createSelectBuilder<T>(rows: T[]) {
 	const builder = createThenableBuilder(rows)
 
 	return Object.assign(builder, {
 		from: () => builder,
+		innerJoin: () => builder,
 		where: () => builder,
 		orderBy: () => builder,
 		limit: () => builder,
@@ -10,6 +17,12 @@ export function createSelectBuilder<T>(rows: T[]) {
 	})
 }
 
+/**
+ * Creates a chainable mocked Drizzle insert builder.
+ *
+ * @param rows - Rows resolved by the builder.
+ * @returns Thenable insert builder mock.
+ */
 export function createInsertBuilder<T>(rows: T[]) {
 	const builder = createThenableBuilder(rows)
 
@@ -19,6 +32,12 @@ export function createInsertBuilder<T>(rows: T[]) {
 	})
 }
 
+/**
+ * Creates a chainable mocked Drizzle update builder.
+ *
+ * @param rows - Rows resolved by the builder.
+ * @returns Thenable update builder mock.
+ */
 export function createUpdateBuilder<T>(rows: T[] = []) {
 	const builder = createThenableBuilder(rows)
 
@@ -29,6 +48,12 @@ export function createUpdateBuilder<T>(rows: T[] = []) {
 	})
 }
 
+/**
+ * Creates a chainable mocked Drizzle delete builder.
+ *
+ * @param rows - Rows resolved by the builder.
+ * @returns Thenable delete builder mock.
+ */
 export function createDeleteBuilder<T>(rows: T[] = []) {
 	const builder = createThenableBuilder(rows)
 

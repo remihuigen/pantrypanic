@@ -1,5 +1,5 @@
 import { ensureBlob } from '@nuxthub/blob'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import {
@@ -8,11 +8,11 @@ import {
 	assertManagedBlob,
 	assertManagedContentType,
 	assertPublicImageContentType,
-	blobListQuerySchema,
 	blobUploadQuerySchema,
+	createBlobListQuerySchema,
 	createBlobPutOptions,
+	createManagedBlobEnsureOptions,
 	isUploadFile,
-	managedBlobEnsureOptions,
 	parseBlobQuery
 } from '../../server/utils/blob-storage'
 
@@ -23,6 +23,17 @@ vi.mock('@nuxthub/blob', () => ({
 describe('blob storage utilities', () => {
 	beforeEach(() => {
 		vi.mocked(ensureBlob).mockReset()
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			pantry: {
+				defaultBlobListLimit: 100,
+				maxBlobListLimit: 1000,
+				managedBlobMaxUploadSize: '32MB'
+			}
+		}))
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
 	})
 
 	it('accepts safe relative blob pathnames and decodes URI text', () => {
@@ -30,15 +41,21 @@ describe('blob storage utilities', () => {
 		expect(assertBlobPathname('folder%20name/file.png')).toBe('folder name/file.png')
 	})
 
-	it.each(['', '/absolute.jpg', '\\absolute.jpg', 'a//b.jpg', 'a/../b.jpg', 'a/./b.jpg', 'a\\b.jpg', 'a\u0000b.jpg'])(
-		'rejects unsafe pathname %s',
-		(value) => {
-			expectHttpError(() => assertBlobPathname(value), {
-				statusCode: 400,
-				message: 'Invalid blob pathname'
-			})
-		}
-	)
+	it.each([
+		'',
+		'/absolute.jpg',
+		'\\absolute.jpg',
+		'a//b.jpg',
+		'a/../b.jpg',
+		'a/./b.jpg',
+		'a\\b.jpg',
+		'a\u0000b.jpg'
+	])('rejects unsafe pathname %s', (value) => {
+		expectHttpError(() => assertBlobPathname(value), {
+			statusCode: 400,
+			message: 'Invalid blob pathname'
+		})
+	})
 
 	it('rejects malformed URI pathnames', () => {
 		expectHttpError(() => assertBlobPathname('%'), {
@@ -52,7 +69,25 @@ describe('blob storage utilities', () => {
 
 		assertManagedBlob(file)
 
-		expect(ensureBlob).toHaveBeenCalledWith(file, managedBlobEnsureOptions)
+		expect(ensureBlob).toHaveBeenCalledWith(file, createManagedBlobEnsureOptions())
+	})
+
+	it('reads blob query and upload limits from runtime config', () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			pantry: {
+				defaultBlobListLimit: 15,
+				maxBlobListLimit: 25,
+				managedBlobMaxUploadSize: '64MB'
+			}
+		}))
+
+		expect(parseBlobQuery(createBlobListQuerySchema(), {}, 'bad query')).toMatchObject({
+			limit: 15
+		})
+		expect(() =>
+			parseBlobQuery(createBlobListQuerySchema(), { limit: '26' }, 'bad query')
+		).toThrow()
+		expect(createManagedBlobEnsureOptions()).toMatchObject({ maxSize: '64MB' })
 	})
 
 	it.each([
@@ -129,12 +164,16 @@ describe('blob storage utilities', () => {
 
 	it('parses blob list and upload queries', () => {
 		expect(
-			parseBlobQuery(blobListQuerySchema, {
-				limit: ['25'],
-				prefix: 'images',
-				cursor: 'next',
-				folded: '1'
-			}, 'bad query')
+			parseBlobQuery(
+				createBlobListQuerySchema(),
+				{
+					limit: ['25'],
+					prefix: 'images',
+					cursor: 'next',
+					folded: '1'
+				},
+				'bad query'
+			)
 		).toEqual({
 			limit: 25,
 			prefix: 'images',
@@ -143,12 +182,16 @@ describe('blob storage utilities', () => {
 		})
 
 		expect(
-			parseBlobQuery(blobUploadQuerySchema, {
-				formKey: 'asset',
-				multiple: 'false',
-				prefix: 'uploads',
-				addRandomSuffix: '0'
-			}, 'bad upload query')
+			parseBlobQuery(
+				blobUploadQuerySchema,
+				{
+					formKey: 'asset',
+					multiple: 'false',
+					prefix: 'uploads',
+					addRandomSuffix: '0'
+				},
+				'bad upload query'
+			)
 		).toEqual({
 			formKey: 'asset',
 			multiple: false,
@@ -158,14 +201,22 @@ describe('blob storage utilities', () => {
 	})
 
 	it('throws HTTP validation errors for invalid query values', () => {
-		expectHttpError(() => parseBlobQuery(z.object({ pathname: z.string().min(2) }), { pathname: 'a' }, 'Invalid query'), {
-			statusCode: 400,
-			message: 'Invalid query'
-		})
+		expectHttpError(
+			() =>
+				parseBlobQuery(
+					z.object({ pathname: z.string().min(2) }),
+					{ pathname: 'a' },
+					'Invalid query'
+				),
+			{
+				statusCode: 400,
+				message: 'Invalid query'
+			}
+		)
 	})
 })
 
-function expectHttpError(fn: () => unknown, expected: { statusCode: number, message?: string }) {
+function expectHttpError(fn: () => unknown, expected: { statusCode: number; message?: string }) {
 	try {
 		fn()
 		throw new Error('Expected function to throw.')

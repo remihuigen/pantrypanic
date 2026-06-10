@@ -1,5 +1,5 @@
 import { isAuthenticated } from '#server/utils/auth'
-import { createError, defineEventHandler, getRequestURL } from 'h3'
+import { defineEventHandler, getRequestURL, setResponseStatus } from 'h3'
 
 const PROTECTED_PATH_PREFIXES = ['/api/', '/images/']
 const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/_auth/session'])
@@ -27,9 +27,13 @@ export default defineEventHandler(async (event) => {
 		return
 	}
 
-	throw createError({
-		statusCode: 401,
-		statusMessage: 'Unauthorized',
-		message: 'Authentication required.'
-	})
+	setResponseStatus(event, 401, 'Unauthorized')
+
+	return {
+		success: false,
+		error: {
+			code: 'UNAUTHORIZED',
+			message: 'Je bent niet ingelogd.'
+		}
+	}
 })

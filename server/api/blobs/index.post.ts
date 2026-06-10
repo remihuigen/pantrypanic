@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
 	const uploaded = []
 
 	for (const file of files) {
-		assertManagedBlob(file)
+		assertManagedBlob(file, event)
 		uploaded.push(
 			await blob.put(
 				assertBlobPathname(file.name),

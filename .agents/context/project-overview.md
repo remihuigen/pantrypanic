@@ -28,6 +28,7 @@ Implemented:
 - `users` table and Pantry Panic domain tables/migrations
 - user CRUD API routes
 - blob CRUD/validation API routes
+- Pantry Panic domain API routes for lists, list items, items, recipes, recipe items, and meal planner workflows
 - safe raster image serving from blob storage
 - build-time HTTP admin-user seed from `.env`
 - human docs under `docs/`
@@ -36,7 +37,6 @@ Not implemented yet:
 
 - Pantry Panic grocery-list UI
 - fine-grained permissions around API routes
-- list/item/list-item/recipe API endpoints
 - PWA install/offline behavior
 - shopping workflow screens
 

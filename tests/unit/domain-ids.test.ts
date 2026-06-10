@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDomainId } from '../../server/utils/domain-ids'
+import { createDomainId } from '../../server/utils/api-helpers'
 
 describe('domain ids', () => {
 	it('creates UUID v7 ids', () => {

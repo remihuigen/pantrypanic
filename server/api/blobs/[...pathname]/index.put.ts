@@ -1,6 +1,6 @@
-import { blob } from '@nuxthub/blob'
-import { createError, defineEventHandler, getHeader, getQuery, getRequestWebStream, getRouterParam, setResponseStatus } from 'h3'
+import type { BlobSize } from '@nuxthub/core/blob'
 
+import { blob } from '@nuxthub/blob'
 import {
 	assertBlobPathname,
 	assertContentLength,
@@ -9,6 +9,15 @@ import {
 	createBlobPutOptions,
 	parseBlobQuery
 } from '#server/utils/blob-storage'
+import {
+	createError,
+	defineEventHandler,
+	getHeader,
+	getQuery,
+	getRequestWebStream,
+	getRouterParam,
+	setResponseStatus
+} from 'h3'
 
 /**
  * Writes a raw request body to an exact validated blob pathname.
@@ -26,8 +35,13 @@ export default defineEventHandler(async (event) => {
 		})
 	}
 
-	const contentType = assertManagedContentType(query.contentType ?? getHeader(event, 'content-type'))
-	const contentLength = assertContentLength(getHeader(event, 'content-length'))
+	const contentType = assertManagedContentType(
+		query.contentType ?? getHeader(event, 'content-type')
+	)
+	const contentLength = assertContentLength(
+		getHeader(event, 'content-length'),
+		useRuntimeConfig(event).pantry.managedBlobMaxUploadSize as BlobSize
+	)
 
 	const updated = await blob.put(
 		pathname,
