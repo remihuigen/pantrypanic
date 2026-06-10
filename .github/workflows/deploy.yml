@@ -53,6 +53,7 @@ jobs:
         run: |
           echo "$NUXT_SESSION_PASSWORD" | pnpm exec wrangler secret put NUXT_SESSION_PASSWORD --name "${CLOUDFLARE_WORKER_NAME:-pantrypanic}"
         env:
+          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
