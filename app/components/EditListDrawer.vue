@@ -79,7 +79,7 @@ function handleSubmit(payload: FormSubmitEvent<EditListFormSchema>) {
 						placeholder="Bijvoorbeeld weekendboodschappen"
 						:icon="getIcon('list')"
 						:disabled="isSubmitting"
-						autofocus
+						:autofocus="mode === 'create'"
 						:ui="{ leadingIcon: 'size-4' }"
 					/>
 				</UFormField>

@@ -122,7 +122,7 @@ onActivated(() => {
 						label-key="label"
 						ignore-filter
 						mode="autocomplete"
-						autofocus
+						:autofocus="editItemDrawer.mode.value === 'create'"
 						:placeholder="`Bijvoorbeeld ${currentExample?.toLowerCase()}`"
 						:disabled="isSubmitting"
 					/>

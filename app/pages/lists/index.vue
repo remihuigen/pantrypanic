@@ -50,12 +50,6 @@ function openCreateListDrawer() {
 	editListDrawer.open()
 }
 
-function openEditListDrawer(listId: string) {
-	editListDrawerMode.value = 'edit'
-	editListDrawerListId.value = listId
-	editListDrawer.open()
-}
-
 async function refreshLists() {
 	isLoadingLists.value = true
 
@@ -149,7 +143,6 @@ onMounted(() => {
 				:icon="listIcon(listId)"
 				:item-count="listItemCount(listId)"
 				:can-delete="listsStore.activeListIds.length > 1"
-				@edit-settings="openEditListDrawer"
 			/>
 			<UButton
 				v-if="listsStore.activeListIds.length > 0"

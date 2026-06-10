@@ -7,10 +7,6 @@ const props = defineProps<{
 	canDelete: boolean
 }>()
 
-const emit = defineEmits<{
-	editSettings: [listId: string]
-}>()
-
 const itemLabel = computed(() => (props.itemCount === 1 ? 'item' : 'items'))
 const leadingIcon = computed(() =>
 	props.icon && props.icon.trim().length > 0 ? props.icon : 'i-lucide-grip-vertical'
@@ -27,7 +23,6 @@ const leadingIcon = computed(() =>
 			class="absolute top-2 right-1 z-10"
 			:list-id="props.listId"
 			:can-delete="props.canDelete"
-			@edit-settings="emit('editSettings', $event)"
 		/>
 
 		<NuxtLink :to="`/lists/${props.listId}`" class="block pe-10 pt-6 pb-1">
