@@ -25,6 +25,9 @@ jobs:
       - name: Setup node and pnpm
         uses: ./.github/actions/setup
 
+      - name: Run unit tests with coverage
+        run: pnpm test:coverage
+
       - name: Build Cloudflare Worker
         run: pnpm build
         env:

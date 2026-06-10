@@ -25,7 +25,7 @@ Implemented:
 - nuxt-auth-utils session login/logout flow
 - server authentication guard for `/api/**` and `/images/**`
 - NuxtHub database configuration
-- `users` table and migration
+- `users` table and Pantry Panic domain tables/migrations
 - user CRUD API routes
 - blob CRUD/validation API routes
 - safe raster image serving from blob storage
@@ -36,7 +36,7 @@ Not implemented yet:
 
 - Pantry Panic grocery-list UI
 - fine-grained permissions around API routes
-- list/item/list-item/recipe schemas
+- list/item/list-item/recipe API endpoints
 - PWA install/offline behavior
 - shopping workflow screens
 

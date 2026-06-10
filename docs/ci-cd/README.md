@@ -10,21 +10,22 @@ The deployment workflow runs on pushes to `main` and from manual `workflow_dispa
 Order of operations:
 
 1. Install dependencies with the shared GitHub setup action.
-2. Build with `NITRO_PRESET=cloudflare_module` and `SKIP_ADMIN_SEED=1`.
-3. Verify `.output/server/wrangler.json` exists.
-4. Apply D1 migrations with Wrangler:
+2. Run unit tests and coverage thresholds with `pnpm test:coverage`.
+3. Build with `NITRO_PRESET=cloudflare_module` and `SKIP_ADMIN_SEED=1`.
+4. Verify `.output/server/wrangler.json` exists.
+5. Apply D1 migrations with Wrangler:
 
 ```bash
 pnpm exec wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json
 ```
 
-5. Deploy the generated Worker:
+6. Deploy the generated Worker:
 
 ```bash
 pnpm exec wrangler --cwd .output deploy
 ```
 
-6. Seed the initial admin user over HTTP:
+7. Seed the initial admin user over HTTP:
 
 ```bash
 pnpm seed:admin

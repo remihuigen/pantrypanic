@@ -5,7 +5,7 @@
 ## Files
 
 - `project-overview.md`: product direction and current implementation state.
-- `runtime-and-deployment.md`: Nuxt, NuxtHub, storage, routes, environment, and build behavior.
+- `runtime-and-deployment.md`: Nuxt, NuxtHub, storage, routes, testing, environment, and build behavior.
 - `database.md`: current schema and migration rules.
 
 ## Human Mirrors
@@ -14,6 +14,7 @@
 - `../../docs/README.md`
 - `../../docs/config/README.md`
 - `../../docs/server/README.md`
+- `../../docs/testing/README.md`
 - `../../PLAN.md`
 
 ## Staleness Rule

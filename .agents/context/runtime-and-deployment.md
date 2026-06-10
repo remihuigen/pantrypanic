@@ -145,12 +145,20 @@ Package scripts:
 - `pnpm build`
 - `pnpm preview`
 - `pnpm lint`
+- `pnpm test`
+- `pnpm test:run`
+- `pnpm test:coverage`
 - `pnpm typecheck`
 - `pnpm db:generate`
 - `pnpm db:migrate`
 - `pnpm seed:admin`
 
-`pnpm lint` and `pnpm typecheck` are the required baseline checks for meaningful changes.
+`pnpm test:coverage` runs Vitest against TypeScript/JavaScript logic in `server/utils/**/*` and
+`scripts/**/*.mjs`. Coverage thresholds are 90% for statements, lines, and functions, and 80% for
+branches. Vue single-file components are intentionally excluded from coverage.
+
+`pnpm lint`, `pnpm test:coverage`, and `pnpm typecheck` are the required baseline checks for
+meaningful changes.
 
 `pnpm build` also exercises the admin seed hook.
 

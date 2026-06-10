@@ -3,6 +3,7 @@ import { and, asc, eq, ne } from 'drizzle-orm'
 import { createError } from 'h3'
 import { z } from 'zod'
 
+import { seedInitialDomainData } from '#server/utils/domain-data'
 import { hashUserPassword } from './password-hashing'
 
 const userIdSchema = z.coerce.number().int().positive()
@@ -121,7 +122,11 @@ export async function getUserById(userId: number) {
 		})
 	}
 
-	return serializeUser(assertReturnedUser(user))
+	const createdUser = assertReturnedUser(user)
+
+	await seedInitialDomainData(createdUser.id)
+
+	return serializeUser(createdUser)
 }
 
 /**

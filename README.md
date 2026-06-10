@@ -14,6 +14,7 @@ Implemented:
 - Email/password login, logout, and session management.
 - Server-route authentication guard using sessions or `x-api-token`.
 - SQLite user table managed through NuxtHub migrations.
+- Pantry Panic domain tables for lists, items, recipes, list items, and meal planner data.
 - User CRUD API routes under `/api/users`.
 - Blob storage API routes under `/api/blobs`.
 - Public safe raster image serving under `/images/**`.
@@ -23,7 +24,7 @@ Not implemented yet:
 
 - Pantry Panic product UI.
 - Authorization/permissions beyond coarse authentication.
-- Grocery list, item, list-item, and recipe database models.
+- Grocery list, item, list-item, and recipe API endpoints.
 - PWA behavior beyond installed dependencies/config groundwork.
 
 ## Product Direction
@@ -100,6 +101,7 @@ Run the project checks:
 
 ```bash
 pnpm lint
+pnpm test:coverage
 pnpm typecheck
 ```
 
@@ -152,5 +154,7 @@ deliberately deferred.
 ## Documentation
 
 - Human docs: [docs/](./docs/README.md)
+- Database docs: [docs/database/](./docs/database/README.md)
+- Testing docs: [docs/testing/](./docs/testing/README.md)
 - Agent docs: [.agents/](./.agents/README.md)
 - Product plan: [PLAN.md](./PLAN.md)
