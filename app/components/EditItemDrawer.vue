@@ -139,11 +139,11 @@ onActivated(() => {
 					/>
 				</UFormField>
 
-				<div class="grid grid-cols-2 gap-3">
+				<FieldRow>
 					<UFormField name="amount" size="lg">
 						<UInputNumber
 							v-model="formState.amount"
-							:step="0.1"
+							:step="0.5"
 							:min="0"
 							placeholder="Aantal"
 							:disabled="isSubmitting"
@@ -157,7 +157,7 @@ onActivated(() => {
 							:disabled="isSubmitting"
 						/>
 					</UFormField>
-				</div>
+				</FieldRow>
 
 				<UFormField name="note">
 					<UTextarea

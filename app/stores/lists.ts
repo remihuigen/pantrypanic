@@ -47,6 +47,8 @@ export const useListsStore = defineStore(
 		const isSaving = ref(false)
 		const error = ref<AppError | null>(null)
 
+		const listCount = computed(() => activeListIds.value.length)
+
 		const activeLists = computed(() =>
 			activeListIds.value
 				.map((listId) => listsById.value[listId])
@@ -866,6 +868,7 @@ export const useListsStore = defineStore(
 			error,
 			activeLists,
 			listSuggestions,
+			listCount,
 			listById,
 			listItemsForList,
 			fetchLists,

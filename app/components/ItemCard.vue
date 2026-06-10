@@ -72,7 +72,7 @@ useGesture(
 				body: 'p-3 sm:p-3',
 				root:
 					item.status === 'checked'
-						? 'ring-success bg-success-50 opacity-50'
+						? 'ring-success dark:ring-success-700 bg-success-50 dark:bg-success-900/20 opacity-50'
 						: 'ring-default'
 			}"
 		>

@@ -8,29 +8,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-	delete: [listId: string]
 	editSettings: [listId: string]
 }>()
-
-const menuItems = computed(() => [
-	[
-		{
-			label: 'Wijzig instellingen',
-			icon: 'i-lucide-settings',
-			onSelect: () => {
-				emit('editSettings', props.listId)
-			}
-		},
-		{
-			label: 'Verwijderen',
-			icon: 'i-lucide-trash-2',
-			disabled: !props.canDelete,
-			onSelect: () => {
-				emit('delete', props.listId)
-			}
-		}
-	]
-])
 
 const itemLabel = computed(() => (props.itemCount === 1 ? 'item' : 'items'))
 const leadingIcon = computed(() =>
@@ -44,18 +23,11 @@ const leadingIcon = computed(() =>
 			<UIcon :name="leadingIcon" class="size-4" />
 		</div>
 
-		<UDropdownMenu :items="menuItems" :content="{ align: 'end' }">
-			<UButton
-				variant="ghost"
-				color="neutral"
-				square
-				size="sm"
-				class="list-card__menu absolute top-2 right-2 z-10"
-				icon="i-lucide-ellipsis-vertical"
-				aria-label="Acties"
-				@click.stop
-			/>
-		</UDropdownMenu>
+		<ListActionMenu
+			class="absolute top-2 right-1 z-10"
+			:listId="props.listId"
+			:canDelete="props.canDelete"
+		/>
 
 		<NuxtLink :to="`/lists/${props.listId}`" class="block pe-10 pt-6 pb-1">
 			<p class="text-highlighted text-base leading-tight font-semibold">

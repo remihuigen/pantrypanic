@@ -11,6 +11,7 @@ const toast = useToast()
 const confirm = useConfirmDialog()
 const editItemDrawer = useEditItemDrawer()
 const list = computed(() => store.listById(id))
+const canDelete = computed(() => store.listCount > 0)
 
 if (!list.value) {
 	// Handle the case where the list is not found
@@ -157,6 +158,9 @@ useGesture(
 					<UIcon v-if="listIcon" :name="listIcon" class="text-muted size-5 shrink-0" />
 					<span class="truncate">{{ list?.name }}</span>
 				</span>
+				<template #tools>
+					<ListActionMenu :listId="id" :canDelete="canDelete" />
+				</template>
 			</PageHeader>
 
 			<ListItemGrid
