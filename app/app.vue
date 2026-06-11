@@ -28,10 +28,11 @@ const { $pwa } = useNuxtApp()
 const toast = useToast()
 const { getIcon } = useIcon()
 
-onMounted(() => {
-	if (!$pwa) return
+watch(
+	() => $pwa?.needRefresh,
+	(needRefresh) => {
+		if (!needRefresh) return
 
-	if ($pwa.needRefresh) {
 		toast.add({
 			icon: getIcon('new'),
 			title: 'Een nieuwe versie van de app staat klaar',
@@ -42,12 +43,15 @@ onMounted(() => {
 					label: 'Installeren',
 					color: 'primary',
 					icon: getIcon('download'),
-					onClick: () => $pwa.updateServiceWorker()
+					onClick: () => $pwa?.updateServiceWorker()
 				}
 			]
 		})
+	},
+	{
+		immediate: true
 	}
-})
+)
 </script>
 
 <template>
