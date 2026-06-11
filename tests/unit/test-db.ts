@@ -11,6 +11,7 @@ export function createSelectBuilder<T>(rows: T[]) {
 		from: () => builder,
 		innerJoin: () => builder,
 		where: () => builder,
+		groupBy: () => builder,
 		orderBy: () => builder,
 		limit: () => builder,
 		offset: () => builder

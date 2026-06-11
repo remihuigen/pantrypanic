@@ -1,9 +1,10 @@
-import { defineApiHandler, getAuthenticatedUserId, parseApiParams } from '#server/utils/api-core'
+import { defineApiHandler, parseApiParams } from '#server/utils/api-core'
+import { getHouseholdContext } from '#server/utils/households'
 import { archiveRecipe, recipeParamsSchema } from '#server/domains'
 
 export default defineApiHandler(async (event) => {
-	const userId = await getAuthenticatedUserId(event)
+	const { householdId, userId } = await getHouseholdContext(event)
 	const { recipeId } = parseApiParams(event, recipeParamsSchema, ['recipeId'])
 
-	return archiveRecipe(recipeId, userId)
+	return archiveRecipe(householdId, recipeId, userId)
 })

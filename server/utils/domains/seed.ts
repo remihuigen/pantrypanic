@@ -1,5 +1,5 @@
 import { createDomainId } from '#server/utils/api-helpers'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
 
 export const mealPlannerDayNumbers = [1, 2, 3, 4, 5, 6, 7] as const
@@ -13,15 +13,20 @@ type AuditInput = {
  * Seeds the default list and singleton meal planner rows when missing.
  *
  * @param auditUserId - Existing user id used for audit fields.
+ * @param householdId - Household id to seed.
  */
-export async function seedInitialDomainData(auditUserId: number): Promise<void> {
+export async function seedInitialDomainData(
+	auditUserId: number,
+	householdId?: string
+): Promise<void> {
+	const resolvedHouseholdId = householdId ?? '019f0000-0000-7000-8000-000000000001'
 	const audit = {
 		userId: auditUserId,
 		now: Date.now()
 	} satisfies AuditInput
 
-	await ensureDefaultList(audit)
-	await ensureMealPlannerDays(audit)
+	await ensureDefaultList(audit, resolvedHouseholdId)
+	await ensureMealPlannerDays(audit, resolvedHouseholdId)
 }
 
 /**
@@ -39,13 +44,13 @@ export async function getFirstUserIdForDomainSeed(): Promise<number | undefined>
 	return user?.id
 }
 
-async function ensureDefaultList(audit: AuditInput): Promise<void> {
+async function ensureDefaultList(audit: AuditInput, householdId: string): Promise<void> {
 	const defaultListName = useRuntimeConfig().pantry.defaultListName
 
 	const [existing] = await db
 		.select({ id: schema.lists.id })
 		.from(schema.lists)
-		.where(eq(schema.lists.name, defaultListName))
+		.where(and(eq(schema.lists.householdId, householdId), eq(schema.lists.name, defaultListName)))
 		.limit(1)
 
 	if (existing) {
@@ -54,6 +59,7 @@ async function ensureDefaultList(audit: AuditInput): Promise<void> {
 
 	await db.insert(schema.lists).values({
 		id: createDomainId(),
+		householdId,
 		name: defaultListName,
 		status: 'active',
 		position: 0,
@@ -66,10 +72,11 @@ async function ensureDefaultList(audit: AuditInput): Promise<void> {
 	})
 }
 
-async function ensureMealPlannerDays(audit: AuditInput): Promise<void> {
+async function ensureMealPlannerDays(audit: AuditInput, householdId: string): Promise<void> {
 	const rows = await db
 		.select({ dayOfWeek: schema.mealPlannerDays.dayOfWeek })
 		.from(schema.mealPlannerDays)
+		.where(eq(schema.mealPlannerDays.householdId, householdId))
 
 	const existingDays = new Set(rows.map((row) => row.dayOfWeek))
 	const missingDays = mealPlannerDayNumbers.filter((dayOfWeek) => !existingDays.has(dayOfWeek))
@@ -81,6 +88,7 @@ async function ensureMealPlannerDays(audit: AuditInput): Promise<void> {
 	await db.insert(schema.mealPlannerDays).values(
 		missingDays.map((dayOfWeek) => ({
 			id: createDomainId(),
+			householdId,
 			dayOfWeek,
 			type: 'empty' as const,
 			recipeId: null,

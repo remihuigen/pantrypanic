@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 
+import { ensureDefaultHousehold, ensureHouseholdMembership } from '#server/utils/households'
 import { seedInitialDomainData } from '#server/utils/domains/seed'
 import { and, asc, eq, ne } from 'drizzle-orm'
 import { createError } from 'h3'
@@ -41,11 +42,15 @@ export const updateUserBodySchema = z
 	.strictObject({
 		name: z.string().trim().min(1).max(120).optional(),
 		email: userEmailSchema.optional(),
+		avatarPathname: z.string().trim().min(1).max(500).nullable().optional(),
 		password: z.string().min(1).max(1024).optional()
 	})
 	.refine(
 		(value) =>
-			value.name !== undefined || value.email !== undefined || value.password !== undefined,
+			value.name !== undefined ||
+			value.email !== undefined ||
+			value.avatarPathname !== undefined ||
+			value.password !== undefined,
 		{
 			error: 'At least one user field must be provided'
 		}
@@ -64,6 +69,7 @@ export function serializeUser(user: UserRow) {
 		id: user.id,
 		name: user.name,
 		email: user.email,
+		avatarPathname: user.avatarPathname ?? undefined,
 		createdAt: user.createdAt
 	}
 }
@@ -150,10 +156,14 @@ export async function getUserById(userId: number) {
  * Creates a user after checking email uniqueness.
  *
  * @param input - Validated create-user payload.
+ * @param options - Optional creation behavior.
  * @returns Created public user record.
  * @throws HTTP 409 when the email is already in use.
  */
-export async function createUser(input: z.infer<typeof createUserBodySchema>) {
+export async function createUser(
+	input: z.infer<typeof createUserBodySchema>,
+	options: { seedDefaultHousehold?: boolean } = {}
+) {
 	await assertEmailAvailable(input.email)
 	const hashedPassword = await hashPassword(input.password)
 
@@ -167,7 +177,14 @@ export async function createUser(input: z.infer<typeof createUserBodySchema>) {
 		})
 		.returning()
 
-	return serializeUser(assertReturnedUser(user))
+	const createdUser = assertReturnedUser(user)
+
+	if (options.seedDefaultHousehold ?? true) {
+		const household = await ensureDefaultHousehold(createdUser.id)
+		await seedInitialDomainData(createdUser.id, household.id)
+	}
+
+	return serializeUser(createdUser)
 }
 
 /**
@@ -199,6 +216,7 @@ export async function updateUser(userId: number, input: z.infer<typeof updateUse
 		.set({
 			...(input.name !== undefined ? { name: input.name } : {}),
 			...(input.email !== undefined ? { email: input.email } : {}),
+			...(input.avatarPathname !== undefined ? { avatarPathname: input.avatarPathname } : {}),
 			...(input.password !== undefined
 				? { password: await hashPassword(input.password) }
 				: {})
@@ -251,6 +269,16 @@ export async function findUserForAuthentication(email: string) {
  */
 export async function updateUserPasswordHash(userId: number, passwordHash: string) {
 	await db.update(schema.users).set({ password: passwordHash }).where(eq(schema.users.id, userId))
+}
+
+/**
+ * Adds an existing user to a household.
+ *
+ * @param userId - User id.
+ * @param householdId - Household id.
+ */
+export async function addUserToHousehold(userId: number, householdId: string) {
+	await ensureHouseholdMembership(householdId, userId)
 }
 
 async function findUserById(userId: number) {

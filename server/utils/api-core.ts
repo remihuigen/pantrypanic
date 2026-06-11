@@ -203,6 +203,35 @@ function normalizeApiError(error: unknown): { statusCode: number; body: ApiError
 		}
 	}
 
+	if (isHttpLikeError(error)) {
+		const statusCode = Number(error.statusCode)
+
+		return {
+			statusCode,
+			body: {
+				success: false,
+				error: {
+					code:
+						statusCode === 401
+							? 'UNAUTHORIZED'
+							: statusCode === 403
+								? 'FORBIDDEN'
+								: statusCode === 404
+									? 'NOT_FOUND'
+									: statusCode === 409
+										? 'CONFLICT'
+										: statusCode === 400
+											? 'VALIDATION_ERROR'
+											: 'INTERNAL_ERROR',
+					message:
+						typeof error.message === 'string' && error.message.length > 0
+							? error.message
+							: 'Er is iets misgegaan.'
+				}
+			}
+		}
+	}
+
 	return {
 		statusCode: 500,
 		body: {
@@ -213,4 +242,13 @@ function normalizeApiError(error: unknown): { statusCode: number; body: ApiError
 			}
 		}
 	}
+}
+
+function isHttpLikeError(error: unknown): error is { statusCode: number; message?: string } {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'statusCode' in error &&
+		typeof (error as { statusCode?: unknown }).statusCode === 'number'
+	)
 }

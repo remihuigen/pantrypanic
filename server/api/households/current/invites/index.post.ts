@@ -1,0 +1,21 @@
+import { defineApiHandler } from '#server/utils/api-core'
+import { createAccessLink, getHouseholdContext } from '#server/utils/households'
+import { getRequestURL } from 'h3'
+
+export default defineApiHandler(async (event) => {
+	const { householdId, userId } = await getHouseholdContext(event)
+	const { token, link } = await createAccessLink({
+		type: 'invite',
+		householdId,
+		createdByUserId: userId
+	})
+	const origin = getRequestURL(event).origin
+
+	return {
+		invite: {
+			id: link.id,
+			expiresAt: link.expiresAt,
+			url: `${origin}/join?token=${encodeURIComponent(token)}`
+		}
+	}
+})

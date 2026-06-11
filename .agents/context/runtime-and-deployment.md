@@ -35,6 +35,10 @@ The product app UI is namespaced under `/app`:
 - `nuxt-auth-utils` provides the user session cookie and `useUserSession()`.
 - `POST /api/auth/login` validates email/password credentials and sets a session.
 - `POST /api/auth/logout` clears the session.
+- Sessions expire after 30 days through `runtimeConfig.session.maxAge`.
+- User sessions can include `activeHouseholdId`; domain APIs resolve household scope from this
+  session value.
+- Invite/reset access-link acceptance routes are public and token-gated.
 - `app/middleware/01.auth.global.ts` protects `/app` routes and redirects unauthenticated visits to
   `/login?redirect=<target>`. Non-`/app` routes are public unless they add their own guard.
 - `server/middleware/auth.ts` protects `/api/**` and `/images/**`, except `/api/auth/login` and
@@ -58,6 +62,10 @@ Production environment variables currently referenced:
 - `ADMIN_API_KEY`
 - `NUXT_PUBLIC_SITE_URL`
 - `NUXT_PUBLIC_REFRESH_INTERVAL`
+- `ENABLE_MULTI_TENANCY` (default `false`)
+- `ENABLE_REGISTRATION` (default `false`, reserved for future public registration)
+- Both flags are available in public runtime config for client UI and private runtime config for API
+  logic. Server routes must read the private runtime config values.
 - `NUXT_SESSION_PASSWORD`
 - optional `NUXT_PANTRY_*` overrides for `runtimeConfig.pantry`
 
@@ -141,14 +149,18 @@ Implemented route families:
 - `/api/recipe-items` for recipe-item update and hard-delete
 - `/api/meal-planner` for singleton seven-day planner reads, day updates, placeholder ingredients,
   clear, and copy-to-list
+- `/api/households` for memberships, active household switching, members, household settings,
+  invite links, and reset-access links
+- `/api/profile` for profile edits and avatar upload
+- `/api/settings` for canonical item maintenance, clear-data, and usage stats
 
 New domain routes use the shared response envelope:
 
 - success: `{ success: true, data }`
 - error: `{ success: false, error: { code, message, details? } }`
 
-Zod validates params, query strings, and bodies. Validation messages are Dutch. Current
-authorization is coarse authentication only; fine-grained permissions are still deferred.
+Zod validates params, query strings, and bodies. Validation messages are Dutch. All household
+members can manage household settings, members, invite/reset links, and clear-data actions.
 
 ## Admin User Seed
 

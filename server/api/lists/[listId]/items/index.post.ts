@@ -1,10 +1,11 @@
-import { defineApiHandler, getAuthenticatedUserId, parseApiBody, parseApiParams } from '#server/utils/api-core'
+import { defineApiHandler, parseApiBody, parseApiParams } from '#server/utils/api-core'
+import { getHouseholdContext } from '#server/utils/households'
 import { addListItem, createOccurrenceBodySchema, listParamsSchema } from '#server/domains'
 
 export default defineApiHandler(async (event) => {
-	const userId = await getAuthenticatedUserId(event)
+	const { householdId, userId } = await getHouseholdContext(event)
 	const { listId } = parseApiParams(event, listParamsSchema, ['listId'])
 	const body = await parseApiBody(event, createOccurrenceBodySchema)
 
-	return addListItem(listId, body, userId)
+	return addListItem(householdId, listId, body, userId)
 })

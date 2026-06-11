@@ -1,8 +1,9 @@
-import { defineApiHandler, getAuthenticatedUserId } from '#server/utils/api-core'
+import { defineApiHandler } from '#server/utils/api-core'
+import { getHouseholdContext } from '#server/utils/households'
 import { clearMealPlanner } from '#server/domains'
 
 export default defineApiHandler(async (event) => {
-	const userId = await getAuthenticatedUserId(event)
+	const { householdId, userId } = await getHouseholdContext(event)
 
-	return clearMealPlanner(userId)
+	return clearMealPlanner(householdId, userId)
 })

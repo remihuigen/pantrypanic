@@ -7,6 +7,7 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - `app/stores/lists.ts`
 - `app/stores/recipes.ts`
 - `app/stores/meal-planner.ts`
+- `app/stores/settings.ts`
 
 ## Shared Helpers
 
@@ -15,7 +16,7 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   domain types.
 - `app/utils/api-client.ts`: unwraps API success/error envelopes and normalizes errors.
 - `app/composables/useStoreRefresh.ts`: interval-based polling with runtime-configured refresh
-  timing.
+  timing and a household-settings override loaded by the settings store.
 - `app/plugins/data-hydration.client.ts`: startup hydration refresh for persisted store caches.
 
 ## App Routes And Rendering
@@ -48,6 +49,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - Persisted fields are cache-like and exclude transient loading/error state.
 - Common user actions use optimistic updates with rollback/reconciliation.
 - Backend remains source of truth; polling reconciles collaborative changes.
+- Settings owns profile, household context, household-wide refresh interval, member links, item
+  maintenance, clear-data, and usage stats.
 
 ## Error Feedback Pattern
 

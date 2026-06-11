@@ -1,4 +1,5 @@
-import { defineApiHandler, getAuthenticatedUserId, parseApiBody, parseApiParams } from '#server/utils/api-core'
+import { defineApiHandler, parseApiBody, parseApiParams } from '#server/utils/api-core'
+import { getHouseholdContext } from '#server/utils/households'
 import {
 	mealPlannerDayItemParamsSchema,
 	updateMealPlannerDayItem,
@@ -6,9 +7,9 @@ import {
 } from '#server/domains'
 
 export default defineApiHandler(async (event) => {
-	const userId = await getAuthenticatedUserId(event)
+	const { householdId, userId } = await getHouseholdContext(event)
 	const { mealPlannerDayItemId } = parseApiParams(event, mealPlannerDayItemParamsSchema, ['mealPlannerDayItemId'])
 	const body = await parseApiBody(event, updateOccurrenceBodySchema)
 
-	return updateMealPlannerDayItem(mealPlannerDayItemId, body, userId)
+	return updateMealPlannerDayItem(householdId, mealPlannerDayItemId, body, userId)
 })

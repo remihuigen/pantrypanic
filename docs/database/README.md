@@ -8,6 +8,10 @@ migrations under `server/db/migrations/sqlite/`.
 Existing tables:
 
 - `users`
+- `households`
+- `household_users`
+- `household_settings`
+- `access_links`
 
 Domain tables added for Pantry Panic:
 
@@ -50,8 +54,12 @@ foreign keys.
 `lists` stores reusable shopping lists. The seeded list name comes from
 `runtimeConfig.pantry.defaultListName` and defaults to `Boodschappen`.
 
-`items` stores canonical grocery items. The `normalized_name` unique index supports reuse and
-autocomplete.
+`households` stores household/tenant containers. `household_users` stores memberships.
+`household_settings` stores household-wide app settings such as refresh interval. `access_links`
+stores hashed one-time invite and reset-access tokens.
+
+`items` stores canonical grocery items. The household + `normalized_name` unique index supports
+reuse and autocomplete within a household.
 
 `recipes` stores reusable recipe templates.
 
@@ -60,21 +68,23 @@ autocomplete.
 `list_items` stores concrete item occurrences on a shopping list. Duplicates are allowed and
 history is preserved through statuses rather than hard deletion.
 
-`meal_planner_days` stores the singleton seven-day meal planner.
+`meal_planner_days` stores one seven-day meal planner per household.
 
 `meal_planner_day_items` stores volatile placeholder meal ingredients. These rows may be hard
 deleted when planner days are reset or changed.
 
 ## Seed Data
 
-Migration `0001_worried_jasper_sitwell.sql` seeds default domain data when at least one user
-already exists:
+Migrations seed/backfill default household and domain data when at least one user already exists:
 
-- one active list using `runtimeConfig.pantry.defaultListName`
-- seven `meal_planner_days` rows with `type = empty`
+- one default household named `Thuis`
+- membership rows for existing users
+- one active list per household using `runtimeConfig.pantry.defaultListName`
+- seven `meal_planner_days` rows per household with `type = empty`
 
-For fresh deployments where migrations run before the first user exists, `createUser()` calls
-`seedInitialDomainData(user.id)` after creating the user. This covers the HTTP admin seed path.
+For fresh deployments where migrations run before the first user exists, `createUser()` creates the
+default household, attaches the user, and calls `seedInitialDomainData()` for that household. This
+covers the HTTP admin seed path.
 
 ## Helpers
 

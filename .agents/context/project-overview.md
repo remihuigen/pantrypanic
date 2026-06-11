@@ -30,6 +30,10 @@ Implemented:
 - blob CRUD/validation API routes
 - Pantry Panic domain API routes for lists, list items, items, recipes, recipe items, and meal
   planner workflows
+- household-scoped multi-tenancy data model with singleton behavior when `ENABLE_MULTI_TENANCY` is
+  disabled
+- settings UI for profile, theme, household members/invites/reset links, app refresh interval,
+  canonical item maintenance, clear-data, and usage stats
 - safe raster image serving from blob storage
 - build-time HTTP admin-user seed from `.env`
 - Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
@@ -40,7 +44,7 @@ Implemented:
 
 Not implemented yet:
 
-- fine-grained permissions around API routes
+- role-based or fine-grained permissions around household actions
 - offline behavior beyond generated service-worker asset caching
 - shopping workflow screens
 

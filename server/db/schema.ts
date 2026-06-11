@@ -27,8 +27,71 @@ export const users = sqliteTable('users', {
 	name: text().notNull(),
 	email: text().notNull().unique(),
 	password: text().notNull(),
+	avatarPathname: text('avatar_pathname'),
 	createdAt: integer({ mode: 'timestamp' }).notNull()
 })
+
+export const households = sqliteTable(
+	'households',
+	{
+		id: text('id').primaryKey(),
+		name: text('name').notNull(),
+		createdAt: integer('created_at').notNull(),
+		updatedAt: integer('updated_at').notNull()
+	},
+	(table) => [index('households_name_idx').on(table.name)]
+)
+
+export const householdUsers = sqliteTable(
+	'household_users',
+	{
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
+		userId: integer('user_id')
+			.notNull()
+			.references(() => users.id),
+		createdAt: integer('created_at').notNull()
+	},
+	(table) => [
+		uniqueIndex('household_users_household_user_idx').on(table.householdId, table.userId),
+		index('household_users_user_id_idx').on(table.userId)
+	]
+)
+
+export const householdSettings = sqliteTable('household_settings', {
+	householdId: text('household_id')
+		.primaryKey()
+		.references(() => households.id),
+	refreshIntervalMs: integer('refresh_interval_ms').notNull(),
+	createdAt: integer('created_at').notNull(),
+	updatedAt: integer('updated_at').notNull(),
+	updatedByUserId: integer('updated_by_user_id').references(() => users.id)
+})
+
+export const accessLinks = sqliteTable(
+	'access_links',
+	{
+		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
+		userId: integer('user_id').references(() => users.id),
+		type: text('type', { enum: ['invite', 'reset'] }).notNull(),
+		tokenHash: text('token_hash').notNull().unique(),
+		expiresAt: integer('expires_at').notNull(),
+		consumedAt: integer('consumed_at'),
+		createdAt: integer('created_at').notNull(),
+		createdByUserId: integer('created_by_user_id')
+			.notNull()
+			.references(() => users.id)
+	},
+	(table) => [
+		index('access_links_household_type_idx').on(table.householdId, table.type),
+		index('access_links_token_hash_idx').on(table.tokenHash),
+		index('access_links_expires_at_idx').on(table.expiresAt)
+	]
+)
 
 const auditColumns = {
 	createdAt: integer('created_at').notNull(),
@@ -45,6 +108,9 @@ export const lists = sqliteTable(
 	'lists',
 	{
 		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
 		name: text('name').notNull(),
 		icon: text('icon'),
 		status: text('status', { enum: listStatusValues }).notNull(),
@@ -54,7 +120,11 @@ export const lists = sqliteTable(
 		...auditColumns
 	},
 	(table) => [
-		index('lists_status_position_idx').on(table.status, table.position),
+		index('lists_household_status_position_idx').on(
+			table.householdId,
+			table.status,
+			table.position
+		),
 		index('lists_created_by_user_id_idx').on(table.createdByUserId),
 		index('lists_updated_by_user_id_idx').on(table.updatedByUserId)
 	]
@@ -64,6 +134,9 @@ export const items = sqliteTable(
 	'items',
 	{
 		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
 		name: text('name').notNull(),
 		normalizedName: text('normalized_name').notNull(),
 		defaultUnit: text('default_unit'),
@@ -72,7 +145,10 @@ export const items = sqliteTable(
 		...auditColumns
 	},
 	(table) => [
-		uniqueIndex('items_normalized_name_idx').on(table.normalizedName),
+		uniqueIndex('items_household_normalized_name_idx').on(
+			table.householdId,
+			table.normalizedName
+		),
 		index('items_name_idx').on(table.name),
 		index('items_category_idx').on(table.category)
 	]
@@ -82,6 +158,9 @@ export const recipes = sqliteTable(
 	'recipes',
 	{
 		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
 		name: text('name').notNull(),
 		description: text('description'),
 		servings: integer('servings'),
@@ -93,7 +172,7 @@ export const recipes = sqliteTable(
 		...auditColumns
 	},
 	(table) => [
-		index('recipes_status_idx').on(table.status),
+		index('recipes_household_status_idx').on(table.householdId, table.status),
 		index('recipes_name_idx').on(table.name),
 		index('recipes_created_by_user_id_idx').on(table.createdByUserId)
 	]
@@ -103,6 +182,9 @@ export const mealPlannerDays = sqliteTable(
 	'meal_planner_days',
 	{
 		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
 		dayOfWeek: integer('day_of_week').notNull(),
 		type: text('type', { enum: mealPlannerDayTypeValues }).notNull(),
 		recipeId: text('recipe_id').references(() => recipes.id),
@@ -111,7 +193,10 @@ export const mealPlannerDays = sqliteTable(
 		...auditColumns
 	},
 	(table) => [
-		uniqueIndex('meal_planner_days_day_of_week_idx').on(table.dayOfWeek),
+		uniqueIndex('meal_planner_days_household_day_of_week_idx').on(
+			table.householdId,
+			table.dayOfWeek
+		),
 		index('meal_planner_days_type_idx').on(table.type),
 		index('meal_planner_days_recipe_id_idx').on(table.recipeId)
 	]
@@ -121,6 +206,9 @@ export const recipeItems = sqliteTable(
 	'recipe_items',
 	{
 		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
 		recipeId: text('recipe_id')
 			.notNull()
 			.references(() => recipes.id),
@@ -135,6 +223,7 @@ export const recipeItems = sqliteTable(
 	},
 	(table) => [
 		index('recipe_items_recipe_id_position_idx').on(table.recipeId, table.position),
+		index('recipe_items_household_id_idx').on(table.householdId),
 		index('recipe_items_item_id_idx').on(table.itemId)
 	]
 )
@@ -143,6 +232,9 @@ export const mealPlannerDayItems = sqliteTable(
 	'meal_planner_day_items',
 	{
 		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
 		mealPlannerDayId: text('meal_planner_day_id')
 			.notNull()
 			.references(() => mealPlannerDays.id),
@@ -160,6 +252,7 @@ export const mealPlannerDayItems = sqliteTable(
 			table.mealPlannerDayId,
 			table.position
 		),
+		index('meal_planner_day_items_household_id_idx').on(table.householdId),
 		index('meal_planner_day_items_item_id_idx').on(table.itemId)
 	]
 )
@@ -168,6 +261,9 @@ export const listItems = sqliteTable(
 	'list_items',
 	{
 		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
 		listId: text('list_id')
 			.notNull()
 			.references(() => lists.id),
@@ -198,6 +294,7 @@ export const listItems = sqliteTable(
 			table.status,
 			table.position
 		),
+		index('list_items_household_id_idx').on(table.householdId),
 		index('list_items_item_id_idx').on(table.itemId),
 		index('list_items_status_idx').on(table.status),
 		index('list_items_archived_at_idx').on(table.archivedAt),

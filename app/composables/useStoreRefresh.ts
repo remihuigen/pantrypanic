@@ -182,6 +182,12 @@ export function useStoreRefresh(options: UseStoreRefreshOptions) {
  * @returns A positive interval in milliseconds.
  */
 function resolveRefreshInterval() {
+	const configuredState = useState<number | null>('pantry-refresh-interval-ms', () => null)
+
+	if (typeof configuredState.value === 'number' && configuredState.value > 0) {
+		return configuredState.value
+	}
+
 	try {
 		const runtimeConfig = useRuntimeConfig()
 		const configured = Number(runtimeConfig.public.refreshInterval)
@@ -194,4 +200,15 @@ function resolveRefreshInterval() {
 	}
 
 	return 5000
+}
+
+/**
+ * Updates the client-wide default refresh interval used by store polling.
+ *
+ * @param intervalMs - Positive interval in milliseconds.
+ */
+export function setStoreRefreshInterval(intervalMs: number): void {
+	const configuredState = useState<number | null>('pantry-refresh-interval-ms', () => null)
+
+	configuredState.value = intervalMs > 0 ? intervalMs : null
 }

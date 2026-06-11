@@ -58,6 +58,12 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		adminApiKey: process.env.ADMIN_API_KEY ?? '',
+		enableMultiTenancy: process.env.ENABLE_MULTI_TENANCY === 'true',
+		enableRegistration: process.env.ENABLE_REGISTRATION === 'true',
+		session: {
+			password: process.env.NUXT_SESSION_PASSWORD ?? '',
+			maxAge: 60 * 60 * 24 * 30
+		},
 		pantry: {
 			defaultListName: 'Boodschappen',
 			defaultUserListLimit: 50,
@@ -71,6 +77,8 @@ export default defineNuxtConfig({
 
 		public: {
 			refreshInterval: 5000,
+			enableMultiTenancy: process.env.ENABLE_MULTI_TENANCY === 'true',
+			enableRegistration: process.env.ENABLE_REGISTRATION === 'true',
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."

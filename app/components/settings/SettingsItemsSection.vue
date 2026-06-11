@@ -1,0 +1,116 @@
+<script setup lang="ts">
+const settingsStore = useSettingsStore()
+const toast = useToast()
+const confirm = useConfirmDialog()
+const query = ref('')
+const editingId = ref<string | null>(null)
+const mergeTargets = ref<Record<string, string>>({})
+const draft = reactive({
+	name: '',
+	defaultUnit: '',
+	category: '',
+	notes: ''
+})
+
+watchDebounced(
+	query,
+	() => {
+		void settingsStore.fetchItems(query.value)
+	},
+	{ debounce: 250 }
+)
+
+function startEdit(item: (typeof settingsStore.items)[number]) {
+	editingId.value = item.id
+	draft.name = item.name
+	draft.defaultUnit = item.defaultUnit ?? ''
+	draft.category = item.category ?? ''
+	draft.notes = item.notes ?? ''
+}
+
+async function saveItem(itemId: string) {
+	await settingsStore.updateItem(itemId, {
+		name: draft.name,
+		defaultUnit: draft.defaultUnit || null,
+		category: draft.category || null,
+		notes: draft.notes || null
+	})
+	editingId.value = null
+	toast.add({ title: 'Item opgeslagen.', color: 'success', icon: 'i-lucide-check' })
+}
+
+async function mergeItem(itemId: string) {
+	const targetItemId = mergeTargets.value[itemId]
+	if (!targetItemId) return
+
+	await settingsStore.mergeItem(itemId, targetItemId)
+	toast.add({ title: 'Items samengevoegd.', color: 'success', icon: 'i-lucide-check' })
+}
+
+async function deleteItem(itemId: string) {
+	const ok = await confirm({
+		title: 'Item verwijderen?',
+		description: 'Dit kan alleen als het item nergens meer wordt gebruikt.',
+		color: 'error'
+	})
+
+	if (!ok) return
+
+	await settingsStore.deleteItem(itemId)
+}
+</script>
+
+<template>
+	<UCard>
+		<template #header>
+			<div class="flex items-center justify-between gap-3">
+				<h2 class="text-base font-semibold">Alle items</h2>
+				<UInput v-model="query" icon="i-lucide-search" placeholder="Zoeken" class="max-w-64" />
+			</div>
+		</template>
+
+		<div class="space-y-3">
+			<div
+				v-for="item in settingsStore.items"
+				:key="item.id"
+				class="border-default rounded-md border p-3"
+			>
+				<div v-if="editingId === item.id" class="grid gap-2">
+					<UInput v-model="draft.name" />
+					<FieldRow>
+						<UInput v-model="draft.defaultUnit" placeholder="Eenheid" />
+						<UInput v-model="draft.category" placeholder="Categorie" />
+					</FieldRow>
+					<UTextarea v-model="draft.notes" placeholder="Notities" />
+					<div class="flex gap-2">
+						<UButton icon="i-lucide-save" @click="saveItem(item.id)">Opslaan</UButton>
+						<UButton color="neutral" variant="ghost" @click="editingId = null">Annuleren</UButton>
+					</div>
+				</div>
+
+				<div v-else class="space-y-3">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<p class="truncate text-sm font-medium">{{ item.name }}</p>
+							<p class="text-muted text-xs">{{ item.usageCount }} verwijzingen</p>
+						</div>
+						<div class="flex gap-1">
+							<UButton icon="i-lucide-pencil" variant="ghost" @click="startEdit(item)" />
+							<UButton icon="i-lucide-trash-2" color="error" variant="ghost" @click="deleteItem(item.id)" />
+						</div>
+					</div>
+					<div class="flex gap-2">
+						<USelect
+							v-model="mergeTargets[item.id]"
+							:items="settingsStore.items.filter((candidate) => candidate.id !== item.id).map((candidate) => ({ label: candidate.name, value: candidate.id }))"
+							placeholder="Samenvoegen met"
+						/>
+						<UButton icon="i-lucide-git-merge" color="neutral" @click="mergeItem(item.id)">
+							Samenvoegen
+						</UButton>
+					</div>
+				</div>
+			</div>
+		</div>
+	</UCard>
+</template>

@@ -26,15 +26,18 @@ import {
 import { findOrCreateItem } from './items'
 import { seedInitialDomainData } from './seed'
 
+const DEFAULT_HOUSEHOLD_ID = 'household-1'
+
 /**
  * Returns the singleton meal planner.
  *
+ * @param householdId - Household id.
  * @param userId - Audit user id used to create missing seed rows.
  * @returns Meal planner days.
  */
-export async function getMealPlanner(userId: number) {
-	await seedInitialDomainData(userId)
-	const days = await getMealPlannerDays()
+export async function getMealPlanner(householdId: string, userId: number) {
+	await seedInitialDomainData(userId, householdId)
+	const days = await getMealPlannerDays(householdId)
 	const recipeIds = days.map((day) => day.recipeId).filter((id): id is string => Boolean(id))
 	const dayIds = days.map((day) => day.id)
 	const recipes =
@@ -48,7 +51,12 @@ export async function getMealPlanner(userId: number) {
 		})
 		.from(schema.mealPlannerDayItems)
 		.innerJoin(schema.items, eq(schema.items.id, schema.mealPlannerDayItems.itemId))
-		.where(inArray(schema.mealPlannerDayItems.mealPlannerDayId, dayIds))
+		.where(
+			and(
+				eq(schema.mealPlannerDayItems.householdId, householdId),
+				inArray(schema.mealPlannerDayItems.mealPlannerDayId, dayIds)
+			)
+		)
 		.orderBy(
 			asc(schema.mealPlannerDayItems.position),
 			asc(schema.mealPlannerDayItems.createdAt)
@@ -77,41 +85,63 @@ export async function getMealPlanner(userId: number) {
 /**
  * Updates one meal planner day.
  *
+ * @param householdId - Household id.
  * @param dayOfWeek - Day of week.
  * @param input - Validated day payload.
  * @param userId - Audit user id.
  * @returns Updated day.
  */
 export async function updateMealPlannerDay(
-	dayOfWeek: number,
-	input: z.infer<typeof mealPlannerDayBodySchema>,
-	userId: number
+	householdId: string | number,
+	dayOfWeek: number | z.infer<typeof mealPlannerDayBodySchema>,
+	input: z.infer<typeof mealPlannerDayBodySchema> | number,
+	userId?: number
 ) {
-	const day = await findMealPlannerDayOrThrow(dayOfWeek)
-	const audit = createAudit(userId)
+	const isLegacyCall = typeof householdId === 'number'
+	const resolvedHouseholdId = isLegacyCall ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedDayOfWeek = isLegacyCall ? householdId : (dayOfWeek as number)
+	const resolvedInput = isLegacyCall
+		? (dayOfWeek as z.infer<typeof mealPlannerDayBodySchema>)
+		: (input as z.infer<typeof mealPlannerDayBodySchema>)
+	const resolvedUserId = isLegacyCall ? Number(input) : Number(userId)
+	const day = await findMealPlannerDayOrThrow(resolvedDayOfWeek, resolvedHouseholdId)
+	const audit = createAudit(resolvedUserId)
 
-	if (input.type === 'recipe') {
-		await findRecipeOrThrow(input.recipeId)
+	if (resolvedInput.type === 'recipe') {
+		await findRecipeOrThrow(resolvedInput.recipeId, resolvedHouseholdId)
 	}
 
-	if (input.type !== 'placeholder') {
+	if (resolvedInput.type !== 'placeholder') {
 		await db
 			.delete(schema.mealPlannerDayItems)
-			.where(eq(schema.mealPlannerDayItems.mealPlannerDayId, day.id))
+			.where(
+				and(
+					eq(schema.mealPlannerDayItems.mealPlannerDayId, day.id),
+					eq(schema.mealPlannerDayItems.householdId, resolvedHouseholdId)
+				)
+			)
 	}
 
 	const [updated] = await db
 		.update(schema.mealPlannerDays)
 		.set({
-			type: input.type,
-			recipeId: input.type === 'recipe' ? input.recipeId : null,
-			placeholderName: input.type === 'placeholder' ? input.placeholderName : null,
+			type: resolvedInput.type,
+			recipeId: resolvedInput.type === 'recipe' ? resolvedInput.recipeId : null,
+			placeholderName:
+				resolvedInput.type === 'placeholder' ? resolvedInput.placeholderName : null,
 			placeholderNotes:
-				input.type === 'placeholder' ? (input.placeholderNotes ?? null) : null,
+				resolvedInput.type === 'placeholder'
+					? (resolvedInput.placeholderNotes ?? null)
+					: null,
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.mealPlannerDays.id, day.id))
+		.where(
+			and(
+				eq(schema.mealPlannerDays.id, day.id),
+				eq(schema.mealPlannerDays.householdId, resolvedHouseholdId)
+			)
+		)
 		.returning()
 
 	const nextDay = assertRow(updated)
@@ -129,17 +159,26 @@ export async function updateMealPlannerDay(
 /**
  * Adds an ingredient to a placeholder meal planner day.
  *
+ * @param householdId - Household id.
  * @param dayOfWeek - Day of week.
  * @param input - Validated ingredient payload.
  * @param userId - Audit user id.
  * @returns Created meal planner day item.
  */
 export async function addMealPlannerDayItem(
-	dayOfWeek: number,
-	input: z.infer<typeof createOccurrenceBodySchema>,
-	userId: number
+	householdId: string | number,
+	dayOfWeek: number | z.infer<typeof createOccurrenceBodySchema>,
+	input: z.infer<typeof createOccurrenceBodySchema> | number,
+	userId?: number
 ) {
-	const day = await findMealPlannerDayOrThrow(dayOfWeek)
+	const isLegacyCall = typeof householdId === 'number'
+	const resolvedHouseholdId = isLegacyCall ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedDayOfWeek = isLegacyCall ? householdId : (dayOfWeek as number)
+	const resolvedInput = isLegacyCall
+		? (dayOfWeek as z.infer<typeof createOccurrenceBodySchema>)
+		: (input as z.infer<typeof createOccurrenceBodySchema>)
+	const resolvedUserId = isLegacyCall ? Number(input) : Number(userId)
+	const day = await findMealPlannerDayOrThrow(resolvedDayOfWeek, resolvedHouseholdId)
 
 	if (day.type !== 'placeholder') {
 		throwApiError({
@@ -149,18 +188,23 @@ export async function addMealPlannerDayItem(
 		})
 	}
 
-	const audit = createAudit(userId)
-	const item = await findOrCreateItem({ name: input.name, auditUserId: userId })
-	const position = await getNextMealPlannerDayItemPosition(day.id)
+	const audit = createAudit(resolvedUserId)
+	const item = await findOrCreateItem({
+		householdId: resolvedHouseholdId,
+		name: resolvedInput.name,
+		auditUserId: resolvedUserId
+	})
+	const position = await getNextMealPlannerDayItemPosition(day.id, resolvedHouseholdId)
 	const [dayItem] = await db
 		.insert(schema.mealPlannerDayItems)
 		.values({
 			id: createDomainId(),
+			householdId: resolvedHouseholdId,
 			mealPlannerDayId: day.id,
 			itemId: item.id,
-			amount: input.amount ?? null,
-			unit: input.unit ?? null,
-			note: input.note ?? null,
+			amount: resolvedInput.amount ?? null,
+			unit: resolvedInput.unit ?? null,
+			note: resolvedInput.note ?? null,
 			position,
 			...auditFields(audit)
 		})
@@ -172,21 +216,28 @@ export async function addMealPlannerDayItem(
 /**
  * Reorders placeholder meal planner day items.
  *
+ * @param householdId - Household id.
  * @param dayOfWeek - Day of week.
  * @param orderedIds - Ordered day item ids.
  * @param userId - Audit user id.
  * @returns Updated item positions.
  */
 export async function reorderMealPlannerDayItems(
-	dayOfWeek: number,
-	orderedIds: string[],
-	userId: number
+	householdId: string | number,
+	dayOfWeek: number | string[],
+	orderedIds: string[] | number,
+	userId?: number
 ) {
-	const day = await findMealPlannerDayOrThrow(dayOfWeek)
-	const audit = createAudit(userId)
+	const isLegacyCall = typeof householdId === 'number'
+	const resolvedHouseholdId = isLegacyCall ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedDayOfWeek = isLegacyCall ? householdId : (dayOfWeek as number)
+	const resolvedOrderedIds = isLegacyCall ? (dayOfWeek as string[]) : (orderedIds as string[])
+	const resolvedUserId = isLegacyCall ? Number(orderedIds) : Number(userId)
+	const day = await findMealPlannerDayOrThrow(resolvedDayOfWeek, resolvedHouseholdId)
+	const audit = createAudit(resolvedUserId)
 	const updated = []
 
-	for (const [position, id] of orderedIds.entries()) {
+	for (const [position, id] of resolvedOrderedIds.entries()) {
 		const [row] = await db
 			.update(schema.mealPlannerDayItems)
 			.set({
@@ -197,6 +248,7 @@ export async function reorderMealPlannerDayItems(
 			.where(
 				and(
 					eq(schema.mealPlannerDayItems.id, id),
+					eq(schema.mealPlannerDayItems.householdId, resolvedHouseholdId),
 					eq(schema.mealPlannerDayItems.mealPlannerDayId, day.id)
 				)
 			)
@@ -216,13 +268,14 @@ export async function reorderMealPlannerDayItems(
 /**
  * Adds all planned meal ingredients to a shopping list.
  *
+ * @param householdId - Household id.
  * @param listId - Target list id.
  * @param userId - Audit user id.
  * @returns Added list items.
  */
-export async function addMealPlannerToList(listId: string, userId: number) {
-	await findListOrThrow(listId)
-	const days = await getMealPlannerDays()
+export async function addMealPlannerToList(householdId: string, listId: string, userId: number) {
+	await findListOrThrow(listId, householdId)
+	const days = await getMealPlannerDays(householdId)
 	const addedItems = []
 
 	for (const day of days) {
@@ -234,12 +287,18 @@ export async function addMealPlannerToList(listId: string, userId: number) {
 				})
 				.from(schema.recipeItems)
 				.innerJoin(schema.items, eq(schema.items.id, schema.recipeItems.itemId))
-				.where(eq(schema.recipeItems.recipeId, day.recipeId))
+				.where(
+					and(
+						eq(schema.recipeItems.recipeId, day.recipeId),
+						eq(schema.recipeItems.householdId, householdId)
+					)
+				)
 				.orderBy(asc(schema.recipeItems.position), asc(schema.recipeItems.createdAt))
 
 			addedItems.push(
 				...(await appendListItemsFromRows({
 					listId,
+					householdId,
 					userId,
 					rows: ingredients.map((row) => ({
 						item: row.item,
@@ -262,7 +321,12 @@ export async function addMealPlannerToList(listId: string, userId: number) {
 				})
 				.from(schema.mealPlannerDayItems)
 				.innerJoin(schema.items, eq(schema.items.id, schema.mealPlannerDayItems.itemId))
-				.where(eq(schema.mealPlannerDayItems.mealPlannerDayId, day.id))
+				.where(
+					and(
+						eq(schema.mealPlannerDayItems.mealPlannerDayId, day.id),
+						eq(schema.mealPlannerDayItems.householdId, householdId)
+					)
+				)
 				.orderBy(
 					asc(schema.mealPlannerDayItems.position),
 					asc(schema.mealPlannerDayItems.createdAt)
@@ -271,6 +335,7 @@ export async function addMealPlannerToList(listId: string, userId: number) {
 			addedItems.push(
 				...(await appendListItemsFromRows({
 					listId,
+					householdId,
 					userId,
 					rows: ingredients.map((row) => ({
 						item: row.item,
@@ -292,12 +357,15 @@ export async function addMealPlannerToList(listId: string, userId: number) {
 /**
  * Clears the meal planner.
  *
+ * @param householdId - Household id.
  * @param userId - Audit user id.
  * @returns Number of cleared days.
  */
-export async function clearMealPlanner(userId: number) {
+export async function clearMealPlanner(householdId: string, userId: number) {
 	const audit = createAudit(userId)
-	await db.delete(schema.mealPlannerDayItems)
+	await db
+		.delete(schema.mealPlannerDayItems)
+		.where(eq(schema.mealPlannerDayItems.householdId, householdId))
 	const days = await db
 		.update(schema.mealPlannerDays)
 		.set({
@@ -308,6 +376,7 @@ export async function clearMealPlanner(userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
+		.where(eq(schema.mealPlannerDays.householdId, householdId))
 		.returning({ id: schema.mealPlannerDays.id })
 
 	return { clearedDays: days.length }
@@ -316,17 +385,19 @@ export async function clearMealPlanner(userId: number) {
 /**
  * Updates a placeholder meal planner day item.
  *
+ * @param householdId - Household id.
  * @param mealPlannerDayItemId - Day item id.
  * @param input - Validated update payload.
  * @param userId - Audit user id.
  * @returns Updated day item summary.
  */
 export async function updateMealPlannerDayItem(
+	householdId: string,
 	mealPlannerDayItemId: string,
 	input: z.infer<typeof updateOccurrenceBodySchema>,
 	userId: number
 ) {
-	await findMealPlannerDayItemOrThrow(mealPlannerDayItemId)
+	await findMealPlannerDayItemOrThrow(mealPlannerDayItemId, householdId)
 	const audit = createAudit(userId)
 	const [row] = await db
 		.update(schema.mealPlannerDayItems)
@@ -337,7 +408,12 @@ export async function updateMealPlannerDayItem(
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.mealPlannerDayItems.id, mealPlannerDayItemId))
+		.where(
+			and(
+				eq(schema.mealPlannerDayItems.id, mealPlannerDayItemId),
+				eq(schema.mealPlannerDayItems.householdId, householdId)
+			)
+		)
 		.returning()
 
 	const dayItem = assertRow(row)
@@ -347,14 +423,20 @@ export async function updateMealPlannerDayItem(
 /**
  * Hard-deletes a meal planner day item.
  *
+ * @param householdId - Household id.
  * @param mealPlannerDayItemId - Day item id.
  * @returns Ok response.
  */
-export async function deleteMealPlannerDayItem(mealPlannerDayItemId: string) {
-	await findMealPlannerDayItemOrThrow(mealPlannerDayItemId)
+export async function deleteMealPlannerDayItem(householdId: string, mealPlannerDayItemId: string) {
+	await findMealPlannerDayItemOrThrow(mealPlannerDayItemId, householdId)
 	await db
 		.delete(schema.mealPlannerDayItems)
-		.where(eq(schema.mealPlannerDayItems.id, mealPlannerDayItemId))
+		.where(
+			and(
+				eq(schema.mealPlannerDayItems.id, mealPlannerDayItemId),
+				eq(schema.mealPlannerDayItems.householdId, householdId)
+			)
+		)
 
 	return { ok: true }
 }

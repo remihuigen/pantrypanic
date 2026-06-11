@@ -6,9 +6,11 @@ Authentication uses `nuxt-auth-utils` sessions with email/password login.
 
 | Method       | Route                | Purpose                                                        |
 | ------------ | -------------------- | -------------------------------------------------------------- |
-| `POST`       | `/api/auth/login`    | Validate email/password credentials and create a user session. |
-| `POST`       | `/api/auth/logout`   | Clear the current user session.                                |
-| `GET/DELETE` | `/api/_auth/session` | Nuxt-auth-utils session endpoint used by `useUserSession()`.   |
+| `POST`       | `/api/auth/login`                 | Validate email/password credentials and create a user session. |
+| `POST`       | `/api/auth/logout`                | Clear the current user session.                                |
+| `POST`       | `/api/access-links/invite/accept` | Consume an invite link and create/join a household session.    |
+| `POST`       | `/api/access-links/reset/accept`  | Consume a reset-access link and create a user session.         |
+| `GET/DELETE` | `/api/_auth/session`              | Nuxt-auth-utils session endpoint used by `useUserSession()`.   |
 
 `server/middleware/auth.ts` protects `/api/**` and `/images/**` with `server/utils/auth.ts`.
 
@@ -17,7 +19,26 @@ Requests are authenticated when either:
 - a nuxt-auth-utils user session is present
 - `x-api-token` matches `ADMIN_API_KEY`
 
-Public server paths are `/api/auth/login` and `/api/_auth/session`.
+Public server paths are `/api/auth/login`, invite/reset access-link acceptance, and
+`/api/_auth/session`.
+
+## Household Context
+
+Domain APIs are household-scoped. `server/utils/households.ts` resolves the active household from
+the session. With `ENABLE_MULTI_TENANCY=false`, the first/default household is used as a singleton.
+With multi-tenancy enabled, users can switch to another household membership through
+`POST /api/households/switch`.
+
+| Method   | Route                                                 | Purpose                                     |
+| -------- | ----------------------------------------------------- | ------------------------------------------- |
+| `GET`    | `/api/households`                                     | List memberships and active household.      |
+| `POST`   | `/api/households/switch`                              | Store active household id in the session.   |
+| `GET`    | `/api/households/current/settings`                    | Read household-wide settings.               |
+| `PATCH`  | `/api/households/current/settings`                    | Update household-wide settings.             |
+| `GET`    | `/api/households/current/members`                     | List household members.                     |
+| `DELETE` | `/api/households/current/members/:userId`             | Remove membership, not the account.         |
+| `POST`   | `/api/households/current/invites`                     | Generate a one-time invite link.            |
+| `POST`   | `/api/households/current/members/:userId/reset-link`  | Generate a one-time reset-access link.      |
 
 ## Blob Management
 
@@ -97,6 +118,9 @@ Validation and runtime failures return:
 | Method  | Route                                                      | Purpose                                                               |
 | ------- | ---------------------------------------------------------- | --------------------------------------------------------------------- |
 | `GET`   | `/api/me`                                                  | Return the current authenticated user summary.                        |
+| `GET`   | `/api/profile`                                             | Return editable profile data.                                         |
+| `PATCH` | `/api/profile`                                             | Update name, email, avatar pathname, or password.                     |
+| `POST`  | `/api/profile/avatar`                                      | Upload a raster avatar blob and store it on the user.                 |
 | `GET`   | `/api/lists`                                               | List shopping lists by status.                                        |
 | `POST`  | `/api/lists`                                               | Create a reusable shopping list.                                      |
 | `POST`  | `/api/lists/reorder`                                       | Reorder active shopping lists.                                        |
@@ -114,6 +138,12 @@ Validation and runtime failures return:
 | `POST`  | `/api/list-items/:listItemId/delete`                       | Soft-delete a list item.                                              |
 | `GET`   | `/api/items/search`                                        | Search canonical items by normalized name.                            |
 | `GET`   | `/api/items/suggestions`                                   | Return frequently used archived items.                                |
+| `GET`   | `/api/settings/items`                                      | List canonical items for settings maintenance.                        |
+| `PATCH` | `/api/settings/items/:itemId`                              | Edit canonical item metadata.                                         |
+| `DELETE`| `/api/settings/items/:itemId`                              | Delete unused canonical item.                                         |
+| `POST`  | `/api/settings/items/:itemId/merge`                        | Merge one canonical item into another.                                |
+| `POST`  | `/api/settings/clear-data`                                 | Hard-delete household app data and reseed defaults.                   |
+| `GET`   | `/api/settings/stats`                                      | Return household usage stats.                                         |
 | `GET`   | `/api/recipes`                                             | List recipes by status and optional query.                            |
 | `POST`  | `/api/recipes`                                             | Create a recipe and optional ingredients.                             |
 | `GET`   | `/api/recipes/:recipeId`                                   | Read recipe details with ordered ingredients.                         |
