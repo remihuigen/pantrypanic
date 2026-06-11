@@ -1,9 +1,6 @@
 <script lang="ts" setup>
 const { $pwa } = useNuxtApp()
 
-const toast = useToast()
-const { getIcon } = useIcon()
-
 onMounted(async () => {
 	if (!$pwa) return
 
