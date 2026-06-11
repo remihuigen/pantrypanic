@@ -18,20 +18,25 @@ There is no Docus/content layer in the current checkout.
 
 ## Frontend State
 
-The app UI is still mostly the Nuxt UI starter template:
+The product app UI is namespaced under `/app`:
 
-- `app/app.vue` contains the Pantry Panic app shell with session-aware header controls.
-- `app/pages/index.vue` contains starter landing-page content.
-- `app/pages/login.vue` contains the email/password sign-in form.
-- `app/pages/logout.vue` clears the session and redirects to login.
-- Pantry Panic grocery workflows are not implemented yet.
+- `app/pages/app/**` contains product routes such as `/app/lists`, `/app/lists/:id`,
+  `/app/recipes`, `/app/recipes/:id`, `/app/meal-planner`, and `/app/settings`.
+- `nuxt.config.ts` sets `routeRules` with `ssr: false` for `/app` and `/app/**`, so product app
+  routes render client-side only.
+- `/` and `/app` redirect to `/app/lists`.
+- `app/pages/(auth)/login.vue` contains the email/password sign-in form at `/login`.
+- `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
+- Auth and future public/marketing pages remain outside `/app`; add explicit prerender route rules
+  for marketing pages when they are introduced.
 
 ## Authentication
 
 - `nuxt-auth-utils` provides the user session cookie and `useUserSession()`.
 - `POST /api/auth/login` validates email/password credentials and sets a session.
 - `POST /api/auth/logout` clears the session.
-- `app/middleware/auth.global.ts` protects app routes except `/login` and `/logout`.
+- `app/middleware/01.auth.global.ts` protects `/app` routes and redirects unauthenticated visits to
+  `/login?redirect=<target>`. Non-`/app` routes are public unless they add their own guard.
 - `server/middleware/auth.ts` protects `/api/**` and `/images/**`, except `/api/auth/login` and
   `/api/_auth/session`.
 - `server/utils/auth.ts` exposes `isAuthenticated(event)` and `requireAuthenticated(event)`.

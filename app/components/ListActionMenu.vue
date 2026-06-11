@@ -108,23 +108,23 @@ async function handleDeleteList(listId: string) {
 
 const editListDrawer = useEditListDrawer()
 function openEditListDrawer() {
-	editListDrawer.open()
+	editListDrawer.open({
+		listId: props.listId,
+		mode: 'edit'
+	})
 }
 </script>
 
 <template>
-	<div>
-		<UDropdownMenu :items="menuItems" :content="{ align: 'end' }">
-			<UButton
-				variant="ghost"
-				color="neutral"
-				square
-				size="sm"
-				icon="i-lucide-ellipsis-vertical"
-				aria-label="Acties"
-				@click.stop
-			/>
-		</UDropdownMenu>
-		<EditListDrawer mode="edit" :list-id="props.listId" />
-	</div>
+	<UDropdownMenu :items="menuItems" :content="{ align: 'end' }">
+		<UButton
+			variant="ghost"
+			color="neutral"
+			square
+			size="sm"
+			icon="i-lucide-ellipsis-vertical"
+			aria-label="Acties"
+			@click.stop
+		/>
+	</UDropdownMenu>
 </template>

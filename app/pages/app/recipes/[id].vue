@@ -9,7 +9,7 @@ useGesture(
 	{
 		onDragEnd: ({ swipe: [swipeX] }) => {
 			if (swipeX > 0) {
-				void navigateTo('/recipes')
+				void navigateTo('/app/recipes')
 			}
 		}
 	},

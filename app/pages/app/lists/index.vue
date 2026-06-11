@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { EditListDrawerMode } from '~/composables/useEditListDrawer'
-
 import { moveArrayElement, useSortable } from '@vueuse/integrations/useSortable'
 
 definePageMeta({ layout: 'app' })
@@ -8,8 +6,6 @@ definePageMeta({ layout: 'app' })
 const listsStore = useListsStore()
 const toast = useToast()
 const editListDrawer = useEditListDrawer()
-const editListDrawerMode = ref<EditListDrawerMode>('create')
-const editListDrawerListId = ref<string | null>(null)
 const listGridRef = ref<HTMLElement | null>(null)
 
 const sortableListIds = toRef(listsStore, 'activeListIds')
@@ -45,9 +41,7 @@ function listItemCount(listId: string) {
 }
 
 function openCreateListDrawer() {
-	editListDrawerMode.value = 'create'
-	editListDrawerListId.value = null
-	editListDrawer.open()
+	editListDrawer.open({ mode: 'create' })
 }
 
 async function refreshLists() {
@@ -121,8 +115,9 @@ onMounted(() => {
 
 <template>
 	<PageShell>
-		<PageHeader :badge="listsStore.activeListIds.length"> Lijsten </PageHeader>
-
+		<template #header>
+			<PageHeader :badge="listsStore.activeListIds.length"> Lijsten </PageHeader>
+		</template>
 		<UEmpty
 			v-if="!isLoadingLists && listsStore.activeListIds.length === 0"
 			icon="i-lucide-list-plus"
@@ -156,7 +151,5 @@ onMounted(() => {
 				+ Nieuwe lijst
 			</UButton>
 		</div>
-
-		<EditListDrawer :mode="editListDrawerMode" :list-id="editListDrawerListId" />
 	</PageShell>
 </template>

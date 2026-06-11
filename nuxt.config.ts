@@ -83,6 +83,11 @@ export default defineNuxtConfig({
 		}
 	},
 
+	routeRules: {
+		'/app': { ssr: true },
+		'/app/**': { ssr: true }
+	},
+
 	compatibilityDate: '2025-01-15',
 
 	hub: {

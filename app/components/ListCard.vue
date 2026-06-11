@@ -25,7 +25,7 @@ const leadingIcon = computed(() =>
 			:can-delete="props.canDelete"
 		/>
 
-		<NuxtLink :to="`/lists/${props.listId}`" class="block pe-10 pt-6 pb-1">
+		<NuxtLink :to="`/app/lists/${props.listId}`" class="block pe-10 pt-6 pb-1">
 			<p class="text-highlighted text-base leading-tight font-semibold">
 				{{ props.name }}
 			</p>

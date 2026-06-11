@@ -6,6 +6,11 @@ import { computed, reactive, readonly, ref, toValue, watch } from 'vue'
 
 export type EditListDrawerMode = 'create' | 'edit'
 
+type OpenEditListDrawerOptions = {
+	listId?: string | null
+	mode?: EditListDrawerMode
+}
+
 type EditListDrawerToast = {
 	add: (_message: { title: string; color: 'error'; duration: number; icon: string }) => void
 }
@@ -41,13 +46,18 @@ type EditListDrawerSubmitPayload = {
  */
 export function useEditListDrawer() {
 	const isOpen = useState<boolean>('edit-list-drawer:is-open', () => false)
+	const mode = useState<EditListDrawerMode>('edit-list-drawer:mode', () => 'create')
+	const listId = useState<string | null>('edit-list-drawer:list-id', () => null)
 
 	/**
-	 * Opens the edit-list drawer.
+	 * Opens the list drawer with an explicit create or edit context.
 	 *
+	 * @param options - Optional mode and target list context.
 	 * @returns Nothing.
 	 */
-	function open() {
+	function open(options: OpenEditListDrawerOptions = {}) {
+		mode.value = options.mode ?? 'create'
+		listId.value = mode.value === 'edit' ? (options.listId ?? null) : null
 		isOpen.value = true
 	}
 
@@ -62,6 +72,8 @@ export function useEditListDrawer() {
 
 	return {
 		isOpen,
+		mode,
+		listId,
 		open,
 		close
 	}
@@ -77,20 +89,17 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 	const drawer = options.drawer ?? useEditListDrawer()
 	const listsStore = options.store ?? useListsStore()
 	const toast = options.toast ?? useToast()
-	const formState = reactive<EditListDrawerFormInput>(
-		options.mode === 'edit'
-			? {
-					name: listsStore.listsById[toValue(options.listId) ?? '']?.name ?? '',
-					icon: listsStore.listsById[toValue(options.listId) ?? '']?.icon ?? undefined
-				}
-			: createDefaultFormState()
-	)
+	const formState = reactive<EditListDrawerFormInput>(createDefaultFormState())
 
 	const isSubmitting = ref(false)
 	const populatedContextKey = ref<string | null>(null)
 
-	const mode = computed(() => toValue(options.mode) ?? 'create')
-	const selectedListId = computed(() => toValue(options.listId) ?? null)
+	const mode = computed(() =>
+		options.mode === undefined ? drawer.mode.value : toValue(options.mode)
+	)
+	const selectedListId = computed(() =>
+		options.listId === undefined ? drawer.listId.value : (toValue(options.listId) ?? null)
+	)
 	const selectedList = computed(() =>
 		selectedListId.value ? listsStore.listsById[selectedListId.value] : undefined
 	)

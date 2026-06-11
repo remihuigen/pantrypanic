@@ -218,12 +218,13 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	/**
 	 * Clears the form fields and loaded autocomplete options.
 	 *
+	 * @param options - Optional reset overrides for fields that should be retained.
 	 * @returns Nothing.
 	 */
-	function resetForm() {
+	function resetForm(options: { listId?: string } = {}) {
 		Object.assign(formState, {
 			...createDefaultFormState(),
-			listId: drawer.preferredListId.value ?? ''
+			listId: options.listId ?? drawer.preferredListId.value ?? ''
 		})
 		nameSearchTerm.value = ''
 		nameOptions.value = []
@@ -279,7 +280,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 				closeAndReset()
 			} else {
 				await createNewListItem(payload.data)
-				resetForm()
+				resetForm({ listId: payload.data.listId })
 			}
 		} catch (error) {
 			toast.add({

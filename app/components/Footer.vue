@@ -3,7 +3,9 @@ const { identity } = useRuntimeConfig().public
 </script>
 
 <template>
-	<USeparator />
+	<USeparator>
+		<AppIcon class="w-6" />
+	</USeparator>
 	<UFooter :ui="{ root: 'mb-3' }">
 		<template #left>
 			<p class="text-muted text-sm">

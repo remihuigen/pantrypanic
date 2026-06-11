@@ -16,7 +16,8 @@ Do not edit anything under `.agents/skills/**` unless the user explicitly asks f
 
 - Product direction: private, installable grocery list app for small households.
 - Planning source: `PLAN.md`.
-- Current UI: mostly Nuxt UI starter pages plus login/logout pages; Pantry Panic product UI is not implemented yet.
+- Current UI: Nuxt UI app shell with Pantry Panic product routes under `/app` plus root
+  login/logout pages.
 - Current backend: session auth, user CRUD, blob CRUD/validation, Pantry Panic domain APIs, image serving, and HTTP admin-user seeding.
 - Current deployment: GitHub Actions deploys Cloudflare Workers after applying D1 migrations.
 - Current database: `users` plus Pantry Panic domain tables for lists, items, recipes, list items, and meal planner data.

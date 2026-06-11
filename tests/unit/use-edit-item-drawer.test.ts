@@ -202,16 +202,16 @@ describe('useEditItemDrawer', () => {
 		])
 	})
 
-	it('submits normalized form data and resets after a successful save', async () => {
+	it('submits normalized form data and resets item fields after a successful save', async () => {
 		const store = createStore({ activeLists: [...activeLists] })
 		const { form } = createFormHarness(store)
 
-		form.formState.listId = 'list-1'
+		form.formState.listId = 'list-2'
 		form.formState.name = 'Melk'
 
 		await form.submitForm({
 			data: {
-				listId: 'list-1',
+				listId: 'list-2',
 				name: 'Melk',
 				amount: 2,
 				unit: ' liter ',
@@ -219,14 +219,14 @@ describe('useEditItemDrawer', () => {
 			}
 		})
 
-		expect(store.addListItem).toHaveBeenCalledWith('list-1', {
+		expect(store.addListItem).toHaveBeenCalledWith('list-2', {
 			name: 'Melk',
 			amount: 2,
 			unit: 'liter',
 			note: undefined
 		})
 		expect(form.formState).toMatchObject({
-			listId: '',
+			listId: 'list-2',
 			name: '',
 			amount: undefined,
 			unit: '',

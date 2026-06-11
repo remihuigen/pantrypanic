@@ -46,14 +46,13 @@ const redirectPath = computed(() => {
 
 	if (
 		typeof redirect === 'string' &&
-		redirect.startsWith('/') &&
-		!redirect.startsWith('//') &&
-		redirect !== '/login'
+		(redirect === '/app' || redirect.startsWith('/app/')) &&
+		!redirect.startsWith('//')
 	) {
 		return redirect
 	}
 
-	return '/'
+	return '/app/lists'
 })
 
 onMounted(async () => {

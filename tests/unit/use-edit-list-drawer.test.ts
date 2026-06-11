@@ -43,10 +43,27 @@ describe('useEditListDrawer', () => {
 		drawer.open()
 
 		expect(drawer.isOpen.value).toBe(true)
+		expect(drawer.mode.value).toBe('create')
+		expect(drawer.listId.value).toBeNull()
 
 		drawer.close()
 
 		expect(drawer.isOpen.value).toBe(false)
+	})
+
+	it('opens with edit context and clears list context for create mode', () => {
+		const drawer = useEditListDrawer()
+
+		drawer.open({ listId: 'list-1', mode: 'edit' })
+
+		expect(drawer.isOpen.value).toBe(true)
+		expect(drawer.mode.value).toBe('edit')
+		expect(drawer.listId.value).toBe('list-1')
+
+		drawer.open({ mode: 'create' })
+
+		expect(drawer.mode.value).toBe('create')
+		expect(drawer.listId.value).toBeNull()
 	})
 
 	it('normalizes optional icon text for submit payloads', () => {
@@ -204,6 +221,55 @@ describe('useEditListDrawer', () => {
 		expect(form.formState).toEqual({
 			name: '',
 			icon: undefined
+		})
+	})
+
+	it('uses drawer context to create or update the selected list', async () => {
+		const store = createStore({
+			listsById: {
+				'list-1': {
+					id: 'list-1',
+					name: 'Weekend',
+					icon: 'lucide:book'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ mode: 'create' })
+		await nextTick()
+		form.formState.name = 'Nieuwe lijst'
+
+		await form.submitForm({
+			data: {
+				name: 'Nieuwe lijst',
+				icon: undefined
+			}
+		})
+
+		expect(store.createList).toHaveBeenCalledWith({
+			name: 'Nieuwe lijst',
+			icon: undefined
+		})
+
+		drawer.open({ listId: 'list-1', mode: 'edit' })
+		await nextTick()
+
+		expect(form.formState).toEqual({
+			name: 'Weekend',
+			icon: 'lucide:book'
+		})
+
+		await form.submitForm({
+			data: {
+				name: 'Weekend gewijzigd',
+				icon: 'lucide:list'
+			}
+		})
+
+		expect(store.updateList).toHaveBeenCalledWith('list-1', {
+			name: 'Weekend gewijzigd',
+			icon: 'lucide:list'
 		})
 	})
 

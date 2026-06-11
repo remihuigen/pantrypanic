@@ -18,6 +18,19 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   timing.
 - `app/plugins/data-hydration.client.ts`: startup hydration refresh for persisted store caches.
 
+## App Routes And Rendering
+
+- Product app pages live under `/app`, backed by files in `app/pages/app/**`.
+- Current app routes include `/app/lists`, `/app/lists/:id`, `/app/recipes`, `/app/recipes/:id`,
+  `/app/meal-planner`, and `/app/settings`.
+- `/` and `/app` redirect to `/app/lists`.
+- `nuxt.config.ts` sets `routeRules` with `ssr: false` for `/app` and `/app/**` so product app
+  pages render client-side only.
+- `/login` and `/logout` remain outside the `/app` namespace and keep normal server rendering so
+  auth entry points continue to work without depending on the app shell.
+- Global route middleware only enforces session auth for `/app` routes. Future public or marketing
+  pages can remain outside `/app` and opt into prerendering separately.
+
 ## Design Notes
 
 - Store state is normalized around id maps and id arrays.

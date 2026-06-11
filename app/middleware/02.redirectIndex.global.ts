@@ -1,10 +1,10 @@
 /**
- * Redirects unauthenticated app route visits to the login page.
+ * Redirects shell entry paths to the default app route.
  */
 export default defineNuxtRouteMiddleware(async (to) => {
-	if (to.path === '/') {
+	if (to.path === '/' || to.path === '/app') {
 		return navigateTo({
-			path: '/lists'
+			path: '/app/lists'
 		})
 	}
 })
