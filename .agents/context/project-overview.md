@@ -20,8 +20,8 @@ The codebase is currently an early Nuxt 4 application, not a finished Pantry Pan
 
 Implemented:
 
-- Nuxt UI starter shell under `app/`
-- Nuxt UI `login` and `logout` pages
+- Nuxt UI app shell under `app/`, with product routes namespaced under `/app`
+- Nuxt UI `login` and `logout` pages outside the `/app` namespace
 - nuxt-auth-utils session login/logout flow
 - server authentication guard for `/api/**` and `/images/**`
 - NuxtHub database configuration
@@ -34,18 +34,18 @@ Implemented:
 - build-time HTTP admin-user seed from `.env`
 - Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
   updates, and polling refresh controls
+- Pantry Panic grocery-list UI for lists and list items
 - human docs under `docs/`
 
 Not implemented yet:
 
-- Pantry Panic grocery-list UI
 - fine-grained permissions around API routes
 - PWA install/offline behavior
 - shopping workflow screens
 
 ## Core Directories
 
-- `app/`: current Nuxt UI starter frontend.
+- `app/`: Nuxt frontend; product pages live under `app/pages/app/**` and map to `/app/**`.
 - `app/stores/`: Pinia domain stores for lists, recipes, and meal planner.
 - `app/utils/api-client.ts`: shared frontend API wrapper with normalized app errors.
 - `app/composables/useStoreRefresh.ts`: reusable polling lifecycle helper.

@@ -3,28 +3,24 @@ import { useGesture } from '@vueuse/gesture'
 
 definePageMeta({ layout: 'app' })
 
-const id = useRoute().params.id?.toString() as string
+const route = useRoute()
+const id = computed(() => route.params.id?.toString() ?? '')
 const gestureTarget = useTemplateRef<HTMLElement>('gestureTarget')
 
 const store = useListsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
 const editItemDrawer = useEditItemDrawer()
-const editListDrawer = useEditListDrawer()
-const list = computed(() => store.listById(id))
+const isLoadingList = ref(false)
+const listLoadError = ref<string | null>(null)
+const list = computed(() => (id.value ? store.listById(id.value) : null))
 const canDelete = computed(() => store.listCount > 0)
-
-if (!list.value) {
-	// Handle the case where the list is not found
-	throw createError({
-		status: 404,
-		statusText: 'Lijst niet gevonden',
-		fatal: true
-	})
-}
-
-const items = computed(() => store.listItemsForList(id))
+const pageTitle = computed(
+	() => list.value?.name ?? (isLoadingList.value ? 'Lijst laden...' : 'Lijst')
+)
+const items = computed(() => (id.value ? store.listItemsForList(id.value) : []))
 const listIcon = computed(() => list.value?.icon)
+let listLoadRequestId = 0
 
 function getErrorMessage(error: unknown, fallback: string) {
 	if (error && typeof error === 'object' && 'message' in error) {
@@ -44,23 +40,56 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function openEditItemDrawer(listItemId: string) {
 	editItemDrawer.open({
-		listId: id,
+		listId: id.value,
 		listItemId,
 		mode: 'edit'
 	})
 }
 
-function openEditListDrawer() {
-	editListDrawer.open()
-}
+async function refreshList(options: { notifyOnError?: boolean } = {}) {
+	const currentListId = id.value
 
-async function refreshList() {
-	await store.fetchList(id).catch(() => undefined)
+	if (!currentListId) {
+		return
+	}
+
+	const requestId = ++listLoadRequestId
+	isLoadingList.value = true
+
+	try {
+		await store.fetchList(currentListId)
+
+		if (requestId !== listLoadRequestId) {
+			return
+		}
+
+		listLoadError.value = null
+	} catch (error) {
+		if (requestId !== listLoadRequestId) {
+			return
+		}
+
+		const message = getErrorMessage(error, 'Lijst kon niet worden geladen.')
+		listLoadError.value = message
+
+		if (options.notifyOnError) {
+			toast.add({
+				title: message,
+				color: 'error',
+				duration: 8000,
+				icon: 'i-lucide-circle-alert'
+			})
+		}
+	} finally {
+		if (requestId === listLoadRequestId) {
+			isLoadingList.value = false
+		}
+	}
 }
 
 async function handleItemReorder(orderedIds: string[]) {
 	try {
-		await store.reorderListItems(id, orderedIds)
+		await store.reorderListItems(id.value, orderedIds)
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Volgorde kon niet worden opgeslagen.'),
@@ -123,7 +152,7 @@ async function handleClearList() {
 	}
 
 	try {
-		await store.clearList(id)
+		await store.clearList(id.value)
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Lijst kon niet worden geleegd.'),
@@ -138,7 +167,7 @@ async function handleClearList() {
 
 async function handleClearChecked() {
 	try {
-		await store.clearCheckedListItems(id)
+		await store.clearCheckedListItems(id.value)
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Afgeronde items konden niet worden verwijderd.'),
@@ -155,7 +184,7 @@ useGesture(
 	{
 		onDragEnd: ({ swipe: [swipeX] }) => {
 			if (swipeX > 0) {
-				void navigateTo('/lists')
+				void navigateTo('/app/lists')
 			}
 		}
 	},
@@ -168,26 +197,47 @@ useGesture(
 		}
 	}
 )
+
+watch(
+	id,
+	() => {
+		if (!import.meta.client) return
+		void refreshList({ notifyOnError: true })
+	},
+	{ immediate: true }
+)
 </script>
 
 <template>
 	<div ref="gestureTarget" class="grow touch-pan-y">
 		<PageShell>
-			<PageHeader :badge="items.length">
-				<span class="inline-flex min-w-0 items-center gap-2">
-					<UIcon v-if="listIcon" :name="listIcon" class="text-muted size-5 shrink-0" />
-					<span class="truncate">{{ list?.name }}</span>
-				</span>
-				<template #tools>
-					<ListActionMenu
-						:list-id="id"
-						:can-delete="canDelete"
-						@edit-settings="openEditListDrawer"
-					/>
-				</template>
-			</PageHeader>
+			<template #header>
+				<PageHeader :badge="items.length">
+					<span class="inline-flex min-w-0 items-center gap-2">
+						<UIcon
+							v-if="listIcon"
+							:name="listIcon"
+							class="text-muted size-5 shrink-0"
+						/>
+						<span class="truncate">{{ pageTitle }}</span>
+					</span>
+					<template #tools>
+						<ListActionMenu :list-id="id" :can-delete="canDelete" />
+					</template>
+				</PageHeader>
+			</template>
+
+			<UAlert
+				v-if="listLoadError"
+				color="error"
+				variant="soft"
+				icon="i-lucide-circle-alert"
+				title="Lijst kon niet worden geladen"
+				:description="listLoadError"
+			/>
 
 			<ListItemGrid
+				v-else
 				:list-id="id"
 				:items="items"
 				@clear="handleClearList"
@@ -196,7 +246,6 @@ useGesture(
 				@reorder="handleItemReorder"
 				@toggle-checked="handleToggleChecked"
 			/>
-			<EditListDrawer mode="edit" :list-id="id" />
 		</PageShell>
 	</div>
 </template>

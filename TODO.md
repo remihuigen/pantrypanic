@@ -10,3 +10,4 @@
 - [x] upon submitting a list item, there is a slight wobble in y value of something. It annoys me
 - [ ] the settings menu should have a 'clear all data' button
 - [ ] We should have a view of all items, so we can delete them or correct typos
+- [ ] Make interval based refresh smarter -> only fetch data that is currently in view!

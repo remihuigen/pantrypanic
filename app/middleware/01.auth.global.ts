@@ -1,10 +1,8 @@
-const PUBLIC_ROUTE_PATHS = new Set(['/login', '/logout'])
-
 /**
- * Redirects unauthenticated app route visits to the login page.
+ * Redirects unauthenticated product-app route visits to the login page.
  */
 export default defineNuxtRouteMiddleware(async (to) => {
-	if (PUBLIC_ROUTE_PATHS.has(to.path)) {
+	if (!to.path.startsWith('/app')) {
 		return
 	}
 

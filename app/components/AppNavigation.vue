@@ -10,12 +10,12 @@ const { getIcon } = useIcon()
 const leftContainer: ButtonProps[] = [
 	{
 		name: 'Lijsten',
-		to: '/lists',
+		to: '/app/lists',
 		icon: getIcon('list')
 	},
 	{
 		name: 'Meal Planner',
-		to: '/meal-planner',
+		to: '/app/meal-planner',
 		icon: getIcon('planner')
 	}
 ]
@@ -23,12 +23,12 @@ const leftContainer: ButtonProps[] = [
 const rightContainer: ButtonProps[] = [
 	{
 		name: 'Recepten',
-		to: '/recipes',
+		to: '/app/recipes',
 		icon: getIcon('recipe')
 	},
 	{
 		name: 'Instellingen',
-		to: '/settings',
+		to: '/app/settings',
 		icon: getIcon('settings')
 	}
 ]
@@ -44,40 +44,47 @@ function openCreateItemDrawer() {
 
 <template>
 	<nav
-		class="border-elevated/50 bg-default border-default fixed right-0 bottom-0 left-0 grid h-18 border-t shadow-2xl"
+		class="border-elevated/50 bg-default border-default fixed right-0 bottom-0 left-0 grid h-18 border-t py-2 shadow-2xl"
 	>
 		<div class="relative flex items-center justify-center gap-3 px-4">
-			<UButton
-				v-for="btn in leftContainer"
-				:key="`left-${btn.to}`"
-				:color="isActive(btn) ? 'primary' : 'neutral'"
-				variant="ghost"
-				:icon="btn.icon"
-				:to="btn.to"
-				size="xl"
-				block
-				class="aspect-square grow transition-all"
-				:class="isActive(btn) ? '-translate-y-0.5' : ''"
-			/>
-			<UButton
-				class="mx-4 shrink-0 -translate-y-[calc(50%+8px)] rounded-full p-4"
-				color="primary"
-				:icon="getIcon('plus')"
-				size="xl"
-				@click="openCreateItemDrawer"
-			/>
-			<UButton
-				v-for="btn in rightContainer"
-				:key="`right-${btn.to}`"
-				:color="isActive(btn) ? 'primary' : 'neutral'"
-				variant="ghost"
-				:icon="btn.icon"
-				:to="btn.to"
-				size="xl"
-				block
-				class="aspect-square grow transition-all"
-				:class="isActive(btn) ? '-translate-y-0.5' : ''"
-			/>
+			<div class="relative grid h-full grid-cols-2 gap-4">
+				<UButton
+					v-for="btn in leftContainer"
+					:key="`left-${btn.to}`"
+					:color="isActive(btn) ? 'primary' : 'neutral'"
+					variant="ghost"
+					:icon="btn.icon"
+					:to="btn.to"
+					size="xl"
+					block
+					class="aspect-square h-full transition-all focus-visible:bg-transparent"
+					:class="isActive(btn) ? '-translate-y-0.5' : ''"
+				/>
+			</div>
+
+			<div class="relative h-full px-4">
+				<UButton
+					class="shrink-0 -translate-y-1/2 rounded-full p-4"
+					color="primary"
+					:icon="getIcon('plus')"
+					size="xl"
+					@click="openCreateItemDrawer"
+				/>
+			</div>
+			<div class="relative grid h-full grid-cols-2 gap-4">
+				<UButton
+					v-for="btn in rightContainer"
+					:key="`right-${btn.to}`"
+					:color="isActive(btn) ? 'primary' : 'neutral'"
+					variant="ghost"
+					:icon="btn.icon"
+					:to="btn.to"
+					size="xl"
+					block
+					class="aspect-square transition-all focus-visible:bg-transparent"
+					:class="isActive(btn) ? '-translate-y-0.5' : ''"
+				/>
+			</div>
 		</div>
 	</nav>
 </template>

@@ -43,6 +43,21 @@ These values control seed data defaults, request-facing pagination/search defaul
 limits, and the managed blob upload size. Domain invariants, such as the seven meal-planner days
 and status enum values, remain code/schema contracts rather than runtime configuration.
 
+## Route Rendering
+
+Product app pages live below `/app` and are configured as client-side rendered routes:
+
+```ts
+routeRules: {
+  '/app': { ssr: false },
+  '/app/**': { ssr: false }
+}
+```
+
+Keep `/login` and `/logout` outside these route rules so authentication pages remain
+server-renderable. Future marketing routes should also stay outside `/app` and can opt into
+prerendering with their own route rules.
+
 ## Database Migrations
 
 Production D1 builds set `applyMigrationsDuringBuild: false` in `nuxt.config.ts`.
