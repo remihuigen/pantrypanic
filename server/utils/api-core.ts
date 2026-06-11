@@ -24,10 +24,6 @@ export {
 
 type ApiHandler<T> = (_event: H3Event) => Promise<T> | T
 
-type CachedApiHandlerOptions = {
-	name?: string
-}
-
 type ApiErrorOptions = {
 	code: ApiErrorCode
 	message: string
@@ -50,47 +46,6 @@ export function defineApiHandler<T>(handler: ApiHandler<T>) {
 				const response = normalizeApiError(error)
 				setResponseStatus(event, response.statusCode)
 				return response.body
-			}
-		}
-	)
-}
-
-/**
- * Wraps a route handler with the Pantry Panic API envelope and Nitro handler caching.
- *
- * Nitro derives cached handler keys from the full request URL, including query params. The wrapper
- * disables SWR so stale API data is not served after `maxAge`, and bypasses caching when the
- * runtime refresh interval is shorter than the configured cache age.
- *
- * @param handler - Route logic that returns the response data payload.
- * @param options - Optional cache handler options.
- * @returns Nitro cached event handler returning an API envelope.
- */
-export function defineCachedApiHandler<T>(
-	handler: ApiHandler<T>,
-	options: CachedApiHandlerOptions = {}
-) {
-	const configuredMaxAge = getConfiguredApiCacheMaxAgeSeconds()
-
-	return defineCachedEventHandler(
-		async (event): Promise<ApiSuccessResponse<Awaited<T>> | ApiErrorResponse> => {
-			try {
-				return apiSuccess(await handler(event))
-			} catch (error) {
-				const response = normalizeApiError(error)
-				setResponseStatus(event, response.statusCode)
-				return response.body
-			}
-		},
-		{
-			name: options.name,
-			maxAge: Math.max(configuredMaxAge, 1),
-			swr: false,
-			varies: ['cookie', 'x-api-token'],
-			shouldBypassCache: (event) => {
-				const runtimeMaxAge = getApiCacheMaxAgeSeconds(event)
-
-				return runtimeMaxAge <= 0 || runtimeMaxAge < configuredMaxAge
 			}
 		}
 	)
@@ -182,21 +137,6 @@ export function parseApiInput<T>(schema: z.ZodType<T>, input: unknown): T {
 }
 
 /**
- * Returns the API cache maximum age in seconds.
- *
- * @param event - H3 event used to read runtime config.
- * @returns Positive max age in seconds, or zero when caching is disabled.
- */
-export function getApiCacheMaxAgeSeconds(event: H3Event): number {
-	const runtimeConfig = useRuntimeConfig(event)
-	const refreshInterval = runtimeConfig.public?.refreshInterval
-	const intervalMs =
-		typeof refreshInterval === 'number' ? refreshInterval : Number(refreshInterval)
-
-	return getApiCacheMaxAgeSecondsFromMilliseconds(intervalMs)
-}
-
-/**
  * Returns the authenticated user id for audit fields.
  *
  * @param event - H3 event.
@@ -232,20 +172,6 @@ export async function getAuthenticatedUserId(event: H3Event): Promise<number> {
  */
 export function optional<T>(value: T | null | undefined): T | undefined {
 	return value ?? undefined
-}
-
-function getConfiguredApiCacheMaxAgeSeconds(): number {
-	const intervalMs = Number(process.env.NUXT_PUBLIC_REFRESH_INTERVAL ?? '5000')
-
-	return getApiCacheMaxAgeSecondsFromMilliseconds(intervalMs)
-}
-
-function getApiCacheMaxAgeSecondsFromMilliseconds(intervalMs: number): number {
-	if (!Number.isFinite(intervalMs) || intervalMs < 1000) {
-		return 0
-	}
-
-	return Math.floor(intervalMs / 1000)
 }
 
 class ApiError extends Error {

@@ -105,7 +105,6 @@ NUXT_PUBLIC_SITE_URL=<instance-url> # Added after the first deployment
 
 # Repository secrets
 CLOUDFLARE_D1_DATABASE_ID=<database-id>
-CLOUDFLARE_CACHE_NAMESPACE_ID=<namespace-id>
 CLOUDFLARE_R2_BUCKET=<bucket-name>
 
 CLOUDFLARE_API_TOKEN=<api-token>
@@ -205,12 +204,11 @@ NUXT_PANTRY_DEFAULT_ITEM_SEARCH_LIMIT=10
 NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE=32MB
 ```
 
-Production blob, database, and cache configuration also expects the following variables, though they
+Production blob and database configuration also expects the following variables, though they
 are not required for local development:
 
 ```bash
 CLOUDFLARE_D1_DATABASE_ID=<database-id>
-CLOUDFLARE_CACHE_NAMESPACE_ID=<namespace-id>
 CLOUDFLARE_R2_BUCKET=<bucket-name>
 ```
 

@@ -47,7 +47,6 @@ Configure these in the `production` GitHub Environment:
 CLOUDFLARE_API_TOKEN=<cloudflare-api-token>
 CLOUDFLARE_ACCOUNT_ID=<cloudflare-account-id>
 CLOUDFLARE_DATABASE_ID=<d1-database-id>
-CLOUDFLARE_CACHE_NAMESPACE_ID=<kv-cache-namespace-id>
 CLOUDFLARE_R2_BUCKET=<r2-bucket-name>
 NUXT_PUBLIC_SITE_URL=<deployed-site-url>
 NUXT_SESSION_PASSWORD=<at-least-32-characters>

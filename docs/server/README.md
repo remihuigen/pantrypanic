@@ -139,24 +139,6 @@ Domain write routes update audit fields. List-item PATCH accepts `listId`, `name
 position. Lists, recipes, and list items use status-based soft deletion. Recipe items and
 meal-planner placeholder ingredients are hard-deleted because they are volatile child/draft data.
 
-### Short-Lived Read Cache
-
-Expensive or commonly polled domain reads use Nitro cached event handlers through
-`defineCachedApiHandler()` in `server/utils/api-core.ts`:
-
-- `GET /api/lists`
-- `GET /api/lists/:listId`
-- `GET /api/items/search`
-- `GET /api/items/suggestions`
-- `GET /api/recipes`
-- `GET /api/recipes/:recipeId`
-- `GET /api/meal-planner`
-
-Nitro derives cached handler keys from the full request URL, including query params. SWR is disabled
-for these API reads, so stale data is not served after the cache age. The max age is capped by
-`runtimeConfig.public.refreshInterval`, which can be configured with `NUXT_PUBLIC_REFRESH_INTERVAL`;
-intervals under one second bypass the cache.
-
 ## Admin User Seed
 
 The build runs a Nuxt `build:done` hook that calls `scripts/seed-admin-user.mjs`.

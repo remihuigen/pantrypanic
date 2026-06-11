@@ -1,8 +1,8 @@
-import { defineCachedApiHandler, getAuthenticatedUserId } from '#server/utils/api-core'
+import { defineApiHandler, getAuthenticatedUserId } from '#server/utils/api-core'
 import { getMealPlanner } from '#server/domains'
 
-export default defineCachedApiHandler(async (event) => {
+export default defineApiHandler(async (event) => {
 	const userId = await getAuthenticatedUserId(event)
 
 	return getMealPlanner(userId)
-}, { name: 'meal-planner-index' })
+})

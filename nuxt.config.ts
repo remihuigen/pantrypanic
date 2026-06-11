@@ -36,12 +36,6 @@ export default defineNuxtConfig({
 				connection: { databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID }
 			},
 
-			// KV Storage (binding defaults to 'CACHE')
-			cache: {
-				driver: 'cloudflare-kv-binding',
-				namespaceId: process.env.CLOUDFLARE_CACHE_NAMESPACE_ID
-			},
-
 			// R2 bucket (binding defaults to 'BLOB')
 			blob: {
 				driver: 'cloudflare-r2',
@@ -93,8 +87,6 @@ export default defineNuxtConfig({
 	hub: {
 		// D1 database
 		db: 'sqlite',
-		// Cache KV namespace (binding defaults to 'CACHE')
-		cache: true,
 		// Local blob storage for development
 		blob: {
 			driver: 'fs',

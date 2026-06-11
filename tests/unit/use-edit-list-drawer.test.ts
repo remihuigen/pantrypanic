@@ -224,6 +224,39 @@ describe('useEditListDrawer', () => {
 		})
 	})
 
+	it('keeps the opened edit target when shared drawer state changes before submit', async () => {
+		const store = createStore({
+			listsById: {
+				'list-1': {
+					id: 'list-1',
+					name: 'Weekend',
+					icon: 'lucide:book'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ listId: 'list-1', mode: 'edit' })
+		await nextTick()
+
+		form.formState.name = 'Weekend aangepast'
+		drawer.mode.value = 'create'
+		drawer.listId.value = null
+
+		await form.submitForm({
+			data: {
+				name: 'Weekend aangepast',
+				icon: 'lucide:list'
+			}
+		})
+
+		expect(store.updateList).toHaveBeenCalledWith('list-1', {
+			name: 'Weekend aangepast',
+			icon: 'lucide:list'
+		})
+		expect(store.createList).not.toHaveBeenCalled()
+	})
+
 	it('uses drawer context to create or update the selected list', async () => {
 		const store = createStore({
 			listsById: {
