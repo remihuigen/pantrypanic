@@ -35,12 +35,13 @@ Implemented:
 - Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
   updates, and polling refresh controls
 - Pantry Panic grocery-list UI for lists and list items
+- prompt-based PWA update and Chromium-style install prompt handling
 - human docs under `docs/`
 
 Not implemented yet:
 
 - fine-grained permissions around API routes
-- PWA install/offline behavior
+- offline behavior beyond generated service-worker asset caching
 - shopping workflow screens
 
 ## Core Directories

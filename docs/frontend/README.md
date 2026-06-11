@@ -31,6 +31,17 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - Global route middleware only enforces session auth for `/app` routes. Future public or marketing
   pages can remain outside `/app` and opt into prerendering separately.
 
+## PWA Prompts
+
+- `@vite-pwa/nuxt` runs in prompt mode so new service-worker versions surface through the app toast
+  before the user applies the update.
+- The custom install flow is enabled through `pwa.client.installPrompt`; the module captures the
+  browser `beforeinstallprompt` event and exposes it through `$pwa.showInstallPrompt`.
+- PWA install and update toasts are handled in `app/app.vue` so prompt state is observed globally,
+  independent of the active route layout.
+- Browser support for native install prompts is platform-dependent. Browsers that do not emit
+  `beforeinstallprompt` still require their own manual install UI.
+
 ## Design Notes
 
 - Store state is normalized around id maps and id arrays.

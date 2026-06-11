@@ -124,7 +124,10 @@ export default defineNuxtConfig({
 	},
 
 	pwa: {
-		registerType: 'autoUpdate',
+		registerType: 'prompt',
+		client: {
+			installPrompt: 'pantrypanic:hide-install-prompt'
+		},
 
 		manifest: {
 			id: '/app/',
