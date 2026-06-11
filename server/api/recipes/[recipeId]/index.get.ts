@@ -1,8 +1,8 @@
-import { defineCachedApiHandler, parseApiParams } from '#server/utils/api-core'
+import { defineApiHandler, parseApiParams } from '#server/utils/api-core'
 import { getRecipe, recipeParamsSchema } from '#server/domains'
 
-export default defineCachedApiHandler((event) => {
+export default defineApiHandler((event) => {
 	const { recipeId } = parseApiParams(event, recipeParamsSchema, ['recipeId'])
 
 	return getRecipe(recipeId)
-}, { name: 'recipes-detail' })
+})

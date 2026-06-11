@@ -39,6 +39,11 @@ type EditListDrawerSubmitPayload = {
 	data: EditListDrawerSubmitData
 }
 
+type EditListDrawerSubmitContext = {
+	mode: EditListDrawerMode
+	listId: string | null
+}
+
 /**
  * Provides shared drawer state so the edit-list drawer can be opened programmatically.
  *
@@ -48,6 +53,7 @@ export function useEditListDrawer() {
 	const isOpen = useState<boolean>('edit-list-drawer:is-open', () => false)
 	const mode = useState<EditListDrawerMode>('edit-list-drawer:mode', () => 'create')
 	const listId = useState<string | null>('edit-list-drawer:list-id', () => null)
+	const openRevision = useState<number>('edit-list-drawer:open-revision', () => 0)
 
 	/**
 	 * Opens the list drawer with an explicit create or edit context.
@@ -58,6 +64,7 @@ export function useEditListDrawer() {
 	function open(options: OpenEditListDrawerOptions = {}) {
 		mode.value = options.mode ?? 'create'
 		listId.value = mode.value === 'edit' ? (options.listId ?? null) : null
+		openRevision.value += 1
 		isOpen.value = true
 	}
 
@@ -74,6 +81,7 @@ export function useEditListDrawer() {
 		isOpen,
 		mode,
 		listId,
+		openRevision,
 		open,
 		close
 	}
@@ -93,6 +101,7 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 
 	const isSubmitting = ref(false)
 	const populatedContextKey = ref<string | null>(null)
+	const submitContext = ref<EditListDrawerSubmitContext | null>(null)
 
 	const mode = computed(() =>
 		options.mode === undefined ? drawer.mode.value : toValue(options.mode)
@@ -100,22 +109,31 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 	const selectedListId = computed(() =>
 		options.listId === undefined ? drawer.listId.value : (toValue(options.listId) ?? null)
 	)
-	const selectedList = computed(() =>
-		selectedListId.value ? listsStore.listsById[selectedListId.value] : undefined
+	const activeSubmitContext = computed(
+		(): EditListDrawerSubmitContext =>
+			submitContext.value ?? {
+				mode: mode.value,
+				listId: selectedListId.value
+			}
 	)
 
 	const canSubmit = computed(
 		() =>
 			formState.name.trim().length > 0 &&
-			(mode.value === 'create' || Boolean(selectedListId.value)) &&
+			(activeSubmitContext.value.mode === 'create' ||
+				Boolean(activeSubmitContext.value.listId)) &&
 			!isSubmitting.value
 	)
 
 	watch(
-		() => (drawer.isOpen.value ? `${mode.value}:${selectedListId.value ?? ''}` : null),
+		() =>
+			drawer.isOpen.value
+				? `${drawer.openRevision.value}:${mode.value}:${selectedListId.value ?? ''}`
+				: null,
 		(contextKey) => {
 			if (!contextKey) {
 				populatedContextKey.value = null
+				submitContext.value = null
 				return
 			}
 
@@ -124,7 +142,11 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 			}
 
 			populatedContextKey.value = contextKey
-			populateFormForMode()
+			submitContext.value = {
+				mode: mode.value,
+				listId: selectedListId.value
+			}
+			populateFormForContext(submitContext.value)
 		},
 		{ immediate: true }
 	)
@@ -144,12 +166,22 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 	 * @returns Nothing.
 	 */
 	function populateFormForMode() {
-		if (mode.value === 'create') {
+		populateFormForContext(activeSubmitContext.value)
+	}
+
+	/**
+	 * Copies form values for a specific opened drawer context.
+	 *
+	 * @param context - Snapshot of the drawer context that opened the form.
+	 * @returns Nothing.
+	 */
+	function populateFormForContext(context: EditListDrawerSubmitContext) {
+		if (context.mode === 'create') {
 			resetForm()
 			return
 		}
 
-		const list = selectedList.value
+		const list = context.listId ? listsStore.listsById[context.listId] : undefined
 
 		Object.assign(formState, {
 			name: list?.name ?? '',
@@ -171,8 +203,10 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 		isSubmitting.value = true
 
 		try {
-			if (mode.value === 'edit') {
-				await updateExistingList(payload.data)
+			const context = activeSubmitContext.value
+
+			if (context.mode === 'edit') {
+				await updateExistingList(payload.data, context.listId)
 			} else {
 				await createNewList(payload.data)
 			}
@@ -183,7 +217,7 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 				title:
 					error instanceof Error
 						? error.message
-						: mode.value === 'edit'
+						: activeSubmitContext.value.mode === 'edit'
 							? 'Lijst kon niet worden bijgewerkt.'
 							: 'Lijst kon niet worden toegevoegd.',
 				color: 'error',
@@ -214,10 +248,11 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 	 * Updates the currently selected list from submitted form data.
 	 *
 	 * @param data - Validated form data.
+	 * @param listId - Target list id captured when the drawer opened.
 	 * @returns A promise that resolves after the list has been updated.
 	 */
-	async function updateExistingList(data: EditListDrawerSubmitData) {
-		if (!selectedListId.value) {
+	async function updateExistingList(data: EditListDrawerSubmitData, listId: string | null) {
+		if (!listId) {
 			return
 		}
 
@@ -226,7 +261,7 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 			icon: normalizeOptionalIconText(data.icon)
 		}
 
-		await listsStore.updateList(selectedListId.value, input)
+		await listsStore.updateList(listId, input)
 	}
 
 	/**

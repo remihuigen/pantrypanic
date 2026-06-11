@@ -47,13 +47,11 @@ The product app UI is namespaced under `/app`:
 Configured in `nuxt.config.ts`:
 
 - database: SQLite locally, D1 driver outside development
-- cache: Cloudflare KV binding outside development
 - blob: filesystem driver at `.data/blob` locally, Cloudflare R2 in production
 
 Production environment variables currently referenced:
 
 - `CLOUDFLARE_D1_DATABASE_ID`
-- `CLOUDFLARE_CACHE_NAMESPACE_ID`
 - `CLOUDFLARE_R2_BUCKET`
 - `ADMIN_USER_EMAIL`
 - `ADMIN_USER_PASSWORD`
@@ -77,7 +75,6 @@ Runtime-configured Pantry defaults:
 Expected production bindings:
 
 - D1: `DB`
-- KV/cache: `CACHE`
 - R2/blob: `BLOB`
 
 ## Nuxt Image And Blob Serving
@@ -152,22 +149,6 @@ New domain routes use the shared response envelope:
 
 Zod validates params, query strings, and bodies. Validation messages are Dutch. Current
 authorization is coarse authentication only; fine-grained permissions are still deferred.
-
-Short-lived read caching is enabled for expensive or commonly polled domain GET routes:
-
-- `GET /api/lists`
-- `GET /api/lists/:listId`
-- `GET /api/items/search`
-- `GET /api/items/suggestions`
-- `GET /api/recipes`
-- `GET /api/recipes/:recipeId`
-- `GET /api/meal-planner`
-
-The cache helper is `defineCachedApiHandler()` in `server/utils/api-core.ts`. It wraps Nitro's
-`defineCachedEventHandler`, leaving request URL and query-param cache keys to Nitro. SWR is disabled
-for domain API reads, and runtime intervals under one second bypass caching. Cached API data must
-not be served after `runtimeConfig.public.refreshInterval` (`NUXT_PUBLIC_REFRESH_INTERVAL`,
-milliseconds).
 
 ## Admin User Seed
 

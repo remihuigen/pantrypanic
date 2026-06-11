@@ -8,7 +8,8 @@ export default defineNuxtConfig({
 		'@nuxt/image',
 		'@pinia/nuxt',
 		'pinia-plugin-persistedstate/nuxt',
-		'@vueuse/nuxt'
+		'@vueuse/nuxt',
+		'@vite-pwa/nuxt'
 	],
 
 	$production: {
@@ -34,12 +35,6 @@ export default defineNuxtConfig({
 				driver: 'd1',
 				applyMigrationsDuringBuild: false,
 				connection: { databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID }
-			},
-
-			// KV Storage (binding defaults to 'CACHE')
-			cache: {
-				driver: 'cloudflare-kv-binding',
-				namespaceId: process.env.CLOUDFLARE_CACHE_NAMESPACE_ID
 			},
 
 			// R2 bucket (binding defaults to 'BLOB')
@@ -93,8 +88,6 @@ export default defineNuxtConfig({
 	hub: {
 		// D1 database
 		db: 'sqlite',
-		// Cache KV namespace (binding defaults to 'CACHE')
-		cache: true,
 		// Local blob storage for development
 		blob: {
 			driver: 'fs',
@@ -129,5 +122,54 @@ export default defineNuxtConfig({
 
 	image: {
 		provider: 'none'
+	},
+
+	pwa: {
+		registerType: 'autoUpdate',
+
+		manifest: {
+			id: '/app/',
+			name: 'Pantry Panic',
+			short_name: 'Pantry Panic',
+			description: "The grocery list manager that doesn't suck.",
+
+			start_url: '/app/',
+			scope: '/app/',
+
+			display: 'standalone',
+			orientation: 'portrait',
+
+			theme_color: '#EB533A',
+			background_color: '#FFFFFF',
+
+			lang: 'en',
+
+			icons: [
+				{
+					src: '/icons/appicon-192.png',
+					sizes: '192x192',
+					type: 'image/png'
+				},
+				{
+					src: '/icons/appicon-512.png',
+					sizes: '512x512',
+					type: 'image/png'
+				},
+				{
+					src: '/icons/maskable-appicon-512.png',
+					sizes: '512x512',
+					type: 'image/png',
+					purpose: 'maskable'
+				}
+			]
+		},
+
+		workbox: {
+			globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,json}']
+		},
+
+		devOptions: {
+			enabled: false
+		}
 	}
 })

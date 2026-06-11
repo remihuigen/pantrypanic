@@ -5,10 +5,8 @@ import { db } from 'hub:db'
 
 import {
 	apiSuccess,
-	defineCachedApiHandler,
 	defineApiHandler,
 	domainIdSchema,
-	getApiCacheMaxAgeSeconds,
 	getAuthenticatedUserId,
 	nullableAmountSchema,
 	nullableTextSchema,
@@ -24,20 +22,12 @@ import {
 import { createSelectBuilder } from './test-db'
 
 const getUserSession = vi.fn()
-const useRuntimeConfig = vi.fn()
-const defineCachedEventHandler = vi.fn((handler: unknown, _options: unknown) => handler)
 
 describe('api core utilities', () => {
 	beforeEach(() => {
 		vi.stubGlobal('getUserSession', getUserSession)
-		vi.stubGlobal('useRuntimeConfig', useRuntimeConfig)
-		vi.stubGlobal('defineCachedEventHandler', defineCachedEventHandler)
-		delete process.env.NUXT_PUBLIC_REFRESH_INTERVAL
 		vi.mocked(db.select).mockReset()
 		getUserSession.mockReset()
-		useRuntimeConfig.mockReset()
-		defineCachedEventHandler.mockClear()
-		useRuntimeConfig.mockReturnValue({ public: { refreshInterval: 5000 } })
 	})
 
 	afterEach(() => {
@@ -84,54 +74,6 @@ describe('api core utilities', () => {
 
 		expect(parseApiQuery(event as never, z.object({ limit: z.coerce.number() }))).toEqual({ limit: 3 })
 		expect(parseApiParams(event as never, z.object({ id: z.string() }), ['id'])).toEqual({ id: 'abc' })
-	})
-
-	it('reads cache max age from the refresh interval', () => {
-		expect(getApiCacheMaxAgeSeconds({} as never)).toBe(5)
-		useRuntimeConfig.mockReturnValue({ public: { refreshInterval: '1500' } })
-		expect(getApiCacheMaxAgeSeconds({} as never)).toBe(1)
-
-		useRuntimeConfig.mockReturnValue({ public: { refreshInterval: 999 } })
-		expect(getApiCacheMaxAgeSeconds({} as never)).toBe(0)
-
-		useRuntimeConfig.mockReturnValue({ public: { refreshInterval: 'nope' } })
-		expect(getApiCacheMaxAgeSeconds({} as never)).toBe(0)
-	})
-
-	it('wraps successful cached handlers with Nitro cache options', async () => {
-		const handler = defineCachedApiHandler(() => ({ lists: [] }), { name: 'lists-index' })
-		const options = defineCachedEventHandler.mock.calls[0]?.[1] as {
-			name: string
-			maxAge: number
-			swr: boolean
-			varies: string[]
-			shouldBypassCache: (_event: never) => boolean
-		}
-
-		await expect(handler(createResponseEvent())).resolves.toEqual({
-			success: true,
-			data: { lists: [] }
-		})
-		expect(options).toMatchObject({
-			name: 'lists-index',
-			maxAge: 5,
-			swr: false,
-			varies: ['cookie', 'x-api-token']
-		})
-		expect(options.shouldBypassCache({} as never)).toBe(false)
-	})
-
-	it('bypasses Nitro cache when runtime refresh interval is shorter than configured max age', () => {
-		defineCachedApiHandler(() => ({ ok: true }), { name: 'short-interval' })
-		const options = defineCachedEventHandler.mock.calls[0]?.[1] as {
-			shouldBypassCache: (_event: never) => boolean
-		}
-
-		useRuntimeConfig.mockReturnValue({ public: { refreshInterval: 2000 } })
-		expect(options.shouldBypassCache({} as never)).toBe(true)
-
-		useRuntimeConfig.mockReturnValue({ public: { refreshInterval: 0 } })
-		expect(options.shouldBypassCache({} as never)).toBe(true)
 	})
 
 	it('returns session user ids or first-user fallback ids', async () => {

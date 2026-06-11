@@ -1,8 +1,8 @@
-import { defineCachedApiHandler, parseApiQuery } from '#server/utils/api-core'
+import { defineApiHandler, parseApiQuery } from '#server/utils/api-core'
 import { listRecipes, recipeQuerySchema } from '#server/domains'
 
-export default defineCachedApiHandler((event) => {
+export default defineApiHandler((event) => {
 	const query = parseApiQuery(event, recipeQuerySchema)
 
 	return listRecipes(query)
-}, { name: 'recipes-index' })
+})
