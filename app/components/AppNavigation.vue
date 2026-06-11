@@ -57,7 +57,7 @@ function openCreateItemDrawer() {
 					:to="btn.to"
 					size="xl"
 					block
-					class="aspect-square h-full transition-all focus-visible:bg-transparent"
+					class="aspect-square h-full bg-transparent! transition-all"
 					:class="isActive(btn) ? '-translate-y-0.5' : ''"
 				/>
 			</div>
@@ -81,7 +81,7 @@ function openCreateItemDrawer() {
 					:to="btn.to"
 					size="xl"
 					block
-					class="aspect-square transition-all focus-visible:bg-transparent"
+					class="aspect-square bg-transparent! transition-all"
 					:class="isActive(btn) ? '-translate-y-0.5' : ''"
 				/>
 			</div>

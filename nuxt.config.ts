@@ -105,8 +105,7 @@ export default defineNuxtConfig({
 				'@tiptap/starter-kit',
 				'@tiptap/markdown',
 				'@tiptap/**',
-				'sortablejs',
-				'@vueuse/gesture'
+				'sortablejs'
 			]
 		}
 	},
@@ -169,7 +168,7 @@ export default defineNuxtConfig({
 		},
 
 		devOptions: {
-			enabled: false
+			enabled: true
 		}
 	}
 })

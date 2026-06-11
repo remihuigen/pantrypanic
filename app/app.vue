@@ -22,10 +22,37 @@ useSeoMeta({
 	twitterCard: 'summary_large_image',
 	robots: 'noindex, nofollow'
 })
+
+const { $pwa } = useNuxtApp()
+
+const toast = useToast()
+const { getIcon } = useIcon()
+
+onMounted(() => {
+	if (!$pwa) return
+
+	if ($pwa.needRefresh) {
+		toast.add({
+			icon: getIcon('new'),
+			title: 'Een nieuwe versie van de app staat klaar',
+			color: 'primary',
+			duration: 12000,
+			actions: [
+				{
+					label: 'Installeren',
+					color: 'primary',
+					icon: getIcon('download'),
+					onClick: () => $pwa.updateServiceWorker()
+				}
+			]
+		})
+	}
+})
 </script>
 
 <template>
 	<UApp :locale="nl">
+		<NuxtPwaManifest />
 		<NuxtLayout>
 			<NuxtPage />
 		</NuxtLayout>

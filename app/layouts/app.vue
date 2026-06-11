@@ -1,4 +1,14 @@
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+const { $pwa } = useNuxtApp()
+
+onMounted(async () => {
+	if (!$pwa) return
+
+	if ($pwa.showInstallPrompt) {
+		await $pwa.install()
+	}
+})
+</script>
 
 <template>
 	<div class="pb-20">

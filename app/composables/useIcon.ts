@@ -11,7 +11,9 @@ export const useIcon = () => {
 		settings: 'lucide-settings',
 		plus: 'lucide-plus',
 		archive: 'i-lucide-archive',
-		check: 'i-lucide-check'
+		check: 'i-lucide-check',
+		new: 'lucide:sparkles',
+		download: 'lucide:download'
 	} as const
 
 	/**
