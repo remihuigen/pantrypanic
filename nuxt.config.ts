@@ -8,7 +8,8 @@ export default defineNuxtConfig({
 		'@nuxt/image',
 		'@pinia/nuxt',
 		'pinia-plugin-persistedstate/nuxt',
-		'@vueuse/nuxt'
+		'@vueuse/nuxt',
+		'@vite-pwa/nuxt'
 	],
 
 	$production: {
@@ -121,5 +122,54 @@ export default defineNuxtConfig({
 
 	image: {
 		provider: 'none'
+	},
+
+	pwa: {
+		registerType: 'autoUpdate',
+
+		manifest: {
+			id: '/app/',
+			name: 'Pantry Panic',
+			short_name: 'Pantry Panic',
+			description: "The grocery list manager that doesn't suck.",
+
+			start_url: '/app/',
+			scope: '/app/',
+
+			display: 'standalone',
+			orientation: 'portrait',
+
+			theme_color: '#EB533A',
+			background_color: '#FFFFFF',
+
+			lang: 'en',
+
+			icons: [
+				{
+					src: '/icons/appicon-192.png',
+					sizes: '192x192',
+					type: 'image/png'
+				},
+				{
+					src: '/icons/appicon-512.png',
+					sizes: '512x512',
+					type: 'image/png'
+				},
+				{
+					src: '/icons/maskable-appicon-512.png',
+					sizes: '512x512',
+					type: 'image/png',
+					purpose: 'maskable'
+				}
+			]
+		},
+
+		workbox: {
+			globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,json}']
+		},
+
+		devOptions: {
+			enabled: false
+		}
 	}
 })
