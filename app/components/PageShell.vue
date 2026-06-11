@@ -6,7 +6,11 @@
 		<ClientOnly>
 			<slot />
 
-			<template #fallback> Loading stuff </template>
+			<template #fallback>
+				<div class="grid h-[80vh] place-items-center">
+					<AppIcon class="w-16 animate-pulse" />
+				</div>
+			</template>
 		</ClientOnly>
 	</section>
 </template>

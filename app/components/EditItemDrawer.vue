@@ -36,12 +36,14 @@ const submitLabel = computed(() => (editItemDrawer.mode.value === 'edit' ? 'Opsl
 const submitIcon = computed(() =>
 	editItemDrawer.mode.value === 'edit' ? 'i-lucide-save' : getIcon('plus')
 )
-const minimalSnapPoint = 0.52
-const expandedSnapPoint = 0.92
+const minimalSnapPoint = '350px'
+const expandedSnapPoint = '500px'
 const itemDrawerSnapPoints: Array<string | number> = [minimalSnapPoint, expandedSnapPoint]
 const itemDrawerActiveSnapPoint = ref<string | number | null>(null)
 const isOpeningToMinimal = ref(false)
 const isItemDrawerExpanded = computed(() => itemDrawerActiveSnapPoint.value === expandedSnapPoint)
+const areItemOptionsVisible = ref(false)
+const isMoreOptionsButtonVisible = ref(true)
 const drawerUi = computed(() => ({
 	content: [
 		'edit-item-drawer-content',
@@ -51,6 +53,7 @@ const drawerUi = computed(() => ({
 }))
 let resetViewFrame: number | undefined
 let openingAnimationTimeout: ReturnType<typeof setTimeout> | undefined
+let optionsVisibilityTimeout: ReturnType<typeof setTimeout> | undefined
 
 const editItemDrawerFormSchema = createOccurrenceBodySchema.extend({
 	listId: domainIdSchema
@@ -67,6 +70,41 @@ function expandItemDrawer() {
 	itemDrawerActiveSnapPoint.value = expandedSnapPoint
 }
 
+function clearOptionsVisibilityTimeout() {
+	if (optionsVisibilityTimeout !== undefined) {
+		clearTimeout(optionsVisibilityTimeout)
+		optionsVisibilityTimeout = undefined
+	}
+}
+
+function resetItemOptionsView() {
+	clearOptionsVisibilityTimeout()
+	areItemOptionsVisible.value = false
+	isMoreOptionsButtonVisible.value = true
+}
+
+function syncItemOptionsView(isExpanded: boolean) {
+	clearOptionsVisibilityTimeout()
+
+	if (isExpanded) {
+		isMoreOptionsButtonVisible.value = false
+		areItemOptionsVisible.value = true
+		return
+	}
+
+	areItemOptionsVisible.value = false
+
+	if (!import.meta.client) {
+		isMoreOptionsButtonVisible.value = true
+		return
+	}
+
+	optionsVisibilityTimeout = setTimeout(() => {
+		isMoreOptionsButtonVisible.value = true
+		optionsVisibilityTimeout = undefined
+	}, 130)
+}
+
 function stopOpeningAnimation() {
 	isOpeningToMinimal.value = false
 
@@ -79,6 +117,7 @@ function stopOpeningAnimation() {
 function resetItemDrawerView() {
 	itemDrawerActiveSnapPoint.value = null
 	stopOpeningAnimation()
+	resetItemOptionsView()
 
 	if (!import.meta.client) {
 		itemDrawerActiveSnapPoint.value = minimalSnapPoint
@@ -110,6 +149,7 @@ function handleDrawerAnimationEnd(isOpen: boolean) {
 	}
 
 	stopOpeningAnimation()
+	resetItemOptionsView()
 	itemDrawerActiveSnapPoint.value = null
 }
 
@@ -167,6 +207,10 @@ watch(
 		}
 	}
 )
+
+watch(isItemDrawerExpanded, (isExpanded) => {
+	syncItemOptionsView(isExpanded)
+})
 </script>
 
 <template>
@@ -223,50 +267,54 @@ watch(
 					/>
 				</UFormField>
 
-				<UButton
-					v-if="!isItemDrawerExpanded"
-					type="button"
-					variant="ghost"
-					color="neutral"
-					size="sm"
-					icon="i-lucide-sliders-horizontal"
-					class="justify-self-start"
-					:disabled="isSubmitting"
-					@click="expandItemDrawer"
-				>
-					Meer opties
-				</UButton>
+				<Transition name="edit-item-drawer-more-options">
+					<UButton
+						v-if="isMoreOptionsButtonVisible"
+						type="button"
+						variant="ghost"
+						color="neutral"
+						size="sm"
+						icon="i-lucide-sliders-horizontal"
+						class="justify-self-start"
+						:disabled="isSubmitting"
+						@click="expandItemDrawer"
+					>
+						Meer opties
+					</UButton>
+				</Transition>
 
 				<Transition name="edit-item-drawer-options">
-					<div v-if="isItemDrawerExpanded" class="grid gap-y-4">
-						<FieldRow>
-							<UFormField name="amount" size="lg">
-								<UInputNumber
-									v-model="formState.amount"
-									:step="0.5"
-									:min="0"
-									placeholder="Aantal"
+					<div v-if="areItemOptionsVisible" class="edit-item-drawer-options-shell">
+						<div class="edit-item-drawer-options-content grid gap-y-4">
+							<FieldRow>
+								<UFormField name="amount" size="lg">
+									<UInputNumber
+										v-model="formState.amount"
+										:step="0.5"
+										:min="0"
+										placeholder="Aantal"
+										:disabled="isSubmitting"
+									/>
+								</UFormField>
+
+								<UFormField name="unit" size="lg">
+									<UInput
+										v-model="formState.unit"
+										placeholder="Stuks"
+										:disabled="isSubmitting"
+									/>
+								</UFormField>
+							</FieldRow>
+
+							<UFormField name="note">
+								<UTextarea
+									v-model="formState.note"
+									placeholder="Voeg een notitie toe"
+									:rows="5"
 									:disabled="isSubmitting"
 								/>
 							</UFormField>
-
-							<UFormField name="unit" size="lg">
-								<UInput
-									v-model="formState.unit"
-									placeholder="Stuks"
-									:disabled="isSubmitting"
-								/>
-							</UFormField>
-						</FieldRow>
-
-						<UFormField name="note">
-							<UTextarea
-								v-model="formState.note"
-								placeholder="Voeg een notitie toe"
-								:rows="5"
-								:disabled="isSubmitting"
-							/>
-						</UFormField>
+						</div>
 					</div>
 				</Transition>
 			</UForm>
@@ -311,41 +359,83 @@ watch(
 </template>
 
 <style scoped>
-.edit-item-drawer-options-enter-active,
+.edit-item-drawer-options-enter-active {
+	overflow: hidden;
+	transition: max-height 190ms ease-out;
+}
+
 .edit-item-drawer-options-leave-active {
 	overflow: hidden;
-	transition:
-		opacity 120ms ease-out,
-		transform 120ms ease-out,
-		max-height 140ms ease-out;
+	transition: max-height 150ms ease-out;
 }
 
 .edit-item-drawer-options-enter-from,
 .edit-item-drawer-options-leave-to {
 	max-height: 0;
-	opacity: 0;
-	transform: translateY(-0.25rem);
 }
 
 .edit-item-drawer-options-enter-to,
 .edit-item-drawer-options-leave-from {
 	max-height: 18rem;
+}
+
+.edit-item-drawer-options-enter-active .edit-item-drawer-options-content {
+	transition:
+		opacity 160ms ease-out 70ms,
+		transform 160ms ease-out 70ms;
+}
+
+.edit-item-drawer-options-leave-active .edit-item-drawer-options-content {
+	transition:
+		opacity 120ms ease-out,
+		transform 120ms ease-out;
+}
+
+.edit-item-drawer-options-enter-from .edit-item-drawer-options-content,
+.edit-item-drawer-options-leave-to .edit-item-drawer-options-content {
+	opacity: 0;
+	transform: translateY(0.25rem);
+}
+
+.edit-item-drawer-options-enter-to .edit-item-drawer-options-content,
+.edit-item-drawer-options-leave-from .edit-item-drawer-options-content {
 	opacity: 1;
 	transform: translateY(0);
 }
 
-:global(.edit-item-drawer-content--opening[data-state='open'][data-vaul-snap-points='true'][data-vaul-drawer-direction='bottom']) {
-	animation: edit-item-drawer-slide-to-minimal 180ms cubic-bezier(0.32, 0.72, 0, 1) both;
+.edit-item-drawer-more-options-enter-active,
+.edit-item-drawer-more-options-leave-active {
+	transition:
+		opacity 110ms ease-out,
+		transform 110ms ease-out;
+}
+
+.edit-item-drawer-more-options-enter-from,
+.edit-item-drawer-more-options-leave-to {
+	opacity: 0;
+	transform: translateY(0.25rem);
+}
+
+.edit-item-drawer-more-options-enter-to,
+.edit-item-drawer-more-options-leave-from {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+:global(
+	.edit-item-drawer-content--opening[data-state='open'][data-vaul-snap-points='true'][data-vaul-drawer-direction='bottom']
+) {
+	animation: edit-item-drawer-slide-to-minimal 250ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 :global(.edit-item-drawer-overlay[data-vaul-snap-points='true'][data-state='open']) {
 	opacity: 1 !important;
-	transition: opacity 180ms ease-out !important;
+	transition: opacity 250ms ease-out !important;
 }
 
 :global(.edit-item-drawer-overlay[data-state='closed']) {
 	opacity: 0 !important;
-	transition: opacity 180ms ease-in !important;
+	transition: opacity 250ms ease-in !important;
 }
 
 @keyframes edit-item-drawer-slide-to-minimal {
