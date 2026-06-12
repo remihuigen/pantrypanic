@@ -25,12 +25,17 @@ export default defineConfig({
 			provider: 'v8',
 			reporter: ['text', 'lcov'],
 			include: ['server/utils/**/*.{ts,js,mjs}', 'scripts/**/*.mjs', 'app/**/*.{ts,js,mjs}'],
-			exclude: ['**/*.d.ts'],
+			exclude: [
+				'**/*.d.ts',
+				'app/composables/useStoreRefresh.ts',
+				'app/middleware/**',
+				'app/plugins/**'
+			],
 			thresholds: {
-				statements: 85,
-				branches: 65,
-				functions: 85,
-				lines: 85
+				statements: 90,
+				branches: 80,
+				functions: 90,
+				lines: 90
 			}
 		}
 	}

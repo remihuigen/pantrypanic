@@ -389,6 +389,7 @@ export const useRecipesStore = defineStore(
 			const existing = recipeItemsById.value[recipeItemId]
 
 			if (!existing) {
+				isSaving.value = false
 				return
 			}
 

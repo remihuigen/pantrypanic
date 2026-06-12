@@ -13,6 +13,7 @@
 - NuxtHub
 - Nuxt Image
 - nuxt-auth-utils
+- nuxt-authorization
 
 There is no Docus/content layer in the current checkout.
 
@@ -21,9 +22,10 @@ There is no Docus/content layer in the current checkout.
 The product app UI is namespaced under `/app`:
 
 - `app/pages/app/**` contains product routes such as `/app/lists`, `/app/lists/:id`,
-  `/app/recipes`, `/app/recipes/:id`, `/app/meal-planner`, and `/app/settings`.
-- `nuxt.config.ts` sets `routeRules` with `ssr: false` for `/app` and `/app/**`, so product app
-  routes render client-side only.
+  `/app/recipes`, `/app/recipes/:id`, `/app/meal-planner`, `/app/settings`,
+  `/app/settings/household`, `/app/settings/item-valut`, and `/app/settings/stats`.
+- `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**`, so product app
+  routes render through Nuxt's normal SSR path.
 - `/` and `/app` redirect to `/app/lists`.
 - `app/pages/(auth)/login.vue` contains the email/password sign-in form at `/login`.
 - `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
@@ -67,7 +69,8 @@ Production environment variables currently referenced:
 - Both flags are available in public runtime config for client UI and private runtime config for API
   logic. Server routes must read the private runtime config values.
 - `NUXT_SESSION_PASSWORD`
-- optional `NUXT_PANTRY_*` overrides for `runtimeConfig.pantry`
+- optional `NUXT_PANTRY_*` values that are explicitly mapped to `runtimeConfig.pantry` in
+  `nuxt.config.ts`
 
 Runtime-configured Pantry defaults:
 
@@ -128,7 +131,6 @@ User logic lives in `server/utils/user-management.ts`.
 
 Current limitations:
 
-- no fine-grained permission checks
 - existing legacy plain-text passwords are rehashed after a successful login
 - user API responses omit `password`
 
@@ -160,7 +162,13 @@ New domain routes use the shared response envelope:
 - error: `{ success: false, error: { code, message, details? } }`
 
 Zod validates params, query strings, and bodies. Validation messages are Dutch. All household
-members can manage household settings, members, invite/reset links, and clear-data actions.
+management actions are guarded by Nuxt Authorization abilities. Owner-gated server handlers should
+call `getHouseholdContext(event, { authorize: ability })` so household resolution, membership-role
+lookup, and server `authorize()` stay centralized in `server/utils/households.ts`.
+`householdOwner` members can invite users, generate reset links, remove members, promote members to
+owner, update household settings, clear household app data, and destroy households. Regular members
+keep access to the core domain flows. Users with no household membership get a friendly Dutch
+empty-state message in settings instead of a broken app state.
 
 ## Admin User Seed
 

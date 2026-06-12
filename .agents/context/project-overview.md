@@ -32,8 +32,9 @@ Implemented:
   planner workflows
 - household-scoped multi-tenancy data model with singleton behavior when `ENABLE_MULTI_TENANCY` is
   disabled
-- settings UI for profile, theme, household members/invites/reset links, app refresh interval,
-  canonical item maintenance, clear-data, and usage stats
+- settings subroutes for profile/theme/danger-zone controls, household
+  members/invites/reset links/settings, canonical item maintenance, and usage stats
+- household-owner role checks for household management actions through Nuxt Authorization
 - safe raster image serving from blob storage
 - build-time HTTP admin-user seed from `.env`
 - Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
@@ -44,7 +45,6 @@ Implemented:
 
 Not implemented yet:
 
-- role-based or fine-grained permissions around household actions
 - offline behavior beyond generated service-worker asset caching
 - shopping workflow screens
 

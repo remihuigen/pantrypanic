@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { destroyHousehold, manageHousehold } from '#shared/utils/abilities'
+
 const settingsStore = useSettingsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
@@ -21,15 +23,31 @@ async function switchHousehold(householdId: string) {
 }
 
 async function createInvite() {
-	const invite = await settingsStore.createInvite()
-	await navigator.clipboard?.writeText(invite.url).catch(() => undefined)
-	toast.add({ title: 'Uitnodigingslink gemaakt.', color: 'success', icon: 'i-lucide-link' })
+	try {
+		const invite = await settingsStore.createInvite()
+		await navigator.clipboard?.writeText(invite.url).catch(() => undefined)
+		toast.add({ title: 'Uitnodigingslink gemaakt.', color: 'success', icon: 'i-lucide-link' })
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Uitnodigingslink kon niet worden gemaakt.'),
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
+	}
 }
 
 async function createResetLink(userId: number) {
-	const resetLink = await settingsStore.createResetLink(userId)
-	await navigator.clipboard?.writeText(resetLink.url).catch(() => undefined)
-	toast.add({ title: 'Toegangslink gemaakt.', color: 'success', icon: 'i-lucide-key-round' })
+	try {
+		const resetLink = await settingsStore.createResetLink(userId)
+		await navigator.clipboard?.writeText(resetLink.url).catch(() => undefined)
+		toast.add({ title: 'Toegangslink gemaakt.', color: 'success', icon: 'i-lucide-key-round' })
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Toegangslink kon niet worden gemaakt.'),
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
+	}
 }
 
 async function removeMember(userId: number) {
@@ -41,7 +59,50 @@ async function removeMember(userId: number) {
 
 	if (!ok) return
 
-	await settingsStore.removeMember(userId)
+	try {
+		await settingsStore.removeMember(userId)
+		toast.add({ title: 'Gezinslid verwijderd.', color: 'success', icon: 'i-lucide-check' })
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Gezinslid kon niet worden verwijderd.'),
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
+	}
+}
+
+async function assignOwner(userId: number) {
+	try {
+		await settingsStore.assignOwner(userId)
+		toast.add({ title: 'Eigenaar toegevoegd.', color: 'success', icon: 'i-lucide-crown' })
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Eigenaar kon niet worden toegevoegd.'),
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
+	}
+}
+
+async function destroyCurrentHousehold() {
+	const ok = await confirm({
+		title: 'Huishouden verwijderen?',
+		description: 'Alle lijsten, items, recepten, plannerdata en lidmaatschappen worden verwijderd. Gebruikersaccounts blijven bestaan.',
+		color: 'error'
+	})
+
+	if (!ok) return
+
+	try {
+		await settingsStore.destroyHousehold()
+		toast.add({ title: 'Huishouden verwijderd.', color: 'success', icon: 'i-lucide-check' })
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Huishouden kon niet worden verwijderd.'),
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
+	}
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -56,7 +117,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 		<template #header>
 			<div class="flex items-center justify-between gap-3">
 				<h2 class="text-base font-semibold">Jouw gezin</h2>
-				<UButton icon="i-lucide-link" size="sm" @click="createInvite">Uitnodigen</UButton>
+				<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
+					<UButton icon="i-lucide-link" size="sm" @click="createInvite">Uitnodigen</UButton>
+				</Can>
 			</div>
 		</template>
 
@@ -87,23 +150,53 @@ function getErrorMessage(error: unknown, fallback: string) {
 							<p class="truncate text-sm font-medium">{{ member.name }}</p>
 							<p class="text-muted truncate text-xs">{{ member.email }}</p>
 						</div>
+						<UBadge v-if="member.role === 'householdOwner'" color="primary" variant="subtle">
+							Eigenaar
+						</UBadge>
 					</div>
-					<div class="flex gap-1">
-						<UButton
-							icon="i-lucide-key-round"
-							color="neutral"
-							variant="ghost"
-							@click="createResetLink(member.id)"
-						/>
-						<UButton
-							icon="i-lucide-trash-2"
-							color="error"
-							variant="ghost"
-							@click="removeMember(member.id)"
-						/>
-					</div>
+					<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
+						<div class="flex gap-1">
+							<UButton
+								v-if="member.role !== 'householdOwner'"
+								icon="i-lucide-crown"
+								color="neutral"
+								variant="ghost"
+								@click="assignOwner(member.id)"
+							/>
+							<UButton
+								icon="i-lucide-key-round"
+								color="neutral"
+								variant="ghost"
+								@click="createResetLink(member.id)"
+							/>
+							<UButton
+								icon="i-lucide-trash-2"
+								color="error"
+								variant="ghost"
+								@click="removeMember(member.id)"
+							/>
+						</div>
+					</Can>
 				</div>
 			</div>
+
+			<Can :ability="destroyHousehold" :args="[settingsStore.currentMemberRole]">
+				<div class="border-error/30 mt-4 rounded-md border p-3">
+					<p class="text-sm font-medium">Huishouden verwijderen</p>
+					<p class="text-muted mt-1 text-sm">
+						Alle huishouddata wordt verwijderd. Gebruikersaccounts blijven bestaan zonder
+						huishouden.
+					</p>
+					<UButton
+						class="mt-3"
+						color="error"
+						icon="i-lucide-trash-2"
+						@click="destroyCurrentHousehold"
+					>
+						Huishouden verwijderen
+					</UButton>
+				</div>
+			</Can>
 		</div>
 	</UCard>
 </template>

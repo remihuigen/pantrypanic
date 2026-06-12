@@ -23,10 +23,11 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 
 - Product app pages live under `/app`, backed by files in `app/pages/app/**`.
 - Current app routes include `/app/lists`, `/app/lists/:id`, `/app/recipes`, `/app/recipes/:id`,
-  `/app/meal-planner`, and `/app/settings`.
+  `/app/meal-planner`, `/app/settings`, `/app/settings/household`,
+  `/app/settings/item-valut`, and `/app/settings/stats`.
 - `/` and `/app` redirect to `/app/lists`.
-- `nuxt.config.ts` sets `routeRules` with `ssr: false` for `/app` and `/app/**` so product app
-  pages render client-side only.
+- `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**` so product app pages
+  render through Nuxt's normal SSR path.
 - `/login` and `/logout` remain outside the `/app` namespace and keep normal server rendering so
   auth entry points continue to work without depending on the app shell.
 - Global route middleware only enforces session auth for `/app` routes. Future public or marketing
@@ -49,8 +50,10 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - Persisted fields are cache-like and exclude transient loading/error state.
 - Common user actions use optimistic updates with rollback/reconciliation.
 - Backend remains source of truth; polling reconciles collaborative changes.
-- Settings owns profile, household context, household-wide refresh interval, member links, item
-  maintenance, clear-data, and usage stats.
+- Settings is split into subroutes: general profile/theme/danger-zone controls,
+  household settings/member links, canonical item maintenance, and usage stats.
+- Household-owner-only controls are rendered through Nuxt Authorization abilities; users with no
+  active household see Dutch guidance asking them to request a new household invite.
 
 ## Error Feedback Pattern
 

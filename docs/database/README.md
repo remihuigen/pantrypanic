@@ -29,6 +29,7 @@ Domain tables use text primary keys generated with the `uuid` package's UUID v7 
 
 The schema exports these enum value constants:
 
+- `householdUserRoleValues`: `member`, `householdOwner`
 - `listStatusValues`: `active`, `archived`, `deleted`
 - `listItemStatusValues`: `unchecked`, `checked`, `archived`, `deleted`
 - `recipeStatusValues`: `active`, `archived`, `deleted`
@@ -54,9 +55,10 @@ foreign keys.
 `lists` stores reusable shopping lists. The seeded list name comes from
 `runtimeConfig.pantry.defaultListName` and defaults to `Boodschappen`.
 
-`households` stores household/tenant containers. `household_users` stores memberships.
-`household_settings` stores household-wide app settings such as refresh interval. `access_links`
-stores hashed one-time invite and reset-access tokens.
+`households` stores household/tenant containers. `household_users` stores memberships and each
+membership's `member` or `householdOwner` role. `household_settings` stores household-wide app
+settings such as refresh interval. `access_links` stores hashed one-time invite and reset-access
+tokens.
 
 `items` stores canonical grocery items. The household + `normalized_name` unique index supports
 reuse and autocomplete within a household.
@@ -78,7 +80,7 @@ deleted when planner days are reset or changed.
 Migrations seed/backfill default household and domain data when at least one user already exists:
 
 - one default household named `Thuis`
-- membership rows for existing users
+- household-owner membership rows for existing users
 - one active list per household using `runtimeConfig.pantry.defaultListName`
 - seven `meal_planner_days` rows per household with `type = empty`
 

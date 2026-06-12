@@ -5,10 +5,13 @@ import {
 	listHouseholdMembers
 } from '#server/utils/households'
 import { userIdParamsSchema } from '#server/utils/settings'
+import { manageHousehold } from '#shared/utils/abilities'
 import { createError, getRequestURL } from 'h3'
 
 export default defineApiHandler(async (event) => {
-	const { householdId, userId: createdByUserId } = await getHouseholdContext(event)
+	const { householdId, userId: createdByUserId } = await getHouseholdContext(event, {
+		authorize: manageHousehold
+	})
 	const { userId } = parseApiParams(event, userIdParamsSchema, ['userId'])
 	const members = await listHouseholdMembers(householdId)
 

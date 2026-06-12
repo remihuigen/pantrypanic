@@ -1,4 +1,16 @@
 <script setup lang="ts">
+import { manageHousehold } from '#shared/utils/abilities'
+
+const props = withDefaults(
+	defineProps<{
+		showTheme?: boolean
+		showRefresh?: boolean
+	}>(),
+	{
+		showTheme: true,
+		showRefresh: true
+	}
+)
 const settingsStore = useSettingsStore()
 const colorMode = useColorMode()
 const toast = useToast()
@@ -28,7 +40,7 @@ async function saveSettings() {
 		</template>
 
 		<div class="space-y-4">
-			<UFormField label="Thema">
+			<UFormField v-if="props.showTheme" label="Thema">
 				<UButtonGroup>
 					<UButton
 						:color="colorMode.preference === 'light' ? 'primary' : 'neutral'"
@@ -47,11 +59,19 @@ async function saveSettings() {
 				</UButtonGroup>
 			</UFormField>
 
-			<UFormField label="Verversinterval">
-				<UInputNumber v-model="refreshIntervalSeconds" :min="1" :max="300" />
-			</UFormField>
+			<Can
+				v-if="props.showRefresh"
+				:ability="manageHousehold"
+				:args="[settingsStore.currentMemberRole]"
+			>
+				<div class="space-y-4">
+					<UFormField label="Verversinterval">
+						<UInputNumber v-model="refreshIntervalSeconds" :min="1" :max="300" />
+					</UFormField>
 
-			<UButton icon="i-lucide-save" @click="saveSettings">Opslaan</UButton>
+					<UButton icon="i-lucide-save" @click="saveSettings">Opslaan</UButton>
+				</div>
+			</Can>
 		</div>
 	</UCard>
 </template>

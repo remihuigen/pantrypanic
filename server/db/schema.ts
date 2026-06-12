@@ -15,12 +15,14 @@ export const listItemSourceTypeValues = [
 ] as const
 
 export const mealPlannerDayTypeValues = ['empty', 'recipe', 'placeholder'] as const
+export const householdUserRoleValues = ['member', 'householdOwner'] as const
 
 export type ListStatus = (typeof listStatusValues)[number]
 export type ListItemStatus = (typeof listItemStatusValues)[number]
 export type RecipeStatus = (typeof recipeStatusValues)[number]
 export type ListItemSourceType = (typeof listItemSourceTypeValues)[number]
 export type MealPlannerDayType = (typeof mealPlannerDayTypeValues)[number]
+export type HouseholdUserRole = (typeof householdUserRoleValues)[number]
 
 export const users = sqliteTable('users', {
 	id: integer().primaryKey({ autoIncrement: true }),
@@ -51,6 +53,7 @@ export const householdUsers = sqliteTable(
 		userId: integer('user_id')
 			.notNull()
 			.references(() => users.id),
+		role: text('role', { enum: householdUserRoleValues }).notNull().default('member'),
 		createdAt: integer('created_at').notNull()
 	},
 	(table) => [

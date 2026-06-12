@@ -6,7 +6,8 @@ const acceptedAvatarTypes = 'image/jpeg,image/png,image/webp,image/gif,image/avi
 const state = reactive({
 	name: '',
 	email: '',
-	password: ''
+	password: '',
+	passwordConfirm: ''
 })
 const selectedAvatar = shallowRef<File | null>(null)
 const selectedAvatarUrl = useObjectUrl(selectedAvatar)
@@ -35,6 +36,15 @@ watch(selectedAvatar, async (file) => {
 })
 
 async function saveProfile() {
+	if (state.password && state.password !== state.passwordConfirm) {
+		toast.add({
+			title: 'Wachtwoorden komen niet overeen.',
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
+		return
+	}
+
 	try {
 		await settingsStore.updateProfile({
 			name: state.name,
@@ -42,6 +52,7 @@ async function saveProfile() {
 			...(state.password ? { password: state.password } : {})
 		})
 		state.password = ''
+		state.passwordConfirm = ''
 		toast.add({ title: 'Profiel opgeslagen.', color: 'success', icon: 'i-lucide-check' })
 	} catch (error) {
 		toast.add({
@@ -137,6 +148,17 @@ function getErrorMessage(error: unknown, fallback: string) {
 				</UFormField>
 				<UFormField label="Nieuw wachtwoord" name="password">
 					<UInput v-model="state.password" type="password" autocomplete="new-password" />
+				</UFormField>
+				<UFormField
+					v-if="state.password"
+					label="Nieuw wachtwoord bevestigen"
+					name="passwordConfirm"
+				>
+					<UInput
+						v-model="state.passwordConfirm"
+						type="password"
+						autocomplete="new-password"
+					/>
 				</UFormField>
 				<UButton type="submit" icon="i-lucide-save" :loading="settingsStore.isSaving">
 					Opslaan

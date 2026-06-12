@@ -16,14 +16,18 @@ type Profile = {
 type Household = {
 	id: string
 	name: string
+	role: HouseholdRole
 	createdAt: number
 }
+
+type HouseholdRole = 'member' | 'householdOwner'
 
 type Member = {
 	id: number
 	name: string
 	email: string
 	avatarPathname?: string
+	role: HouseholdRole
 	createdAt: number
 }
 
@@ -80,6 +84,10 @@ export const useSettingsStore = defineStore('settings', () => {
 	const activeHousehold = computed(
 		() => households.value.find((household) => household.id === activeHouseholdId.value) ?? null
 	)
+	const currentMemberRole = computed(
+		() => members.value.find((member) => member.id === profile.value?.id)?.role ?? activeHousehold.value?.role ?? null
+	)
+	const isHouseholdOwner = computed(() => currentMemberRole.value === 'householdOwner')
 
 	function setError(err: unknown) {
 		const appError = normalizeAppError(err)
@@ -92,14 +100,17 @@ export const useSettingsStore = defineStore('settings', () => {
 		error.value = null
 
 		try {
-			await Promise.all([
-				fetchProfile(),
-				fetchHouseholds(),
-				fetchMembers(),
-				fetchSettings(),
-				fetchItems(),
-				fetchStats()
-			])
+			await Promise.all([fetchProfile(), fetchHouseholds()])
+
+			if (!activeHouseholdId.value) {
+				members.value = []
+				householdSettings.value = null
+				items.value = []
+				stats.value = null
+				return
+			}
+
+			await Promise.all([fetchMembers(), fetchSettings(), fetchItems(), fetchStats()])
 		} catch (err) {
 			throw setError(err)
 		} finally {
@@ -140,7 +151,7 @@ export const useSettingsStore = defineStore('settings', () => {
 	async function fetchHouseholds() {
 		const data = await apiFetch<{
 			households: Household[]
-			activeHouseholdId: string
+			activeHouseholdId: string | null
 			enableMultiTenancy: boolean
 		}>('/api/households')
 		households.value = data.households
@@ -167,6 +178,20 @@ export const useSettingsStore = defineStore('settings', () => {
 	async function removeMember(userId: number) {
 		await apiFetch(`/api/households/current/members/${userId}`, { method: 'DELETE' })
 		members.value = members.value.filter((member) => member.id !== userId)
+	}
+
+	async function assignOwner(userId: number) {
+		const data = await apiFetch<{ userId: number; role: HouseholdRole }>(
+			`/api/households/current/members/${userId}/owner`,
+			{ method: 'POST' }
+		)
+		members.value = members.value.map((member) =>
+			member.id === userId ? { ...member, role: data.role } : member
+		)
+		households.value = households.value.map((household) =>
+			household.id === activeHouseholdId.value ? { ...household, role: 'householdOwner' } : household
+		)
+		return data
 	}
 
 	async function createInvite() {
@@ -251,6 +276,49 @@ export const useSettingsStore = defineStore('settings', () => {
 		await Promise.all([fetchItems(), fetchStats()])
 	}
 
+	async function leaveHousehold() {
+		const data = await apiFetch<{ leftHouseholdId: string; destroyedHousehold: boolean }>(
+			'/api/households/current/leave',
+			{ method: 'POST' }
+		)
+		await fetchHouseholds().catch(() => {
+			households.value = []
+			activeHouseholdId.value = null
+		})
+		members.value = []
+		householdSettings.value = null
+		items.value = []
+		stats.value = null
+		return data
+	}
+
+	async function destroyHousehold() {
+		const data = await apiFetch<{ destroyedHouseholdId: string }>('/api/households/current', {
+			method: 'DELETE'
+		})
+		await fetchHouseholds().catch(() => {
+			households.value = []
+			activeHouseholdId.value = null
+		})
+		members.value = []
+		householdSettings.value = null
+		items.value = []
+		stats.value = null
+		return data
+	}
+
+	async function deleteAccount() {
+		const data = await apiFetch<{ deletedUserId: number }>('/api/profile', { method: 'DELETE' })
+		profile.value = null
+		households.value = []
+		activeHouseholdId.value = null
+		members.value = []
+		householdSettings.value = null
+		items.value = []
+		stats.value = null
+		return data
+	}
+
 	async function fetchStats() {
 		const data = await apiFetch<{ stats: Stats }>('/api/settings/stats')
 		stats.value = data.stats
@@ -262,6 +330,8 @@ export const useSettingsStore = defineStore('settings', () => {
 		households,
 		activeHouseholdId,
 		activeHousehold,
+		currentMemberRole,
+		isHouseholdOwner,
 		enableMultiTenancy,
 		members,
 		householdSettings,
@@ -280,6 +350,7 @@ export const useSettingsStore = defineStore('settings', () => {
 		switchHousehold,
 		fetchMembers,
 		removeMember,
+		assignOwner,
 		createInvite,
 		createResetLink,
 		fetchSettings,
@@ -289,6 +360,9 @@ export const useSettingsStore = defineStore('settings', () => {
 		mergeItem,
 		deleteItem,
 		clearData,
+		leaveHousehold,
+		destroyHousehold,
+		deleteAccount,
 		fetchStats
 	}
 })

@@ -427,6 +427,111 @@ describe('useMealPlannerStore', () => {
 		expect(refreshControllers[0]?.start).toHaveBeenCalledTimes(1)
 		expect(refreshControllers[0]?.stop).toHaveBeenCalledTimes(1)
 	})
+
+	it('removes stale days and stale day items when fetching planner data', async () => {
+		const store = useMealPlannerStore()
+		seedDay(
+			store,
+			createDay({ id: 'stale-day', dayOfWeek: 7, type: 'placeholder' }),
+			[createDayItem({ id: 'stale-item' })]
+		)
+		seedDay(
+			store,
+			createDay({ id: 'day-1', dayOfWeek: 1, type: 'placeholder' }),
+			[createDayItem({ id: 'old-item' })]
+		)
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			days: [
+				createDay({
+					id: 'day-1',
+					dayOfWeek: 1,
+					type: 'placeholder',
+					items: [createDayItem({ id: 'new-item' })]
+				})
+			]
+		})
+
+		await store.fetchMealPlanner()
+
+		expect(store.mealPlannerDaysById['stale-day']).toBeUndefined()
+		expect(store.mealPlannerDayItemsById['stale-item']).toBeUndefined()
+		expect(store.mealPlannerDayItemsById['old-item']).toBeUndefined()
+		expect(store.mealPlannerDayItemIdsByDayId['day-1']).toEqual(['new-item'])
+	})
+
+	it('reports not found when mutating a missing planner day or item', async () => {
+		const store = useMealPlannerStore()
+		const apiFetch = vi.spyOn(apiClient, 'apiFetch')
+
+		await expect(store.updateMealPlannerDay(3, { type: 'empty' })).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		})
+		await expect(store.addDayItem(3, { name: 'Tomaat' })).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		})
+		await expect(store.updateDayItem('missing', { amount: 1 })).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		})
+		await expect(store.deleteDayItem('missing')).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		})
+		expect(apiFetch).not.toHaveBeenCalled()
+	})
+
+	it('removes optimistic day items after add failures', async () => {
+		const store = useMealPlannerStore()
+		seedDay(store, createDay({ id: 'day-1', dayOfWeek: 1, type: 'placeholder' }))
+		vi.spyOn(apiClient, 'apiFetch').mockRejectedValueOnce({
+			code: 'CONFLICT',
+			message: 'Toevoegen mislukt.'
+		})
+
+		await expect(store.addDayItem(1, { name: 'Tomaat' })).rejects.toEqual({
+			code: 'CONFLICT',
+			message: 'Toevoegen mislukt.'
+		})
+
+		expect(store.mealPlannerDayItemIdsByDayId['day-1']).toEqual([])
+		expect(store.mealPlannerDayItemsById).toEqual({})
+	})
+
+	it('rolls back day item deletion when the item id is listed but no item snapshot exists', async () => {
+		const store = useMealPlannerStore()
+		seedDay(store, createDay({ id: 'day-1', dayOfWeek: 1, type: 'placeholder' }))
+		store.mealPlannerDayItemIdsByDayId['day-1'] = ['ghost']
+		vi.spyOn(apiClient, 'apiFetch').mockRejectedValueOnce({
+			code: 'CONFLICT',
+			message: 'Verwijderen mislukt.'
+		})
+
+		await expect(store.deleteDayItem('ghost')).rejects.toEqual({
+			code: 'CONFLICT',
+			message: 'Verwijderen mislukt.'
+		})
+
+		expect(store.mealPlannerDayItemsById.ghost).toBeUndefined()
+		expect(store.mealPlannerDayItemIdsByDayId['day-1']).toEqual(['ghost'])
+	})
+
+	it('ignores unknown ids while applying successful day item reorders', async () => {
+		const store = useMealPlannerStore()
+		seedDay(
+			store,
+			createDay({ id: 'day-1', dayOfWeek: 1, type: 'placeholder' }),
+			[createDayItem({ id: 'known', position: 0 })]
+		)
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			items: [
+				{ id: 'known', position: 1 },
+				{ id: 'missing', position: 0 }
+			]
+		})
+
+		await store.reorderDayItems(1, ['missing', 'known'])
+
+		expect(store.mealPlannerDayItemsById.known?.position).toBe(1)
+		expect(store.mealPlannerDayItemsById.missing).toBeUndefined()
+	})
 })
 
 function mockRefreshComposable() {

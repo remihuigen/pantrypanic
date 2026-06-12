@@ -34,7 +34,8 @@ NUXT_SESSION_PASSWORD=<at-least-32-characters>
 
 Editable Pantry defaults are declared in `runtimeConfig.pantry` in `nuxt.config.ts`.
 
-They can be overridden at runtime with Nuxt's matching environment variable names:
+These environment variables are read explicitly in `nuxt.config.ts` and mapped to the matching
+runtime config properties:
 
 ```bash
 NUXT_PANTRY_DEFAULT_LIST_NAME=Boodschappen
@@ -53,12 +54,12 @@ and status enum values, remain code/schema contracts rather than runtime configu
 
 ## Route Rendering
 
-Product app pages live below `/app` and are configured as client-side rendered routes:
+Product app pages live below `/app` and currently use Nuxt's normal SSR path:
 
 ```ts
 routeRules: {
-  '/app': { ssr: false },
-  '/app/**': { ssr: false }
+  '/app': { ssr: true },
+  '/app/**': { ssr: true }
 }
 ```
 

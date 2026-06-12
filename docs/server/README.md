@@ -29,6 +29,16 @@ the session. With `ENABLE_MULTI_TENANCY=false`, the first/default household is u
 With multi-tenancy enabled, users can switch to another household membership through
 `POST /api/households/switch`.
 
+Household memberships have a `role` of `member` or `householdOwner`. Owner-only operations use
+Nuxt Authorization abilities on both the client and server. Server handlers pass an ability to
+`getHouseholdContext(event, { authorize: ability })`, which resolves the active household, loads
+the current membership role, and calls Nuxt Authorization's server `authorize()` before returning
+the context. A household may have multiple owners. Owners can invite users, generate reset-access
+links, remove members, promote members to owner, update household settings, clear household app
+data, and destroy the household. Removing or leaving a household is rejected when it would leave
+other members without an owner. If the last member leaves or deletes their account, the household
+and all associated domain data are destroyed.
+
 | Method   | Route                                                 | Purpose                                     |
 | -------- | ----------------------------------------------------- | ------------------------------------------- |
 | `GET`    | `/api/households`                                     | List memberships and active household.      |
@@ -37,8 +47,11 @@ With multi-tenancy enabled, users can switch to another household membership thr
 | `PATCH`  | `/api/households/current/settings`                    | Update household-wide settings.             |
 | `GET`    | `/api/households/current/members`                     | List household members.                     |
 | `DELETE` | `/api/households/current/members/:userId`             | Remove membership, not the account.         |
+| `POST`   | `/api/households/current/members/:userId/owner`       | Promote a member to household owner.        |
 | `POST`   | `/api/households/current/invites`                     | Generate a one-time invite link.            |
 | `POST`   | `/api/households/current/members/:userId/reset-link`  | Generate a one-time reset-access link.      |
+| `POST`   | `/api/households/current/leave`                       | Leave the active household.                 |
+| `DELETE` | `/api/households/current`                             | Destroy the active household.               |
 
 ## Blob Management
 
@@ -120,6 +133,7 @@ Validation and runtime failures return:
 | `GET`   | `/api/me`                                                  | Return the current authenticated user summary.                        |
 | `GET`   | `/api/profile`                                             | Return editable profile data.                                         |
 | `PATCH` | `/api/profile`                                             | Update name, email, avatar pathname, or password.                     |
+| `DELETE`| `/api/profile`                                             | Delete the current user account after household safety checks.        |
 | `POST`  | `/api/profile/avatar`                                      | Upload a raster avatar blob and store it on the user.                 |
 | `GET`   | `/api/lists`                                               | List shopping lists by status.                                        |
 | `POST`  | `/api/lists`                                               | Create a reusable shopping list.                                      |

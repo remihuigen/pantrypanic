@@ -1,10 +1,24 @@
 import { defineApiHandler, getAuthenticatedUserId } from '#server/utils/api-core'
-import { getHouseholdContext, listUserHouseholds } from '#server/utils/households'
+import {
+	getHouseholdContext,
+	getMultiTenancyEnabled,
+	listUserHouseholds
+} from '#server/utils/households'
 
 export default defineApiHandler(async (event) => {
 	const userId = await getAuthenticatedUserId(event)
-	const context = await getHouseholdContext(event)
 	const households = await listUserHouseholds(userId)
+	const isMultiTenancyEnabled = getMultiTenancyEnabled(event)
+
+	if (isMultiTenancyEnabled && households.length === 0) {
+		return {
+			households,
+			activeHouseholdId: null,
+			enableMultiTenancy: isMultiTenancyEnabled
+		}
+	}
+
+	const context = await getHouseholdContext(event)
 
 	return {
 		households,

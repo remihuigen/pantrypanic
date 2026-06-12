@@ -1,3 +1,15 @@
+const pantryDefaultListName = process.env.NUXT_PANTRY_DEFAULT_LIST_NAME ?? 'Boodschappen'
+
+function readNumberEnv(name: string, fallback: number) {
+	const value = process.env[name]
+
+	if (!value) return fallback
+
+	const parsed = Number(value)
+
+	return Number.isFinite(parsed) ? parsed : fallback
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 	modules: [
@@ -9,7 +21,8 @@ export default defineNuxtConfig({
 		'@pinia/nuxt',
 		'pinia-plugin-persistedstate/nuxt',
 		'@vueuse/nuxt',
-		'@vite-pwa/nuxt'
+		'@vite-pwa/nuxt',
+		'nuxt-authorization'
 	],
 
 	$production: {
@@ -65,18 +78,18 @@ export default defineNuxtConfig({
 			maxAge: 60 * 60 * 24 * 30
 		},
 		pantry: {
-			defaultListName: 'Boodschappen',
-			defaultUserListLimit: 50,
-			maxUserListLimit: 100,
-			defaultItemSearchLimit: 10,
-			maxItemSearchLimit: 50,
-			defaultBlobListLimit: 100,
-			maxBlobListLimit: 1000,
-			managedBlobMaxUploadSize: '32MB'
+			defaultListName: pantryDefaultListName,
+			defaultUserListLimit: readNumberEnv('NUXT_PANTRY_DEFAULT_USER_LIST_LIMIT', 50),
+			maxUserListLimit: readNumberEnv('NUXT_PANTRY_MAX_USER_LIST_LIMIT', 100),
+			defaultItemSearchLimit: readNumberEnv('NUXT_PANTRY_DEFAULT_ITEM_SEARCH_LIMIT', 10),
+			maxItemSearchLimit: readNumberEnv('NUXT_PANTRY_MAX_ITEM_SEARCH_LIMIT', 50),
+			defaultBlobListLimit: readNumberEnv('NUXT_PANTRY_DEFAULT_BLOB_LIST_LIMIT', 100),
+			maxBlobListLimit: readNumberEnv('NUXT_PANTRY_MAX_BLOB_LIST_LIMIT', 1000),
+			managedBlobMaxUploadSize: process.env.NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE ?? '32MB'
 		},
 
 		public: {
-			refreshInterval: 5000,
+			refreshInterval: readNumberEnv('NUXT_PUBLIC_REFRESH_INTERVAL', 5000),
 			enableMultiTenancy: process.env.ENABLE_MULTI_TENANCY === 'true',
 			enableRegistration: process.env.ENABLE_REGISTRATION === 'true',
 			identity: {
@@ -113,7 +126,8 @@ export default defineNuxtConfig({
 				'@tiptap/starter-kit',
 				'@tiptap/markdown',
 				'@tiptap/**',
-				'sortablejs'
+				'sortablejs',
+				'workbox-window'
 			]
 		}
 	},

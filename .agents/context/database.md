@@ -15,6 +15,7 @@ Current tables:
   - `createdAt`: required timestamp integer
 - `households`
 - `household_users`
+  - includes `role`: `member` or `householdOwner`
 - `household_settings`
 - `access_links`
 - `lists`
@@ -44,6 +45,7 @@ Current migration files live under `server/db/migrations/sqlite/`.
 - The admin seed runs from Nuxt `build:done` and creates the user through `POST /api/users` only
   when `GET /api/users?email=<email>&limit=1` returns no matching user.
 - `createUser()` creates/joins the default household and seeds household domain data by default.
+  The created/default membership is a `householdOwner`.
   Invite onboarding can opt out of default-household seeding and attach the new user only to the
   invited household.
 - Migration `0001_worried_jasper_sitwell.sql` also seeds default domain rows when at least one user
@@ -58,13 +60,14 @@ Current migration files live under `server/db/migrations/sqlite/`.
 - `recipeStatusValues`: `active`, `archived`, `deleted`
 - `listItemSourceTypeValues`: `manual`, `recipe`, `meal_planner_recipe`, `meal_planner_placeholder`
 - `mealPlannerDayTypeValues`: `empty`, `recipe`, `placeholder`
+- `householdUserRoleValues`: `member`, `householdOwner`
 
 ## Domain Seed Data
 
 Seeded domain data:
 
 - one default household named `Thuis` when needed
-- user membership in that household for default/self-hosted flows
+- household-owner user membership in that household for default/self-hosted flows
 - one active list using `runtimeConfig.pantry.defaultListName` (default `Boodschappen`)
 - seven `meal_planner_days` rows, day 1 through day 7, all `empty`
 
@@ -91,9 +94,11 @@ The database layer is currently exercised through authenticated API routes for:
 - household settings, members, access links, profile, canonical-item maintenance, clear-data, and
   usage stats
 
-All domain data APIs must be scoped to the active household context. Lists, recipes, and list items
-use status fields for soft deletion. Recipe items and
-meal-planner-day placeholder items are hard-deleted as volatile child/draft data.
+All domain data APIs must be scoped to the active household context. Household management actions
+are owner-gated with Nuxt Authorization abilities. Lists, recipes, and list items use status fields
+for soft deletion. Recipe items and meal-planner-day placeholder items are hard-deleted as volatile
+child/draft data. Destroying a household hard-deletes its domain data, settings, access links, and
+memberships, but leaves user accounts orphaned.
 
 ## Migration Rules
 
