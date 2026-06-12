@@ -65,9 +65,11 @@ Production environment variables currently referenced:
 - `NUXT_PUBLIC_SITE_URL`
 - `NUXT_PUBLIC_REFRESH_INTERVAL`
 - `ENABLE_MULTI_TENANCY` (default `false`)
-- `ENABLE_REGISTRATION` (default `false`, reserved for future public registration)
-- Both flags are available in public runtime config for client UI and private runtime config for API
-  logic. Server routes must read the private runtime config values.
+- `ENABLE_HOUSEHOLD_CREATION` (default `false`, lets logged-in users create households when
+  multi-tenancy is enabled)
+- `ENABLE_PUBLIC_REGISTRATION` (default `false`, reserved for future public account registration)
+- Household mode flags are available in public runtime config for client UI and private runtime
+  config for API logic. Server routes must read the private runtime config values.
 - `NUXT_SESSION_PASSWORD`
 - optional `NUXT_PANTRY_*` values that are explicitly mapped to `runtimeConfig.pantry` in
   `nuxt.config.ts`
@@ -151,10 +153,16 @@ Implemented route families:
 - `/api/recipe-items` for recipe-item update and hard-delete
 - `/api/meal-planner` for singleton seven-day planner reads, day updates, placeholder ingredients,
   clear, and copy-to-list
-- `/api/households` for memberships, active household switching, members, household settings, invite
-  links, and reset-access links
+- `/api/households` for memberships, household creation, active household switching, members,
+  household settings, invite links, and reset-access links
 - `/api/profile` for profile edits and avatar upload
 - `/api/settings` for canonical item maintenance, clear-data, and usage stats
+
+Frontend interval refresh is centralized in `app/composables/useStoreRefresh.ts`. The client
+plugin starts one scheduler after session and household membership context are available. The
+scheduler calls `orchestrateRefresh()` and dispatches by current `/app/**` route namespace: list
+overview, list detail with items, recipe overview/detail, meal planner, or the active settings
+subroute. Route pages remain responsible for their own entry fetches.
 
 New domain routes use the shared response envelope:
 
@@ -164,11 +172,14 @@ New domain routes use the shared response envelope:
 Zod validates params, query strings, and bodies. Validation messages are Dutch. All household
 management actions are guarded by Nuxt Authorization abilities. Owner-gated server handlers should
 call `getHouseholdContext(event, { authorize: ability })` so household resolution, membership-role
-lookup, and server `authorize()` stay centralized in `server/utils/households.ts`. `householdOwner`
-members can invite users, generate reset links, remove members, promote members to owner, update
-household settings, clear household app data, and destroy households. Regular members keep access to
-the core domain flows. Users with no household membership get a friendly Dutch empty-state message
-in settings instead of a broken app state.
+lookup, and server `authorize()` stay centralized in `server/utils/domains/households.ts`.
+`householdOwner` members can invite users, generate reset links, remove members, promote members to
+owner, update household settings, clear household app data, and destroy households. Regular members
+keep access to the core domain flows. Users with no household membership get a friendly Dutch
+empty-state message from the global app layout instead of a broken app state. That state offers
+account deletion and, when `ENABLE_HOUSEHOLD_CREATION=true`, creating a new household. In
+single-household mode, household destruction and deleting the last household-owner account are
+rejected server-side.
 
 ## Admin User Seed
 
@@ -182,6 +193,8 @@ The seed:
 - calls `GET /api/users?email=<email>&limit=1` on `NUXT_PUBLIC_SITE_URL`
 - calls `POST /api/users` only when missing
 - authenticates both HTTP requests with `x-api-token: ADMIN_API_KEY`
+- skips the legacy admin seed when both `ENABLE_MULTI_TENANCY=true` and
+  `ENABLE_PUBLIC_REGISTRATION=true`
 - logs a warning and skips when the configured instance is unreachable during build
 - can be run directly with `pnpm seed:admin`
 

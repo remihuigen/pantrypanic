@@ -1,25 +1,12 @@
-import * as refreshComposable from '~/composables/useStoreRefresh'
 import { useRecipesStore } from '~/stores/recipes'
 import * as apiClient from '~/utils/api-client'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type RefreshController = {
-	isRunning: boolean
-	isRefreshing: boolean
-	start: ReturnType<typeof vi.fn>
-	stop: ReturnType<typeof vi.fn>
-	refreshNow: ReturnType<typeof vi.fn>
-}
-
-let refreshControllers: RefreshController[] = []
-
 describe('useRecipesStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
 		vi.restoreAllMocks()
-		refreshControllers = []
-		mockRefreshComposable()
 		vi.spyOn(apiClient, 'normalizeAppError').mockImplementation((error) => error as never)
 	})
 
@@ -368,11 +355,13 @@ describe('useRecipesStore', () => {
 		expect(store.recipeItemsById['ri-2']?.position).toBe(1)
 	})
 
-	it('opens, closes, and refreshes recipes through refresh controllers', async () => {
+	it('opens, closes, and refreshes recipes through direct store actions', async () => {
 		const store = useRecipesStore()
-		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
-			recipe: createRecipeDetail({ id: 'recipe-1', items: [] })
-		})
+		vi.spyOn(apiClient, 'apiFetch')
+			.mockResolvedValueOnce({
+				recipe: createRecipeDetail({ id: 'recipe-1', items: [] })
+			})
+			.mockResolvedValueOnce({ recipes: [] })
 
 		await store.openRecipe('recipe-1')
 		store.closeRecipe()
@@ -380,10 +369,8 @@ describe('useRecipesStore', () => {
 		store.stopRecipesRefresh()
 
 		expect(store.activeRecipeId).toBeNull()
-		expect(refreshControllers[1]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[1]?.stop).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[0]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[0]?.stop).toHaveBeenCalledTimes(1)
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/recipes/recipe-1')
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/recipes?status=active')
 	})
 
 	it('does not duplicate active ids when creating an already-known recipe', async () => {
@@ -493,21 +480,6 @@ describe('useRecipesStore', () => {
 		expect(store.recipeItemIdsByRecipeId['recipe-1']).toEqual(['keep'])
 	})
 })
-
-function mockRefreshComposable() {
-	vi.spyOn(refreshComposable, 'useStoreRefresh').mockImplementation(() => {
-		const controller: RefreshController = {
-			isRunning: false,
-			isRefreshing: false,
-			start: vi.fn(async () => undefined),
-			stop: vi.fn(),
-			refreshNow: vi.fn(async () => undefined)
-		}
-		refreshControllers.push(controller)
-
-		return controller as never
-	})
-}
 
 function createRecipeSummary(overrides: Partial<ReturnType<typeof createRecipeSummaryShape>> = {}) {
 	return {

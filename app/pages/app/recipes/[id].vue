@@ -3,7 +3,10 @@ import { useGesture } from '@vueuse/gesture'
 
 definePageMeta({ layout: 'app' })
 
+const route = useRoute()
+const recipesStore = useRecipesStore()
 const gestureTarget = useTemplateRef<HTMLElement>('gestureTarget')
+const id = computed(() => route.params.id?.toString() ?? '')
 
 useGesture(
 	{
@@ -22,6 +25,20 @@ useGesture(
 		}
 	}
 )
+
+watch(
+	id,
+	(recipeId) => {
+		if (!recipeId || !import.meta.client) return
+		recipesStore.setActiveRecipe(recipeId)
+		void recipesStore.fetchRecipe(recipeId)
+	},
+	{ immediate: true }
+)
+
+onUnmounted(() => {
+	recipesStore.setActiveRecipe(null)
+})
 </script>
 
 <template>

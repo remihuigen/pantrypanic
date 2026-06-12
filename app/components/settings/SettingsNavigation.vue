@@ -3,7 +3,7 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 const links = [
 	[
-		{ label: 'Algemeen', icon: 'i-lucide-settings', to: '/app/settings' },
+		{ label: 'Algemeen', icon: 'i-lucide-settings', to: '/app/settings/general' },
 		{ label: 'Huishouden', icon: 'i-lucide-users', to: '/app/settings/household' },
 		{ label: 'Itemkluis', icon: 'i-lucide-archive', to: '/app/settings/item-vault' },
 		{ label: 'Statistieken', icon: 'i-lucide-chart-column', to: '/app/settings/stats' }
@@ -12,7 +12,9 @@ const links = [
 </script>
 
 <template>
-	<Fluid class="border-default flex overflow-x-auto border-b pb-1 pl-2">
-		<UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
+	<Fluid class="border-default bg-default/95 sticky top-0 z-10 border-b backdrop-blur">
+		<UContainer class="-ml-2 flex overflow-x-auto md:ml-auto">
+			<UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
+		</UContainer>
 	</Fluid>
 </template>

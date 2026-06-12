@@ -11,8 +11,6 @@ type CreateItemInput = {
 	householdId?: string
 	name: string
 	defaultUnit?: string | null
-	category?: string | null
-	notes?: string | null
 	auditUserId: number
 }
 
@@ -76,8 +74,6 @@ export async function findOrCreateItem(input: CreateItemInput) {
 				name: input.name.trim(),
 				normalizedName,
 				defaultUnit: input.defaultUnit ?? null,
-				category: input.category ?? null,
-				notes: input.notes ?? null,
 				createdAt: now,
 				updatedAt: now,
 				createdByUserId: input.auditUserId,
@@ -95,6 +91,34 @@ export async function findOrCreateItem(input: CreateItemInput) {
 
 		throw error
 	}
+}
+
+/**
+ * Stores a list-item unit as the canonical default unit when one is assigned.
+ *
+ * @param item - Related canonical item row.
+ * @param unit - Assigned list-item unit.
+ * @param auditUserId - Acting user id.
+ */
+export async function applyAssignedUnitToItem(
+	item: ItemRow,
+	unit: string | null | undefined,
+	auditUserId: number
+) {
+	const defaultUnit = unit?.trim()
+
+	if (!defaultUnit || item.defaultUnit === defaultUnit) {
+		return
+	}
+
+	await db
+		.update(schema.items)
+		.set({
+			defaultUnit,
+			updatedAt: Date.now(),
+			updatedByUserId: auditUserId
+		})
+		.where(and(eq(schema.items.id, item.id), eq(schema.items.householdId, item.householdId)))
 }
 
 /**

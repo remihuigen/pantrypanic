@@ -5,6 +5,7 @@ import {
 	consumeAccessLink,
 	assignHouseholdOwner,
 	createAccessLink,
+	createHousehold,
 	deleteAccount,
 	destroyCurrentHousehold,
 	ensureDefaultHousehold,
@@ -19,7 +20,7 @@ import {
 	resolveInitialHouseholdId,
 	switchHousehold,
 	updateHouseholdSettings
-} from '../../server/utils/households'
+} from '../../server/utils/domains/households'
 import {
 	createDeleteBuilder,
 	createInsertBuilder,
@@ -68,8 +69,11 @@ describe('household utilities', () => {
 		vi.stubGlobal('clearUserSession', mocks.clearUserSession)
 		vi.stubGlobal('authorize', mocks.authorize)
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
 			enableMultiTenancy: false,
+			enablePublicRegistration: false,
 			public: {
+				enableHouseholdCreation: false,
 				enableMultiTenancy: false
 			}
 		}))
@@ -189,7 +193,7 @@ describe('household utilities', () => {
 			refreshIntervalMs: 5000,
 			updatedByUserId: 7
 		})
-		expect(mocks.seedInitialDomainData).toHaveBeenCalledWith(7, 'new-home')
+		expect(mocks.seedInitialDomainData).toHaveBeenCalledWith(7, 'new-home', undefined)
 	})
 
 	it('throws when the default household insert returns no row', async () => {
@@ -204,8 +208,11 @@ describe('household utilities', () => {
 
 	it('reads multi-tenancy from private server runtime config', () => {
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
 			enableMultiTenancy: false,
+			enablePublicRegistration: false,
 			public: {
+				enableHouseholdCreation: false,
 				enableMultiTenancy: true
 			}
 		}))
@@ -215,8 +222,11 @@ describe('household utilities', () => {
 
 	it('uses the active session household when multi-tenancy is enabled and membership is valid', async () => {
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
 			enableMultiTenancy: true,
+			enablePublicRegistration: false,
 			public: {
+				enableHouseholdCreation: false,
 				enableMultiTenancy: true
 			}
 		}))
@@ -234,8 +244,11 @@ describe('household utilities', () => {
 
 	it('falls back to the first membership and updates the session when active household is invalid', async () => {
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
 			enableMultiTenancy: true,
+			enablePublicRegistration: false,
 			public: {
+				enableHouseholdCreation: false,
 				enableMultiTenancy: true
 			}
 		}))
@@ -264,8 +277,11 @@ describe('household utilities', () => {
 
 	it('rejects household context when multi-tenancy is enabled and the user has no membership', async () => {
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
 			enableMultiTenancy: true,
+			enablePublicRegistration: false,
 			public: {
+				enableHouseholdCreation: false,
 				enableMultiTenancy: true
 			}
 		}))
@@ -321,8 +337,11 @@ describe('household utilities', () => {
 
 	it('resolves initial household id for enabled multi-tenancy without creating defaults', async () => {
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
 			enableMultiTenancy: true,
+			enablePublicRegistration: false,
 			public: {
+				enableHouseholdCreation: false,
 				enableMultiTenancy: true
 			}
 		}))
@@ -334,14 +353,103 @@ describe('household utilities', () => {
 
 	it('returns undefined initial household id when enabled users have no memberships', async () => {
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
 			enableMultiTenancy: true,
+			enablePublicRegistration: false,
 			public: {
+				enableHouseholdCreation: false,
 				enableMultiTenancy: true
 			}
 		}))
 		vi.mocked(db.select).mockReturnValueOnce(createSelectBuilder([]) as never)
 
 		await expect(resolveInitialHouseholdId(8, {} as never)).resolves.toBeUndefined()
+	})
+
+	it('creates a household for the authenticated user when household creation is enabled', async () => {
+		vi.useFakeTimers()
+		vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: true,
+			enableMultiTenancy: true,
+			enablePublicRegistration: false,
+			public: {
+				enableHouseholdCreation: true,
+				enableMultiTenancy: true
+			}
+		}))
+		mocks.getUserSession.mockResolvedValueOnce({ user: { id: 7 }, loggedInAt: 123 })
+		let householdValues: unknown
+		let membershipValues: unknown
+		let settingsValues: unknown
+		vi.mocked(db.insert)
+			.mockReturnValueOnce(
+				createCapturingInsertBuilder([householdRow({ id: 'new-home', name: 'Werk' })], (values) => {
+					householdValues = values
+				}) as never
+			)
+			.mockReturnValueOnce(
+				createCapturingInsertBuilder([], (values) => {
+					membershipValues = values
+				}) as never
+			)
+			.mockReturnValueOnce(
+				createCapturingInsertBuilder([settingsRow({ householdId: 'new-home' })], (values) => {
+					settingsValues = values
+				}) as never
+			)
+		vi.mocked(db.select)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+
+		await expect(createHousehold({} as never, 7, ' Werk ')).resolves.toEqual({
+			household: {
+				id: 'new-home',
+				name: 'Werk',
+				role: 'householdOwner',
+				createdAt: 1
+			},
+			activeHouseholdId: 'new-home'
+		})
+		expect(householdValues).toMatchObject({
+			id: 'domain-id',
+			name: 'Werk',
+			createdAt: Date.now(),
+			updatedAt: Date.now()
+		})
+		expect(membershipValues).toMatchObject({
+			householdId: 'new-home',
+			userId: 7,
+			role: 'householdOwner'
+		})
+		expect(settingsValues).toMatchObject({
+			householdId: 'new-home',
+			refreshIntervalMs: 5000,
+			updatedByUserId: 7
+		})
+		expect(mocks.seedInitialDomainData).toHaveBeenCalledWith(7, 'new-home', {})
+		expect(mocks.setUserSession).toHaveBeenCalledWith(
+			{},
+			{ user: { id: 7 }, loggedInAt: 123, activeHouseholdId: 'new-home' }
+		)
+	})
+
+	it('rejects household creation when disabled in server runtime config', async () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
+			enableMultiTenancy: true,
+			enablePublicRegistration: false,
+			public: {
+				enableHouseholdCreation: true,
+				enableMultiTenancy: true
+			}
+		}))
+
+		await expect(createHousehold({} as never, 7, 'Werk')).rejects.toMatchObject({
+			statusCode: 403,
+			message: 'Nieuwe huishoudens aanmaken is uitgeschakeld.'
+		})
+		expect(db.insert).not.toHaveBeenCalled()
 	})
 
 	it('prevents removing the last household member', async () => {
@@ -421,6 +529,15 @@ describe('household utilities', () => {
 	})
 
 	it('destroys the household when the last member leaves', async () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
+			enableMultiTenancy: true,
+			enablePublicRegistration: false,
+			public: {
+				enableHouseholdCreation: false,
+				enableMultiTenancy: true
+			}
+		}))
 		mocks.getUserSession.mockResolvedValueOnce({ user: { id: 1 }, loggedInAt: 123 })
 		vi.mocked(db.select)
 			.mockReturnValueOnce(createSelectBuilder([{ count: 1 }]) as never)
@@ -438,7 +555,26 @@ describe('household utilities', () => {
 		)
 	})
 
+	it('prevents deleting the household when the last member leaves in single-household mode', async () => {
+		vi.mocked(db.select).mockReturnValueOnce(createSelectBuilder([{ count: 1 }]) as never)
+
+		await expect(leaveHousehold({} as never, 'household', 1)).rejects.toMatchObject({
+			statusCode: 409,
+			message: 'Het standaardhuishouden kan in single-household modus niet worden verwijderd.'
+		})
+		expect(db.delete).not.toHaveBeenCalled()
+	})
+
 	it('lets owners destroy a household without deleting user accounts', async () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
+			enableMultiTenancy: true,
+			enablePublicRegistration: false,
+			public: {
+				enableHouseholdCreation: false,
+				enableMultiTenancy: true
+			}
+		}))
 		mocks.getUserSession.mockResolvedValueOnce({ user: { id: 1 }, loggedInAt: 123 })
 		vi.mocked(db.select).mockReturnValueOnce(createSelectBuilder([]) as never)
 		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder([]) as never)
@@ -449,7 +585,24 @@ describe('household utilities', () => {
 		expect(db.delete).toHaveBeenCalledTimes(11)
 	})
 
+	it('prevents destroying the household in single-household mode', async () => {
+		await expect(destroyCurrentHousehold({} as never, 'household', 1)).rejects.toMatchObject({
+			statusCode: 409,
+			message: 'Het standaardhuishouden kan in single-household modus niet worden verwijderd.'
+		})
+		expect(db.delete).not.toHaveBeenCalled()
+	})
+
 	it('deletes accounts after removing memberships and clearing last households', async () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
+			enableMultiTenancy: true,
+			enablePublicRegistration: false,
+			public: {
+				enableHouseholdCreation: false,
+				enableMultiTenancy: true
+			}
+		}))
 		vi.mocked(db.select)
 			.mockReturnValueOnce(
 				createSelectBuilder([{ householdId: 'household', role: 'member' }]) as never
@@ -461,6 +614,21 @@ describe('household utilities', () => {
 		await expect(deleteAccount({} as never, 1)).resolves.toEqual({ deletedUserId: 1 })
 		expect(db.delete).toHaveBeenCalledTimes(12)
 		expect(mocks.clearUserSession).toHaveBeenCalledWith({})
+	})
+
+	it('prevents deleting the account that owns the single-household install', async () => {
+		vi.mocked(db.select)
+			.mockReturnValueOnce(
+				createSelectBuilder([{ householdId: 'household', role: 'householdOwner' }]) as never
+			)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 1 }]) as never)
+
+		await expect(deleteAccount({} as never, 1)).rejects.toMatchObject({
+			statusCode: 409,
+			message: 'Wijs eerst een nieuwe eigenaar aan.'
+		})
+		expect(db.delete).not.toHaveBeenCalled()
 	})
 
 	it('creates household settings when missing and returns existing settings when present', async () => {

@@ -1,5 +1,5 @@
-import type { H3Event } from 'h3'
 import type { HouseholdUserRole } from '#server/db/schema'
+import type { H3Event } from 'h3'
 
 import { getAuthenticatedUserId, throwApiError } from '#server/utils/api-core'
 import { createDomainId } from '#server/utils/api-helpers'
@@ -47,7 +47,7 @@ export async function getHouseholdContext(
 	const isMultiTenancyEnabled = getMultiTenancyEnabled(event)
 
 	if (!isMultiTenancyEnabled) {
-		const household = await ensureDefaultHousehold(userId)
+		const household = await ensureDefaultHousehold(userId, event)
 
 		return authorizeHouseholdContext(event, options, {
 			householdId: household.id,
@@ -97,7 +97,7 @@ export async function getHouseholdContext(
  * @param userId - User id to attach to the default household.
  * @returns Default household summary.
  */
-export async function ensureDefaultHousehold(userId: number) {
+export async function ensureDefaultHousehold(userId: number, event?: H3Event) {
 	const [existing] = await db
 		.select()
 		.from(schema.households)
@@ -131,9 +131,61 @@ export async function ensureDefaultHousehold(userId: number) {
 
 	await ensureHouseholdMembership(household.id, userId, 'householdOwner')
 	await ensureHouseholdSettings(household.id, userId, now)
-	await seedInitialDomainData(userId, household.id)
+	await seedInitialDomainData(userId, household.id, event)
 
 	return household
+}
+
+/**
+ * Creates a new household for the current authenticated user.
+ *
+ * @param event - H3 request event.
+ * @param userId - Acting user id.
+ * @param name - Household name.
+ * @returns Created household and active household id.
+ */
+export async function createHousehold(event: H3Event, userId: number, name: string) {
+	if (!getHouseholdCreationEnabled(event)) {
+		throwApiError({
+			code: 'FORBIDDEN',
+			statusCode: 403,
+			message: 'Nieuwe huishoudens aanmaken is uitgeschakeld.'
+		})
+	}
+
+	const now = Date.now()
+	const [household] = await db
+		.insert(schema.households)
+		.values({
+			id: createDomainId(),
+			name: name.trim(),
+			createdAt: now,
+			updatedAt: now
+		})
+		.returning()
+
+	if (!household) {
+		throwApiError({
+			code: 'INTERNAL_ERROR',
+			statusCode: 500,
+			message: 'Huishouden kon niet worden aangemaakt.'
+		})
+	}
+
+	await ensureHouseholdMembership(household.id, userId, 'householdOwner')
+	await ensureHouseholdSettings(household.id, userId, now)
+	await seedInitialDomainData(userId, household.id, event)
+	await setActiveHouseholdSession(event, household.id)
+
+	return {
+		household: {
+			id: household.id,
+			name: household.name,
+			role: 'householdOwner' as const,
+			createdAt: household.createdAt
+		},
+		activeHouseholdId: household.id
+	}
 }
 
 /**
@@ -189,7 +241,7 @@ export async function switchHousehold(event: H3Event, householdId: string) {
  */
 export async function resolveInitialHouseholdId(userId: number, event?: H3Event) {
 	if (!getMultiTenancyEnabled(event)) {
-		return (await ensureDefaultHousehold(userId)).id
+		return (await ensureDefaultHousehold(userId, event)).id
 	}
 
 	const [membership] = await db
@@ -321,6 +373,15 @@ export async function leaveHousehold(event: H3Event, householdId: string, userId
 	const memberCount = await countHouseholdMembers(householdId)
 
 	if (memberCount <= 1) {
+		if (!getMultiTenancyEnabled(event)) {
+			throwApiError({
+				code: 'CONFLICT',
+				statusCode: 409,
+				message:
+					'Het standaardhuishouden kan in single-household modus niet worden verwijderd.'
+			})
+		}
+
 		await destroyHouseholdById(householdId)
 		await setFirstAvailableHouseholdSession(event, userId)
 		return { leftHouseholdId: householdId, destroyedHousehold: true }
@@ -341,6 +402,14 @@ export async function leaveHousehold(event: H3Event, householdId: string, userId
 }
 
 export async function destroyCurrentHousehold(event: H3Event, householdId: string, userId: number) {
+	if (!getMultiTenancyEnabled(event)) {
+		throwApiError({
+			code: 'CONFLICT',
+			statusCode: 409,
+			message: 'Het standaardhuishouden kan in single-household modus niet worden verwijderd.'
+		})
+	}
+
 	await destroyHouseholdById(householdId)
 	await setFirstAvailableHouseholdSession(event, userId)
 
@@ -349,6 +418,30 @@ export async function destroyCurrentHousehold(event: H3Event, householdId: strin
 
 export async function deleteAccount(event: H3Event, userId: number) {
 	const memberships = await listMembershipSummaries(userId)
+
+	if (!getMultiTenancyEnabled(event)) {
+		for (const membership of memberships) {
+			const memberCount = await countHouseholdMembers(membership.householdId)
+			const ownerCount = await countHouseholdOwners(membership.householdId)
+
+			if (memberCount <= 1) {
+				throwApiError({
+					code: 'CONFLICT',
+					statusCode: 409,
+					message:
+						'Je kunt je account niet verwijderen omdat dit het standaardhuishouden zou verwijderen.'
+				})
+			}
+
+			if (membership.role === 'householdOwner' && ownerCount <= 1) {
+				throwApiError({
+					code: 'CONFLICT',
+					statusCode: 409,
+					message: 'Wijs eerst een nieuwe eigenaar aan.'
+				})
+			}
+		}
+	}
 
 	for (const membership of memberships) {
 		await assertMemberCanBeRemoved(membership.householdId, userId)
@@ -372,7 +465,12 @@ export async function deleteAccount(event: H3Event, userId: number) {
 			)
 	}
 
-	await db.delete(schema.users).where(eq(schema.users.id, userId))
+	try {
+		await db.delete(schema.users).where(eq(schema.users.id, userId))
+	} catch (err) {
+		console.log(err)
+	}
+
 	await clearUserSession(event)
 
 	return { deletedUserId: userId }
@@ -384,12 +482,16 @@ export async function destroyHouseholdById(householdId: string) {
 	await db
 		.delete(schema.mealPlannerDayItems)
 		.where(eq(schema.mealPlannerDayItems.householdId, householdId))
-	await db.delete(schema.mealPlannerDays).where(eq(schema.mealPlannerDays.householdId, householdId))
+	await db
+		.delete(schema.mealPlannerDays)
+		.where(eq(schema.mealPlannerDays.householdId, householdId))
 	await db.delete(schema.recipes).where(eq(schema.recipes.householdId, householdId))
 	await db.delete(schema.lists).where(eq(schema.lists.householdId, householdId))
 	await db.delete(schema.items).where(eq(schema.items.householdId, householdId))
 	await db.delete(schema.accessLinks).where(eq(schema.accessLinks.householdId, householdId))
-	await db.delete(schema.householdSettings).where(eq(schema.householdSettings.householdId, householdId))
+	await db
+		.delete(schema.householdSettings)
+		.where(eq(schema.householdSettings.householdId, householdId))
 	await db.delete(schema.householdUsers).where(eq(schema.householdUsers.householdId, householdId))
 	await db.delete(schema.households).where(eq(schema.households.id, householdId))
 }
@@ -612,6 +714,10 @@ export function getMultiTenancyEnabled(event?: H3Event): boolean {
 	return useRuntimeConfig(event).enableMultiTenancy === true
 }
 
+export function getHouseholdCreationEnabled(event?: H3Event): boolean {
+	return useRuntimeConfig(event).enableHouseholdCreation === true
+}
+
 async function isHouseholdMember(householdId: string, userId: number): Promise<boolean> {
 	const [membership] = await db
 		.select({ userId: schema.householdUsers.userId })
@@ -733,7 +839,5 @@ async function hashAccessToken(token: string): Promise<string> {
 	const data = new TextEncoder().encode(token)
 	const digest = await crypto.subtle.digest('SHA-256', data)
 
-	return [...new Uint8Array(digest)]
-		.map((byte) => byte.toString(16).padStart(2, '0'))
-		.join('')
+	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }

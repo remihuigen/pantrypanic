@@ -478,7 +478,7 @@ describe('pantry api domain helpers', () => {
 			)
 
 		await expect(searchItems({ q: 'milk', limit: 10 })).resolves.toEqual({
-			items: [{ id: 'item-1', name: 'Milk', defaultUnit: undefined, category: undefined }]
+			items: [{ id: 'item-1', name: 'Milk', defaultUnit: undefined }]
 		})
 		const suggestions = await suggestItems({ limit: 10 })
 		expect(suggestions.items[0]).toMatchObject({ id: 'item-1', usageCount: 2, lastUsedAt: 30 })
@@ -782,8 +782,6 @@ function itemRow(overrides: Partial<Record<string, unknown>> = {}) {
 		name: 'Milk',
 		normalizedName: 'milk',
 		defaultUnit: null,
-		category: null,
-		notes: null,
 		createdAt: 1,
 		updatedAt: 2,
 		createdByUserId: 1,

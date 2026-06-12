@@ -24,10 +24,11 @@ Public server paths are `/api/auth/login`, invite/reset access-link acceptance, 
 
 ## Household Context
 
-Domain APIs are household-scoped. `server/utils/households.ts` resolves the active household from
-the session. With `ENABLE_MULTI_TENANCY=false`, the first/default household is used as a singleton.
-With multi-tenancy enabled, users can switch to another household membership through
-`POST /api/households/switch`.
+Domain APIs are household-scoped. `server/utils/domains/households.ts` resolves the active
+household from the session. With `ENABLE_MULTI_TENANCY=false`, the first/default household is used
+as a singleton. With multi-tenancy enabled, users can switch to another household membership through
+`POST /api/households/switch`. When `ENABLE_HOUSEHOLD_CREATION=true`, logged-in users can create a
+new household with `POST /api/households`.
 
 Household memberships have a `role` of `member` or `householdOwner`. Owner-only operations use
 Nuxt Authorization abilities on both the client and server. Server handlers pass an ability to
@@ -37,11 +38,13 @@ the context. A household may have multiple owners. Owners can invite users, gene
 links, remove members, promote members to owner, update household settings, clear household app
 data, and destroy the household. Removing or leaving a household is rejected when it would leave
 other members without an owner. If the last member leaves or deletes their account, the household
-and all associated domain data are destroyed.
+and all associated domain data are destroyed. In single-household mode, destroying the default
+household or deleting the last household-owner account is rejected.
 
 | Method   | Route                                                 | Purpose                                     |
 | -------- | ----------------------------------------------------- | ------------------------------------------- |
 | `GET`    | `/api/households`                                     | List memberships and active household.      |
+| `POST`   | `/api/households`                                     | Create a household for the current user.    |
 | `POST`   | `/api/households/switch`                              | Store active household id in the session.   |
 | `GET`    | `/api/households/current/settings`                    | Read household-wide settings.               |
 | `PATCH`  | `/api/households/current/settings`                    | Update household-wide settings.             |
@@ -153,8 +156,8 @@ Validation and runtime failures return:
 | `GET`   | `/api/items/search`                                        | Search canonical items by normalized name.                            |
 | `GET`   | `/api/items/suggestions`                                   | Return frequently used archived items.                                |
 | `GET`   | `/api/settings/items`                                      | List canonical items for settings maintenance.                        |
-| `PATCH` | `/api/settings/items/:itemId`                              | Edit canonical item metadata.                                         |
-| `DELETE`| `/api/settings/items/:itemId`                              | Delete unused canonical item.                                         |
+| `PATCH` | `/api/settings/items/:itemId`                              | Edit canonical item name/default unit.                                |
+| `DELETE`| `/api/settings/items/:itemId`                              | Delete a canonical item and associated references.                    |
 | `POST`  | `/api/settings/items/:itemId/merge`                        | Merge one canonical item into another.                                |
 | `POST`  | `/api/settings/clear-data`                                 | Hard-delete household app data and reseed defaults.                   |
 | `GET`   | `/api/settings/stats`                                      | Return household usage stats.                                         |
@@ -196,6 +199,9 @@ a remote deployment URL.
 
 If the configured instance is unreachable during build, the seed logs a warning and skips without
 failing the build.
+
+When both `ENABLE_MULTI_TENANCY=true` and `ENABLE_PUBLIC_REGISTRATION=true`, the seed skips the
+legacy initial admin user because public registration owns first-user/first-household creation.
 
 The deployment workflow sets `SKIP_ADMIN_SEED=1` during build and runs `pnpm seed:admin` after
 migrations and deployment complete.

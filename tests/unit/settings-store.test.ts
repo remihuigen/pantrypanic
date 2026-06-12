@@ -131,17 +131,36 @@ describe('useSettingsStore', () => {
 		const store = useSettingsStore()
 		const file = new File(['image'], 'avatar.png', { type: 'image/png' })
 		mocks.upload.mockResolvedValueOnce({
-			user: profile({ avatarPathname: '/avatars/avatar.png' }),
-			avatarPathname: '/avatars/avatar.png'
+			success: true,
+			data: {
+				user: profile({ avatarPathname: 'avatars/avatar.png' }),
+				avatarPathname: 'avatars/avatar.png'
+			}
 		})
 
 		await expect(store.uploadAvatar(file)).resolves.toMatchObject({
-			avatarPathname: '/avatars/avatar.png'
+			avatarPathname: 'avatars/avatar.png'
 		})
 
 		expect(mocks.useUpload).toHaveBeenCalledWith('/api/profile/avatar', { formKey: 'avatar' })
 		expect(mocks.upload).toHaveBeenCalledWith([file])
-		expect(store.profile?.avatarPathname).toBe('/avatars/avatar.png')
+		expect(store.profile?.avatarPathname).toBe('avatars/avatar.png')
+	})
+
+	it('refreshes the profile after avatar upload when the upload helper returns file metadata only', async () => {
+		const store = useSettingsStore()
+		const file = new File(['image'], 'avatar.png', { type: 'image/png' })
+		mocks.upload.mockResolvedValueOnce([{ pathname: 'avatars/uploaded.png' }])
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			user: profile({ avatarPathname: 'avatars/uploaded.png' })
+		})
+
+		await expect(store.uploadAvatar(file)).resolves.toMatchObject({
+			avatarPathname: 'avatars/uploaded.png'
+		})
+
+		expect(apiClient.apiFetch).toHaveBeenCalledWith('/api/profile')
+		expect(store.profile?.avatarPathname).toBe('avatars/uploaded.png')
 	})
 
 	it('switches household and refreshes every settings section', async () => {
@@ -330,21 +349,22 @@ describe('useSettingsStore', () => {
 		vi.spyOn(apiClient, 'apiFetch')
 			.mockResolvedValueOnce({ items: [settingsItem({ id: 'milk', name: 'Melk' })] })
 			.mockResolvedValueOnce({
-				item: settingsItem({ id: 'milk', name: 'Halfvolle melk', notes: 'Koelkast' })
+				item: settingsItem({ id: 'milk', name: 'Halfvolle melk', defaultUnit: 'pak' })
 			})
 			.mockResolvedValueOnce({})
 			.mockResolvedValueOnce({ stats: stats({ listItems: 4 }) })
 			.mockResolvedValueOnce({})
+			.mockResolvedValueOnce({ stats: stats({ listItems: 0 }) })
 
 		await store.fetchItems('melk')
-		await store.updateItem('milk', { name: 'Halfvolle melk', notes: 'Koelkast' })
+		await store.updateItem('milk', { name: 'Halfvolle melk', defaultUnit: 'pak' })
 		await store.mergeItem('bread', 'milk')
 		await store.deleteItem('milk')
 
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/settings/items?q=melk')
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/settings/items/milk', {
 			method: 'PATCH',
-			body: { name: 'Halfvolle melk', notes: 'Koelkast' }
+			body: { name: 'Halfvolle melk', defaultUnit: 'pak' }
 		})
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(3, '/api/settings/items/bread/merge', {
 			method: 'POST',
@@ -353,8 +373,9 @@ describe('useSettingsStore', () => {
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(5, '/api/settings/items/milk', {
 			method: 'DELETE'
 		})
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(6, '/api/settings/stats')
 		expect(store.items).toEqual([])
-		expect(store.stats?.totals.listItems).toBe(4)
+		expect(store.stats?.totals.listItems).toBe(0)
 	})
 
 	it('updates one canonical item while preserving other local items', async () => {
@@ -456,10 +477,9 @@ function settingsItem(
 		name: string
 		normalizedName: string
 		defaultUnit?: string
-		category?: string
-		notes?: string
 		updatedAt: number
 		usageCount: number
+		activeListItemUsageCount: number
 	}> = {}
 ) {
 	return {
@@ -468,6 +488,7 @@ function settingsItem(
 		normalizedName: 'milk',
 		updatedAt: 1,
 		usageCount: 0,
+		activeListItemUsageCount: 0,
 		...overrides
 	}
 }

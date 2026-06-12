@@ -41,10 +41,9 @@ type SettingsItem = {
 	name: string
 	normalizedName: string
 	defaultUnit?: string
-	category?: string
-	notes?: string
 	updatedAt: number
 	usageCount: number
+	activeListItemUsageCount: number
 }
 
 type Stats = {
@@ -68,6 +67,7 @@ export const useSettingsStore = defineStore('settings', () => {
 	const households = ref<Household[]>([])
 	const activeHouseholdId = ref<string | null>(null)
 	const enableMultiTenancy = ref(false)
+	const enableHouseholdCreation = ref(false)
 	const members = ref<Member[]>([])
 	const householdSettings = ref<HouseholdSettings | null>(null)
 	const items = ref<SettingsItem[]>([])
@@ -77,17 +77,30 @@ export const useSettingsStore = defineStore('settings', () => {
 	const isLoading = ref(false)
 	const isSaving = ref(false)
 	const error = ref<AppError | null>(null)
-	const uploadProfileAvatar = useUpload('/api/profile/avatar', { formKey: 'avatar' }) as unknown as (
-		_files: File[]
-	) => Promise<AvatarUploadResponse>
+	const uploadProfileAvatar = useUpload('/api/profile/avatar', {
+		formKey: 'avatar'
+	}) as unknown as (_files: File[]) => Promise<unknown>
 
 	const activeHousehold = computed(
 		() => households.value.find((household) => household.id === activeHouseholdId.value) ?? null
 	)
 	const currentMemberRole = computed(
-		() => members.value.find((member) => member.id === profile.value?.id)?.role ?? activeHousehold.value?.role ?? null
+		() =>
+			members.value.find((member) => member.id === profile.value?.id)?.role ??
+			activeHousehold.value?.role ??
+			null
 	)
 	const isHouseholdOwner = computed(() => currentMemberRole.value === 'householdOwner')
+	const ownerMembers = computed(() =>
+		members.value.filter((member) => member.role === 'householdOwner')
+	)
+	const otherOwnerMembers = computed(() =>
+		ownerMembers.value.filter((member) => member.id !== profile.value?.id)
+	)
+	const isOnlyHouseholdOwner = computed(
+		() => isHouseholdOwner.value && ownerMembers.value.length === 1
+	)
+	const hasNoHousehold = computed(() => Boolean(profile.value && !activeHouseholdId.value))
 
 	function setError(err: unknown) {
 		const appError = normalizeAppError(err)
@@ -124,7 +137,9 @@ export const useSettingsStore = defineStore('settings', () => {
 		return data.user
 	}
 
-	async function updateProfile(input: Partial<Pick<Profile, 'name' | 'email' | 'avatarPathname'>> & { password?: string }) {
+	async function updateProfile(
+		input: Partial<Pick<Profile, 'name' | 'email' | 'avatarPathname'>> & { password?: string }
+	) {
 		isSaving.value = true
 		error.value = null
 
@@ -143,9 +158,20 @@ export const useSettingsStore = defineStore('settings', () => {
 	}
 
 	async function uploadAvatar(file: File) {
-		const data = await uploadProfileAvatar([file])
-		profile.value = data.user
-		return data
+		const response = await uploadProfileAvatar([file])
+		const data = normalizeAvatarUploadResponse(response)
+
+		if (data) {
+			profile.value = data.user
+			return data
+		}
+
+		const user = await fetchProfile()
+
+		return {
+			user,
+			avatarPathname: user.avatarPathname ?? ''
+		}
 	}
 
 	async function fetchHouseholds() {
@@ -153,10 +179,12 @@ export const useSettingsStore = defineStore('settings', () => {
 			households: Household[]
 			activeHouseholdId: string | null
 			enableMultiTenancy: boolean
+			enableHouseholdCreation: boolean
 		}>('/api/households')
 		households.value = data.households
 		activeHouseholdId.value = data.activeHouseholdId
 		enableMultiTenancy.value = data.enableMultiTenancy
+		enableHouseholdCreation.value = data.enableHouseholdCreation
 		return data
 	}
 
@@ -167,6 +195,24 @@ export const useSettingsStore = defineStore('settings', () => {
 		})
 		activeHouseholdId.value = householdId
 		await fetchAll()
+	}
+
+	async function createHousehold(input: { name: string }) {
+		const data = await apiFetch<{
+			household: Household
+			activeHouseholdId: string
+		}>('/api/households', {
+			method: 'POST',
+			body: input
+		})
+
+		households.value = [
+			...households.value.filter((household) => household.id !== data.household.id),
+			data.household
+		]
+		activeHouseholdId.value = data.activeHouseholdId
+		await fetchAll()
+		return data
 	}
 
 	async function fetchMembers() {
@@ -189,7 +235,9 @@ export const useSettingsStore = defineStore('settings', () => {
 			member.id === userId ? { ...member, role: data.role } : member
 		)
 		households.value = households.value.map((household) =>
-			household.id === activeHouseholdId.value ? { ...household, role: 'householdOwner' } : household
+			household.id === activeHouseholdId.value
+				? { ...household, role: 'householdOwner' }
+				: household
 		)
 		return data
 	}
@@ -243,17 +291,17 @@ export const useSettingsStore = defineStore('settings', () => {
 
 	async function updateItem(
 		itemId: string,
-		input: Partial<Omit<SettingsItem, 'defaultUnit' | 'category' | 'notes'>> & {
+		input: Partial<Omit<SettingsItem, 'defaultUnit'>> & {
 			defaultUnit?: string | null
-			category?: string | null
-			notes?: string | null
 		}
 	) {
 		const data = await apiFetch<{ item: SettingsItem }>(`/api/settings/items/${itemId}`, {
 			method: 'PATCH',
 			body: input
 		})
-		items.value = items.value.map((item) => (item.id === itemId ? { ...item, ...data.item } : item))
+		items.value = items.value.map((item) =>
+			item.id === itemId ? { ...item, ...data.item } : item
+		)
 		return data.item
 	}
 
@@ -267,8 +315,15 @@ export const useSettingsStore = defineStore('settings', () => {
 	}
 
 	async function deleteItem(itemId: string) {
-		await apiFetch(`/api/settings/items/${itemId}`, { method: 'DELETE' })
+		const data = await apiFetch<{
+			deletedItemId: string
+			deletedListItems: number
+			deletedRecipeItems: number
+			deletedMealPlannerDayItems: number
+		}>(`/api/settings/items/${itemId}`, { method: 'DELETE' })
 		items.value = items.value.filter((item) => item.id !== itemId)
+		await fetchStats()
+		return data
 	}
 
 	async function clearData() {
@@ -332,7 +387,12 @@ export const useSettingsStore = defineStore('settings', () => {
 		activeHousehold,
 		currentMemberRole,
 		isHouseholdOwner,
+		ownerMembers,
+		otherOwnerMembers,
+		isOnlyHouseholdOwner,
+		hasNoHousehold,
 		enableMultiTenancy,
+		enableHouseholdCreation,
 		members,
 		householdSettings,
 		items,
@@ -348,6 +408,7 @@ export const useSettingsStore = defineStore('settings', () => {
 		uploadAvatar,
 		fetchHouseholds,
 		switchHousehold,
+		createHousehold,
 		fetchMembers,
 		removeMember,
 		assignOwner,
@@ -366,3 +427,44 @@ export const useSettingsStore = defineStore('settings', () => {
 		fetchStats
 	}
 })
+
+function normalizeAvatarUploadResponse(response: unknown): AvatarUploadResponse | null {
+	if (isAvatarUploadResponse(response)) {
+		return response
+	}
+
+	if (
+		response &&
+		typeof response === 'object' &&
+		'success' in response &&
+		response.success === true &&
+		'data' in response &&
+		isAvatarUploadResponse(response.data)
+	) {
+		return response.data
+	}
+
+	if (Array.isArray(response)) {
+		for (const item of response) {
+			const result = normalizeAvatarUploadResponse(item)
+
+			if (result) {
+				return result
+			}
+		}
+	}
+
+	return null
+}
+
+function isAvatarUploadResponse(value: unknown): value is AvatarUploadResponse {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'user' in value &&
+		typeof value.user === 'object' &&
+		value.user !== null &&
+		'avatarPathname' in value &&
+		typeof value.avatarPathname === 'string'
+	)
+}

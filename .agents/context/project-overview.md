@@ -38,7 +38,7 @@ Implemented:
 - safe raster image serving from blob storage
 - build-time HTTP admin-user seed from `.env`
 - Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
-  updates, and polling refresh controls
+  updates, and one route-aware polling refresh scheduler
 - Pantry Panic grocery-list UI for lists and list items
 - prompt-based PWA update and Chromium-style install prompt handling
 - human docs under `docs/`
@@ -53,7 +53,8 @@ Not implemented yet:
 - `app/`: Nuxt frontend; product pages live under `app/pages/app/**` and map to `/app/**`.
 - `app/stores/`: Pinia domain stores for lists, recipes, and meal planner.
 - `app/utils/api-client.ts`: shared frontend API wrapper with normalized app errors.
-- `app/composables/useStoreRefresh.ts`: reusable polling lifecycle helper.
+- `app/composables/useStoreRefresh.ts`: route-aware refresh scheduler and reusable polling
+  lifecycle helper.
 - `shared/utils/schemas/domain.ts`: shared Zod schemas and inferred domain types reused by backend
   and frontend.
 - `shared/types/api.ts`: shared API envelope and app error type contracts.

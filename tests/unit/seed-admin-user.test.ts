@@ -15,7 +15,9 @@ describe('admin user seed script', () => {
 			'ADMIN_USER_EMAIL',
 			'ADMIN_USER_PASSWORD',
 			'ADMIN_API_KEY',
-			'NUXT_PUBLIC_SITE_URL'
+			'NUXT_PUBLIC_SITE_URL',
+			'ENABLE_MULTI_TENANCY',
+			'ENABLE_PUBLIC_REGISTRATION'
 		]) {
 			Reflect.deleteProperty(process.env, key)
 		}
@@ -39,6 +41,19 @@ describe('admin user seed script', () => {
 		await seedAdminUser()
 
 		expect(infoMock).toHaveBeenCalledWith('[seed] SKIP_ADMIN_SEED is set; skipping admin user seed.')
+		expect(fetchMock).not.toHaveBeenCalled()
+	})
+
+	it('skips legacy admin seed for public multi-tenant installs', async () => {
+		setRequiredEnv()
+		process.env.ENABLE_MULTI_TENANCY = 'true'
+		process.env.ENABLE_PUBLIC_REGISTRATION = 'true'
+
+		await seedAdminUser()
+
+		expect(infoMock).toHaveBeenCalledWith(
+			'[seed] ENABLE_MULTI_TENANCY and ENABLE_PUBLIC_REGISTRATION are enabled; skipping admin user seed.'
+		)
 		expect(fetchMock).not.toHaveBeenCalled()
 	})
 

@@ -22,7 +22,7 @@ import {
 	serializeList,
 	serializeListItem
 } from './base'
-import { findOrCreateItem } from './items'
+import { applyAssignedUnitToItem, findOrCreateItem } from './items'
 
 const DEFAULT_HOUSEHOLD_ID = 'household-1'
 
@@ -362,7 +362,13 @@ export async function addListItem(
 ) {
 	await findListOrThrow(listId, householdId)
 	const audit = createAudit(userId)
-	const item = await findOrCreateItem({ householdId, name: input.name, auditUserId: userId })
+	const item = await findOrCreateItem({
+		householdId,
+		name: input.name,
+		defaultUnit: input.unit ?? null,
+		auditUserId: userId
+	})
+	await applyAssignedUnitToItem(item, input.unit, userId)
 	const position = await getNextListItemPosition(listId, householdId)
 	const [listItem] = await db
 		.insert(schema.listItems)
@@ -483,6 +489,8 @@ export async function updateListItem(
 					)[0]
 				)
 			: await findOrCreateItem({ householdId, name: input.name, auditUserId: userId })
+
+	await applyAssignedUnitToItem(item, input.unit, userId)
 
 	const [row] = await db
 		.update(schema.listItems)

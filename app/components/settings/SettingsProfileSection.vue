@@ -17,22 +17,25 @@ const state = reactive<z.infer<typeof profileSchema>>({
 	password: '',
 	passwordConfirm: ''
 })
+const syncedProfileId = shallowRef<number | null>(null)
 const selectedAvatar = shallowRef<File | null>(null)
 const selectedAvatarUrl = useObjectUrl(selectedAvatar)
 const isUploadingAvatar = shallowRef(false)
+const avatarVersion = shallowRef(0)
 const avatarSrc = computed(() => {
 	if (selectedAvatarUrl.value) return selectedAvatarUrl.value
 
-	return settingsStore.profile?.avatarPathname
-		? `/images/${settingsStore.profile.avatarPathname}`
-		: undefined
+	if (!settingsStore.profile?.avatarPathname) return undefined
+
+	return `${imageUrl(settingsStore.profile.avatarPathname)}?v=${avatarVersion.value}`
 })
 
 watch(
 	() => settingsStore.profile,
 	(profile) => {
-		state.name = profile?.name ?? ''
-		state.email = profile?.email ?? ''
+		if (!profile || syncedProfileId.value === profile.id) return
+
+		syncProfileForm(profile)
 	},
 	{ immediate: true }
 )
@@ -54,13 +57,12 @@ async function saveProfile() {
 	}
 
 	try {
-		await settingsStore.updateProfile({
+		const profile = await settingsStore.updateProfile({
 			name: state.name,
 			email: state.email,
 			...(state.password ? { password: state.password } : {})
 		})
-		state.password = ''
-		state.passwordConfirm = ''
+		syncProfileForm(profile)
 		toast.add({ title: 'Profiel opgeslagen.', color: 'success', icon: 'i-lucide-check' })
 	} catch (error) {
 		toast.add({
@@ -75,6 +77,7 @@ async function uploadAvatar(file: File) {
 	isUploadingAvatar.value = true
 	try {
 		await settingsStore.uploadAvatar(file)
+		avatarVersion.value += 1
 		selectedAvatar.value = null
 		toast.add({ title: 'Avatar opgeslagen.', color: 'success', icon: 'i-lucide-check' })
 	} catch (error) {
@@ -88,10 +91,22 @@ async function uploadAvatar(file: File) {
 	}
 }
 
+function syncProfileForm(profile: { id: number; name: string; email: string }) {
+	syncedProfileId.value = profile.id
+	state.name = profile.name
+	state.email = profile.email
+	state.password = ''
+	state.passwordConfirm = ''
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
 	return error && typeof error === 'object' && 'message' in error
 		? String((error as { message?: string }).message || fallback)
 		: fallback
+}
+
+function imageUrl(pathname: string) {
+	return `/images/${pathname.replace(/^\/+/, '')}`
 }
 </script>
 
@@ -143,7 +158,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 					</p>
 				</UFileUpload>
 			</UFormField>
+		</UPageCard>
 
+		<UPageCard variant="subtle" :ui="{ body: 'space-y-4' }">
 			<UForm :state="state" :schema="profileSchema" class="grid gap-3" @submit="saveProfile">
 				<UFormField label="Naam" name="name">
 					<UInput v-model="state.name" />

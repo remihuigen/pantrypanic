@@ -1,8 +1,9 @@
+import type { userSchema } from '#shared/utils/schemas/domain'
 import type { H3Event } from 'h3'
 
 import { ensureDefaultHousehold, ensureHouseholdMembership } from '#server/utils/domains/households'
 import { seedInitialDomainData } from '#server/utils/domains/seed'
-import { userEmailSchema, userSchema } from '#shared/utils/schemas/domain'
+import { userEmailSchema } from '#shared/utils/schemas/domain'
 import { and, asc, eq, ne } from 'drizzle-orm'
 import { createError } from 'h3'
 import { db, schema } from 'hub:db'
@@ -228,7 +229,6 @@ export async function updateUser(userId: number, input: z.infer<typeof updateUse
  */
 export async function deleteUser(userId: number) {
 	const [user] = await db.delete(schema.users).where(eq(schema.users.id, userId)).returning()
-
 	if (!user) {
 		throw createError({
 			statusCode: 404,

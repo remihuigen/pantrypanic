@@ -1,26 +1,13 @@
-import * as refreshComposable from '~/composables/useStoreRefresh'
 import { useListsStore } from '~/stores/lists'
 import { useMealPlannerStore } from '~/stores/meal-planner'
 import * as apiClient from '~/utils/api-client'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type RefreshController = {
-	isRunning: boolean
-	isRefreshing: boolean
-	start: ReturnType<typeof vi.fn>
-	stop: ReturnType<typeof vi.fn>
-	refreshNow: ReturnType<typeof vi.fn>
-}
-
-let refreshControllers: RefreshController[] = []
-
 describe('useMealPlannerStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
 		vi.restoreAllMocks()
-		refreshControllers = []
-		mockRefreshComposable()
 		vi.spyOn(apiClient, 'normalizeAppError').mockImplementation((error) => error as never)
 	})
 
@@ -418,14 +405,14 @@ describe('useMealPlannerStore', () => {
 		expect(store.mealPlannerDayItemsById['item-1']).toBeDefined()
 	})
 
-	it('starts and stops planner refresh with the refresh controller', async () => {
+	it('refreshes planner data through direct store actions', async () => {
 		const store = useMealPlannerStore()
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({ days: [] })
 
 		await store.startRefresh()
 		store.stopRefresh()
 
-		expect(refreshControllers[0]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[0]?.stop).toHaveBeenCalledTimes(1)
+		expect(apiClient.apiFetch).toHaveBeenCalledWith('/api/meal-planner')
 	})
 
 	it('removes stale days and stale day items when fetching planner data', async () => {
@@ -533,21 +520,6 @@ describe('useMealPlannerStore', () => {
 		expect(store.mealPlannerDayItemsById.missing).toBeUndefined()
 	})
 })
-
-function mockRefreshComposable() {
-	vi.spyOn(refreshComposable, 'useStoreRefresh').mockImplementation(() => {
-		const controller: RefreshController = {
-			isRunning: false,
-			isRefreshing: false,
-			start: vi.fn(async () => undefined),
-			stop: vi.fn(),
-			refreshNow: vi.fn(async () => undefined)
-		}
-		refreshControllers.push(controller)
-
-		return controller as never
-	})
-}
 
 function seedDay(
 	store: ReturnType<typeof useMealPlannerStore>,

@@ -11,7 +11,10 @@ function readNumberEnv(name: string, fallback: number) {
 }
 
 const enableMultiTenancy = process.env.ENABLE_MULTI_TENANCY === 'true'
-const enableRegistration = enableMultiTenancy && process.env.ENABLE_REGISTRATION === 'true'
+const enableHouseholdCreation =
+	enableMultiTenancy && process.env.ENABLE_HOUSEHOLD_CREATION === 'true'
+const enablePublicRegistration =
+	enableMultiTenancy && process.env.ENABLE_PUBLIC_REGISTRATION === 'true'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -66,12 +69,6 @@ export default defineNuxtConfig({
 		}
 	},
 
-	devtools: {
-		enabled: true
-	},
-
-	css: ['~/assets/css/main.css'],
-
 	components: [
 		{
 			path: '~/components',
@@ -79,10 +76,17 @@ export default defineNuxtConfig({
 		}
 	],
 
+	devtools: {
+		enabled: true
+	},
+
+	css: ['~/assets/css/main.css'],
+
 	runtimeConfig: {
 		adminApiKey: process.env.ADMIN_API_KEY ?? '',
 		enableMultiTenancy,
-		enableRegistration,
+		enableHouseholdCreation,
+		enablePublicRegistration,
 		session: {
 			password: process.env.NUXT_SESSION_PASSWORD ?? '',
 			maxAge: 60 * 60 * 24 * 30
@@ -101,7 +105,8 @@ export default defineNuxtConfig({
 		public: {
 			refreshInterval: readNumberEnv('NUXT_PUBLIC_REFRESH_INTERVAL', 5000),
 			enableMultiTenancy,
-			enableRegistration,
+			enableHouseholdCreation,
+			enablePublicRegistration,
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."

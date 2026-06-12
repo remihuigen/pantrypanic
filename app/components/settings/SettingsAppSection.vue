@@ -12,7 +12,6 @@ const props = withDefaults(
 	}
 )
 const settingsStore = useSettingsStore()
-const colorMode = useColorMode()
 const toast = useToast()
 
 const refreshIntervalSeconds = ref(5)

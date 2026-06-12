@@ -1,5 +1,11 @@
 <script lang="ts" setup>
 definePageMeta({ layout: 'app' })
+
+const recipesStore = useRecipesStore()
+
+onMounted(() => {
+	void recipesStore.fetchRecipes({ status: 'active' })
+})
 </script>
 
 <template>

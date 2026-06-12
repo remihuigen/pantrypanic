@@ -152,27 +152,27 @@ describe('settings utilities', () => {
 			.mockReturnValueOnce(
 				createSelectBuilder([itemRow({ id: 'milk' }), itemRow({ id: 'bread' })]) as never
 			)
-			.mockReturnValueOnce(createSelectBuilder([{ itemId: 'milk', count: 2 }]) as never)
+			.mockReturnValueOnce(
+				createSelectBuilder([{ itemId: 'milk', status: 'checked', count: 2 }]) as never
+			)
 			.mockReturnValueOnce(createSelectBuilder([{ itemId: 'milk', count: 3 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([{ itemId: 'bread', count: 1 }]) as never)
 
 		await expect(listAllItems('household', {})).resolves.toMatchObject({
 			items: [
-				{ id: 'milk', usageCount: 5 },
+				{ id: 'milk', usageCount: 5, activeListItemUsageCount: 2 },
 				{ id: 'bread', usageCount: 1 }
 			]
 		})
 	})
 
-	it('filters all-items results by search query and serializes optional metadata', async () => {
+	it('filters all-items results by search query and serializes optional default unit', async () => {
 		vi.mocked(db.select)
 			.mockReturnValueOnce(
 				createSelectBuilder([
 					itemRow({
 						id: 'milk',
-						defaultUnit: 'pak',
-						category: 'Zuivel',
-						notes: 'Koelkast'
+						defaultUnit: 'pak'
 					})
 				]) as never
 			)
@@ -185,8 +185,6 @@ describe('settings utilities', () => {
 				expect.objectContaining({
 					id: 'milk',
 					defaultUnit: 'pak',
-					category: 'Zuivel',
-					notes: 'Koelkast',
 					usageCount: 0
 				})
 			]
@@ -217,8 +215,6 @@ describe('settings utilities', () => {
 						id: 'milk',
 						name: 'Milk',
 						defaultUnit: 'pak',
-						category: 'Zuivel',
-						notes: 'Koelkast',
 						updatedByUserId: 7
 					})
 				],
@@ -232,15 +228,13 @@ describe('settings utilities', () => {
 			updateCanonicalItem(
 				'household',
 				'milk',
-				{ name: 'Milk', defaultUnit: 'pak', category: 'Zuivel', notes: 'Koelkast' },
+				{ name: 'Milk', defaultUnit: 'pak' },
 				7
 			)
 		).resolves.toMatchObject({
 			item: {
 				id: 'milk',
-				defaultUnit: 'pak',
-				category: 'Zuivel',
-				notes: 'Koelkast'
+				defaultUnit: 'pak'
 			}
 		})
 		expect(db.select).toHaveBeenCalledTimes(1)
@@ -248,8 +242,6 @@ describe('settings utilities', () => {
 			name: 'Milk',
 			normalizedName: 'milk',
 			defaultUnit: 'pak',
-			category: 'Zuivel',
-			notes: 'Koelkast',
 			updatedByUserId: 7
 		})
 	})
@@ -318,18 +310,22 @@ describe('settings utilities', () => {
 		expect(db.delete).toHaveBeenCalledTimes(1)
 	})
 
-	it('prevents deleting canonical items that are still referenced', async () => {
+	it('deletes canonical items and associated references', async () => {
 		vi.mocked(db.select)
 			.mockReturnValueOnce(createSelectBuilder([itemRow({ id: 'milk' })]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([{ count: 1 }]) as never)
-			.mockReturnValueOnce(createSelectBuilder([{ count: 0 }]) as never)
-			.mockReturnValueOnce(createSelectBuilder([{ count: 0 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 3 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 4 }]) as never)
+		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder([]) as never)
 
-		await expect(deleteCanonicalItem('household', 'milk')).rejects.toMatchObject({
-			statusCode: 409,
-			message: 'Dit item wordt nog gebruikt. Voeg het eerst samen of verwijder de verwijzingen.'
+		await expect(deleteCanonicalItem('household', 'milk')).resolves.toEqual({
+			deletedItemId: 'milk',
+			deletedListItems: 2,
+			deletedRecipeItems: 3,
+			deletedMealPlannerDayItems: 4
 		})
-		expect(db.delete).not.toHaveBeenCalled()
+		expect(db.delete).toHaveBeenCalledTimes(4)
 	})
 
 	it('deletes unused canonical items', async () => {
@@ -338,12 +334,16 @@ describe('settings utilities', () => {
 			.mockReturnValueOnce(createSelectBuilder([{ count: 0 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([{ count: 0 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([{ count: 0 }]) as never)
-		vi.mocked(db.delete).mockReturnValueOnce(createDeleteBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 0 }]) as never)
+		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder([]) as never)
 
 		await expect(deleteCanonicalItem('household', 'milk')).resolves.toEqual({
-			deletedItemId: 'milk'
+			deletedItemId: 'milk',
+			deletedListItems: 0,
+			deletedRecipeItems: 0,
+			deletedMealPlannerDayItems: 0
 		})
-		expect(db.delete).toHaveBeenCalledTimes(1)
+		expect(db.delete).toHaveBeenCalledTimes(4)
 	})
 
 	it('summarizes household usage stats with numeric fallbacks', async () => {
@@ -421,8 +421,6 @@ function itemRow(
 		name: string
 		normalizedName: string
 		defaultUnit: string | null
-		category: string | null
-		notes: string | null
 		createdAt: number
 		updatedAt: number
 		createdByUserId: number
@@ -435,8 +433,6 @@ function itemRow(
 		name: 'Milk',
 		normalizedName: 'milk',
 		defaultUnit: null,
-		category: null,
-		notes: null,
 		createdAt: 1,
 		updatedAt: 1,
 		createdByUserId: 1,

@@ -13,7 +13,8 @@ ADMIN_API_KEY=<server-api-key>
 NUXT_PUBLIC_SITE_URL=<instance-url>
 NUXT_PUBLIC_REFRESH_INTERVAL=5000
 ENABLE_MULTI_TENANCY=false
-ENABLE_REGISTRATION=false
+ENABLE_HOUSEHOLD_CREATION=false
+ENABLE_PUBLIC_REGISTRATION=false
 NUXT_SESSION_PASSWORD=<at-least-32-characters>
 ```
 
@@ -23,10 +24,12 @@ NUXT_SESSION_PASSWORD=<at-least-32-characters>
 - `NUXT_PUBLIC_REFRESH_INTERVAL` is the frontend polling interval in milliseconds.
 - `ENABLE_MULTI_TENANCY` enables user-selectable household context for users with multiple
   memberships. The default `false` treats the first household as the singleton app household.
-- `ENABLE_REGISTRATION` is reserved for future public registration. Invite-link onboarding remains
-  available because it is token-gated.
-- Both flags are written to public runtime config for client UI affordances and private runtime
-  config for API decisions. Server routes must read the private runtime config values.
+- `ENABLE_HOUSEHOLD_CREATION` lets logged-in users create their first or an extra household when
+  multi-tenancy is enabled.
+- `ENABLE_PUBLIC_REGISTRATION` is reserved for future public account registration. Invite-link
+  onboarding remains available because it is token-gated.
+- Household mode flags are written to public runtime config for client UI affordances and private
+  runtime config for API decisions. Server routes must read the private runtime config values.
 - `NUXT_SESSION_PASSWORD` signs/encrypts session cookies. Development can auto-generate it, but production must set a stable value.
 - Auth sessions expire after 30 days via `runtimeConfig.session.maxAge`.
 

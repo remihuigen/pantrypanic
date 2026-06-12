@@ -143,8 +143,6 @@ export const items = sqliteTable(
 		name: text('name').notNull(),
 		normalizedName: text('normalized_name').notNull(),
 		defaultUnit: text('default_unit'),
-		category: text('category'),
-		notes: text('notes'),
 		...auditColumns
 	},
 	(table) => [
@@ -152,8 +150,7 @@ export const items = sqliteTable(
 			table.householdId,
 			table.normalizedName
 		),
-		index('items_name_idx').on(table.name),
-		index('items_category_idx').on(table.category)
+		index('items_name_idx').on(table.name)
 	]
 )
 

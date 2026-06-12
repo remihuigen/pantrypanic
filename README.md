@@ -74,9 +74,13 @@ members, promote other members to owner, create reset links, change household se
 data, and destroy the household. Regular members can still use the app's core grocery, recipe, and
 meal-planner flows.
 
-`ENABLE_REGISTRATION=false` keeps public registration disabled. Invite-link onboarding still works
-because invites are token-gated. If a user no longer belongs to any household, they need a new invite
-from a household owner before they can use the app again.
+`ENABLE_HOUSEHOLD_CREATION=true` lets logged-in users create their first or an extra household from
+the household selector. Keep it `false` when household owners should control membership strictly
+through invite links. `ENABLE_PUBLIC_REGISTRATION=false` keeps public account creation disabled;
+invite-link onboarding still works because invites are token-gated. Public registration is
+configuration-only for now and is not exposed in the app yet. If a user no longer belongs to any
+household and household creation is disabled, they need a new invite from a household owner before
+they can use the app again.
 
 ### 1️⃣ Step 1: Create Cloudflare Resources
 
@@ -153,7 +157,8 @@ ADMIN_USER_PASSWORD=<initial-user-password>
 
 # Household mode
 ENABLE_MULTI_TENANCY=false
-ENABLE_REGISTRATION=false
+ENABLE_HOUSEHOLD_CREATION=false
+ENABLE_PUBLIC_REGISTRATION=false
 
 # App defaults
 NUXT_PUBLIC_REFRESH_INTERVAL=5000
@@ -246,7 +251,8 @@ values are:
 
 ```bash
 ENABLE_MULTI_TENANCY=false
-ENABLE_REGISTRATION=false
+ENABLE_HOUSEHOLD_CREATION=false
+ENABLE_PUBLIC_REGISTRATION=false
 NUXT_PUBLIC_REFRESH_INTERVAL=5000
 NUXT_PANTRY_DEFAULT_LIST_NAME=Boodschappen
 NUXT_PANTRY_DEFAULT_USER_LIST_LIMIT=50
@@ -258,9 +264,10 @@ NUXT_PANTRY_MAX_BLOB_LIST_LIMIT=1000
 NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE=32MB
 ```
 
-`ENABLE_MULTI_TENANCY` and `ENABLE_REGISTRATION` are available in public runtime config for UI
-affordances and private runtime config for server decisions. API routes read the private values.
-The `NUXT_PANTRY_*` variables are wired directly to `runtimeConfig.pantry` in `nuxt.config.ts`.
+`ENABLE_MULTI_TENANCY`, `ENABLE_HOUSEHOLD_CREATION`, and `ENABLE_PUBLIC_REGISTRATION` are available
+in public runtime config for UI affordances and private runtime config for server decisions. API
+routes read the private values. The `NUXT_PANTRY_*` variables are wired directly to
+`runtimeConfig.pantry` in `nuxt.config.ts`.
 
 Production blob and database configuration also expects the following variables, though they
 are not required for local development:

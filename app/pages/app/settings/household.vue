@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-definePageMeta({ layout: 'app' })
-
 const settingsStore = useSettingsStore()
 const toast = useToast()
 
@@ -25,23 +23,8 @@ onMounted(async () => {
 </script>
 
 <template>
-	<PageShell>
-		<template #header>
-			<PageHeader>Huishouden</PageHeader>
-		</template>
-		<SettingsNavigation class="sticky top-0" />
-
-		<UAlert
-			v-if="!settingsStore.activeHouseholdId"
-			color="neutral"
-			icon="i-lucide-house-x"
-			title="Je zit nog niet in een huishouden"
-			description="Vraag een gezinslid om je opnieuw uit te nodigen voor hun huishouden."
-		/>
-
-		<div v-else class="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
-			<SettingsHouseholdSection />
-			<SettingsAppSection :show-theme="false" />
-		</div>
-	</PageShell>
+	<div class="space-y-4">
+		<SettingsHouseholdSection />
+		<SettingsAppSection v-if="settingsStore.activeHouseholdId" :show-theme="false" />
+	</div>
 </template>

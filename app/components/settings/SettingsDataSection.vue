@@ -29,6 +29,27 @@ async function clearData() {
 }
 
 async function leaveHousehold() {
+	if (!settingsStore.enableMultiTenancy && settingsStore.members.length <= 1) {
+		await confirm({
+			title: 'Niet beschikbaar in single-household modus',
+			description: 'Het standaardhuishouden kan in deze modus niet worden verwijderd.',
+			color: 'warning'
+		})
+		return
+	}
+
+	if (settingsStore.isOnlyHouseholdOwner && settingsStore.members.length > 1) {
+		const ok = await confirm({
+			title: 'Wijs eerst een nieuwe eigenaar aan',
+			description:
+				'Je bent de enige eigenaar van dit huishouden. Maak eerst iemand anders eigenaar voordat je vertrekt.',
+			color: 'warning'
+		})
+
+		if (ok) await navigateTo('/app/settings/household')
+		return
+	}
+
 	const ok = await confirm({
 		title: 'Huishouden verlaten?',
 		description: 'Je account blijft bestaan, maar je verliest toegang tot dit huishouden.',
@@ -36,8 +57,6 @@ async function leaveHousehold() {
 	})
 
 	if (!ok) return
-
-	// TODO check if other household owners, and if not prompt to assign a new one
 
 	try {
 		await settingsStore.leaveHousehold()
@@ -56,6 +75,28 @@ async function leaveHousehold() {
 }
 
 async function deleteAccount() {
+	if (!settingsStore.enableMultiTenancy && settingsStore.isOnlyHouseholdOwner) {
+		await confirm({
+			title: 'Niet beschikbaar in single-household modus',
+			description:
+				'Je bent de laatste eigenaar van het standaardhuishouden. Wijs eerst een nieuwe eigenaar aan.',
+			color: 'warning'
+		})
+		return
+	}
+
+	if (settingsStore.isOnlyHouseholdOwner && settingsStore.members.length > 1) {
+		const ok = await confirm({
+			title: 'Wijs eerst een nieuwe eigenaar aan',
+			description:
+				'Je bent de enige eigenaar van dit huishouden. Maak eerst iemand anders eigenaar voordat je je account verwijdert.',
+			color: 'warning'
+		})
+
+		if (ok) await navigateTo('/app/settings/household')
+		return
+	}
+
 	const ok = await confirm({
 		title: 'Account verwijderen?',
 		description:
@@ -94,7 +135,8 @@ function getErrorMessage(error: unknown, fallback: string) {
 		<UAlert
 			v-if="!settingsStore.activeHouseholdId"
 			color="neutral"
-			icon="i-lucide-house-x"
+			variant="subtle"
+			icon="i-lucide-house"
 			title="Je zit nog niet in een huishouden"
 			description="Vraag een gezinslid om je opnieuw uit te nodigen voor hun huishouden."
 		/>
@@ -121,7 +163,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 		</Can>
 
 		<UAlert
-			v-if="settingsStore.activeHouseholdId"
+			v-if="settingsStore.activeHouseholdId && settingsStore.enableMultiTenancy"
 			variant="subtle"
 			color="warning"
 			title="Huishouden verlaten"

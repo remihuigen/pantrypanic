@@ -46,8 +46,7 @@ export function serializeItem(item: ItemRow) {
 	return {
 		id: item.id,
 		name: item.name,
-		defaultUnit: optional(item.defaultUnit),
-		category: optional(item.category)
+		defaultUnit: optional(item.defaultUnit)
 	}
 }
 

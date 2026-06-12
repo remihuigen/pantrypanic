@@ -111,12 +111,12 @@ describe('user management utilities', () => {
 			userSchema.parse({
 				name: ' Admin ',
 				email: 'ADMIN@EXAMPLE.COM',
-				password: 'secret'
+				password: 'secret12'
 			})
 		).toEqual({
 			name: 'Admin',
 			email: 'admin@example.com',
-			password: 'secret'
+			password: 'secret12'
 		})
 
 		expect(updateUserBodySchema.parse({ name: 'Updated' })).toEqual({ name: 'Updated' })

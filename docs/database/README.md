@@ -96,6 +96,8 @@ Low-level helpers live in `server/utils/`:
 - `normalizeItemName()` trims, lowercases, and collapses whitespace.
 - `findItemByNormalizedName()` fetches canonical items by normalized name.
 - `findOrCreateItem()` implements canonical item reuse.
+- Settings canonical-item deletion hard-deletes associated list, recipe-item, and meal-planner-day
+  item references before deleting the item row.
 - `seedInitialDomainData()` creates missing default list and meal-planner rows.
 - `getFirstUserIdForDomainSeed()` returns a seed audit user when one exists.
 

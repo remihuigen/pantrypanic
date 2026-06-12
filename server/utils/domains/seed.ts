@@ -1,6 +1,7 @@
 import { createDomainId } from '#server/utils/api-helpers'
 import { and, asc, eq } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
+import type { H3Event } from 'h3'
 
 export const mealPlannerDayNumbers = [1, 2, 3, 4, 5, 6, 7] as const
 
@@ -17,15 +18,17 @@ type AuditInput = {
  */
 export async function seedInitialDomainData(
 	auditUserId: number,
-	householdId?: string
+	householdId?: string,
+	event?: H3Event
 ): Promise<void> {
 	const resolvedHouseholdId = householdId ?? '019f0000-0000-7000-8000-000000000001'
+	const defaultListName = getDefaultListName(event)
 	const audit = {
 		userId: auditUserId,
 		now: Date.now()
 	} satisfies AuditInput
 
-	await ensureDefaultList(audit, resolvedHouseholdId)
+	await ensureDefaultList(audit, resolvedHouseholdId, defaultListName)
 	await ensureMealPlannerDays(audit, resolvedHouseholdId)
 }
 
@@ -44,9 +47,11 @@ export async function getFirstUserIdForDomainSeed(): Promise<number | undefined>
 	return user?.id
 }
 
-async function ensureDefaultList(audit: AuditInput, householdId: string): Promise<void> {
-	const defaultListName = useRuntimeConfig().pantry.defaultListName
-
+async function ensureDefaultList(
+	audit: AuditInput,
+	householdId: string,
+	defaultListName: string
+): Promise<void> {
 	const [existing] = await db
 		.select({ id: schema.lists.id })
 		.from(schema.lists)
@@ -70,6 +75,12 @@ async function ensureDefaultList(audit: AuditInput, householdId: string): Promis
 		createdByUserId: audit.userId,
 		updatedByUserId: audit.userId
 	})
+}
+
+function getDefaultListName(event?: H3Event) {
+	const config = useRuntimeConfig(event)
+
+	return config.pantry?.defaultListName || 'Boodschappen'
 }
 
 async function ensureMealPlannerDays(audit: AuditInput, householdId: string): Promise<void> {

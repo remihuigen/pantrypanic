@@ -1,12 +1,16 @@
 import { seedInitialDomainData } from '#server/utils/domains/seed'
 import { normalizeItemName } from '#server/utils/domains/items'
 import { optional, throwApiError } from '#server/utils/api-core'
-import { and, asc, desc, eq, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
 import { z } from 'zod'
 
 export const householdSwitchBodySchema = z.strictObject({
 	householdId: z.string().trim().min(1).max(200)
+})
+
+export const householdCreateBodySchema = z.strictObject({
+	name: z.string().trim().min(1).max(120)
 })
 
 export const householdSettingsBodySchema = z.strictObject({
@@ -32,16 +36,10 @@ export const itemListQuerySchema = z.strictObject({
 export const itemUpdateBodySchema = z
 	.strictObject({
 		name: z.string().trim().min(1).max(120).optional(),
-		defaultUnit: z.string().trim().max(40).nullable().optional(),
-		category: z.string().trim().max(120).nullable().optional(),
-		notes: z.string().trim().max(1000).nullable().optional()
+		defaultUnit: z.string().trim().max(40).nullable().optional()
 	})
 	.refine(
-		(value) =>
-			value.name !== undefined ||
-			value.defaultUnit !== undefined ||
-			value.category !== undefined ||
-			value.notes !== undefined,
+		(value) => value.name !== undefined || value.defaultUnit !== undefined,
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
 
@@ -161,7 +159,8 @@ export async function listAllItems(householdId: string, query: z.infer<typeof it
 	return {
 		items: rows.map((item) => ({
 			...serializeSettingsItem(item),
-			usageCount: usage.get(item.id) ?? 0
+			usageCount: usage.get(item.id)?.total ?? 0,
+			activeListItemUsageCount: usage.get(item.id)?.activeListItems ?? 0
 		}))
 	}
 }
@@ -203,8 +202,6 @@ export async function updateCanonicalItem(
 		.set({
 			...(input.name === undefined ? {} : { name: input.name, normalizedName }),
 			...(input.defaultUnit === undefined ? {} : { defaultUnit: input.defaultUnit }),
-			...(input.category === undefined ? {} : { category: input.category }),
-			...(input.notes === undefined ? {} : { notes: input.notes }),
 			updatedAt: Date.now(),
 			updatedByUserId: userId
 		})
@@ -254,19 +251,33 @@ export async function deleteCanonicalItem(householdId: string, itemId: string) {
 	await findItemOrThrow(householdId, itemId)
 	const usage = await countItemReferences(householdId, itemId)
 
-	if (usage > 0) {
-		throwApiError({
-			code: 'CONFLICT',
-			statusCode: 409,
-			message: 'Dit item wordt nog gebruikt. Voeg het eerst samen of verwijder de verwijzingen.'
-		})
-	}
+	await db
+		.delete(schema.listItems)
+		.where(and(eq(schema.listItems.householdId, householdId), eq(schema.listItems.itemId, itemId)))
+	await db
+		.delete(schema.recipeItems)
+		.where(
+			and(eq(schema.recipeItems.householdId, householdId), eq(schema.recipeItems.itemId, itemId))
+		)
+	await db
+		.delete(schema.mealPlannerDayItems)
+		.where(
+			and(
+				eq(schema.mealPlannerDayItems.householdId, householdId),
+				eq(schema.mealPlannerDayItems.itemId, itemId)
+			)
+		)
 
 	await db
 		.delete(schema.items)
 		.where(and(eq(schema.items.id, itemId), eq(schema.items.householdId, householdId)))
 
-	return { deletedItemId: itemId }
+	return {
+		deletedItemId: itemId,
+		deletedListItems: usage.listItems,
+		deletedRecipeItems: usage.recipeItems,
+		deletedMealPlannerDayItems: usage.mealPlannerDayItems
+	}
 }
 
 export async function clearHouseholdData(householdId: string, userId: number) {
@@ -366,8 +377,6 @@ function serializeSettingsItem(item: typeof schema.items.$inferSelect) {
 		name: item.name,
 		normalizedName: item.normalizedName,
 		defaultUnit: optional(item.defaultUnit),
-		category: optional(item.category),
-		notes: optional(item.notes),
 		updatedAt: item.updatedAt
 	}
 }
@@ -387,20 +396,42 @@ async function findItemOrThrow(householdId: string, itemId: string) {
 }
 
 async function getItemUsageCounts(householdId: string) {
-	const usage = new Map<string, number>()
+	const usage = new Map<string, { total: number; activeListItems: number }>()
+	const ensureUsage = (itemId: string) => {
+		const existing = usage.get(itemId)
+
+		if (existing) return existing
+
+		const created = { total: 0, activeListItems: 0 }
+		usage.set(itemId, created)
+		return created
+	}
 	const addRows = (rows: Array<{ itemId: string; count: number }>) => {
 		for (const row of rows) {
-			usage.set(row.itemId, (usage.get(row.itemId) ?? 0) + Number(row.count))
+			ensureUsage(row.itemId).total += Number(row.count)
 		}
 	}
 
-	addRows(
-		await db
-			.select({ itemId: schema.listItems.itemId, count: sql<number>`count(*)` })
-			.from(schema.listItems)
-			.where(eq(schema.listItems.householdId, householdId))
-			.groupBy(schema.listItems.itemId)
-	)
+	const listRows = await db
+		.select({
+			itemId: schema.listItems.itemId,
+			status: schema.listItems.status,
+			count: sql<number>`count(*)`
+		})
+		.from(schema.listItems)
+		.where(eq(schema.listItems.householdId, householdId))
+		.groupBy(schema.listItems.itemId, schema.listItems.status)
+
+	for (const row of listRows) {
+		const itemUsage = ensureUsage(row.itemId)
+		const count = Number(row.count)
+		itemUsage.total += count
+
+		if (row.status === 'checked' || row.status === 'unchecked') {
+			itemUsage.activeListItems += count
+		}
+	}
+
 	addRows(
 		await db
 			.select({ itemId: schema.recipeItems.itemId, count: sql<number>`count(*)` })
@@ -424,6 +455,16 @@ async function countItemReferences(householdId: string, itemId: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(schema.listItems)
 		.where(and(eq(schema.listItems.householdId, householdId), eq(schema.listItems.itemId, itemId)))
+	const [activeListItems] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(schema.listItems)
+		.where(
+			and(
+				eq(schema.listItems.householdId, householdId),
+				eq(schema.listItems.itemId, itemId),
+				inArray(schema.listItems.status, ['checked', 'unchecked'])
+			)
+		)
 	const [recipeItems] = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(schema.recipeItems)
@@ -440,7 +481,12 @@ async function countItemReferences(householdId: string, itemId: string) {
 			)
 		)
 
-	return Number(listItems?.count ?? 0) + Number(recipeItems?.count ?? 0) + Number(dayItems?.count ?? 0)
+	return {
+		listItems: Number(listItems?.count ?? 0),
+		activeListItems: Number(activeListItems?.count ?? 0),
+		recipeItems: Number(recipeItems?.count ?? 0),
+		mealPlannerDayItems: Number(dayItems?.count ?? 0)
+	}
 }
 
 function assertRow<T>(row: T | undefined): T {

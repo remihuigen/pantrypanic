@@ -21,14 +21,14 @@ const SWIPE_ACTION_DISTANCE = 40
 const MIN_DRAG_DISTANCE = 4
 
 const amountLabel = computed(() =>
-	[props.item.amount, props.item.unit]
-		.filter((value) => value !== undefined && String(value).trim().length > 0)
-		.join(' ')
+	props.item.amount
+		? [props.item.amount, props.item.unit?.toLowerCase()]
+				.filter((value) => value !== undefined && String(value).trim().length > 0)
+				.join(' ')
+		: ''
 )
 const swipeProgress = computed(() => Math.abs(swipeOffsetX.value) / SWIPE_ACTION_DISTANCE)
-const swipeColor = computed(() =>
-	props.item.status === 'checked' ? '59 130 246' : '34 197 94'
-)
+const swipeColor = computed(() => (props.item.status === 'checked' ? '59 130 246' : '34 197 94'))
 const cardStyle = computed(() => {
 	const easedProgress = 1 - Math.pow(1 - swipeProgress.value, 2)
 	const colorOpacity = swipeProgress.value > 0 ? 0.08 + easedProgress * 0.22 : 0
@@ -65,7 +65,9 @@ function clampSwipeOffset(movementX: number) {
 }
 
 function isDragHandleEvent(event: Event) {
-	return event.target instanceof Element && Boolean(event.target.closest('.item-card__drag-handle'))
+	return (
+		event.target instanceof Element && Boolean(event.target.closest('.item-card__drag-handle'))
+	)
 }
 
 function suppressNextClick() {

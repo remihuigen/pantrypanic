@@ -6,10 +6,18 @@ const settingsStore = useSettingsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
 const { getIcon } = useIcon()
+const createHouseholdValue = '__create_household__'
 
-const householdOptions = computed(() =>
-	settingsStore.households.map((household) => ({ label: household.name, value: household.id }))
-)
+const householdOptions = computed(() => [
+	...settingsStore.households.map((household) => ({
+		label: household.name,
+		value: household.id
+	})),
+	...(settingsStore.enableHouseholdCreation
+		? [{ label: '+ nieuw huishouden maken', value: createHouseholdValue }]
+		: [])
+])
+const showCreateHousehold = ref(false)
 
 const inviteLink = ref('')
 const resetLink = ref('')
@@ -27,6 +35,11 @@ function handleCopyReset() {
 }
 
 async function switchHousehold(householdId: string) {
+	if (householdId === createHouseholdValue) {
+		showCreateHousehold.value = true
+		return
+	}
+
 	try {
 		await settingsStore.switchHousehold(householdId)
 		toast.add({ title: 'Huishouden gewisseld.', color: 'success', icon: 'i-lucide-check' })
@@ -72,6 +85,16 @@ async function createResetLink(userId: number) {
 }
 
 async function removeMember(userId: number) {
+	if (isOnlyHouseholdOwner(userId)) {
+		await confirm({
+			title: 'Wijs eerst een nieuwe eigenaar aan',
+			description:
+				'Dit gezinslid is de enige eigenaar van het huishouden. Maak eerst iemand anders eigenaar.',
+			color: 'warning'
+		})
+		return
+	}
+
 	const ok = await confirm({
 		title: 'Gezinslid verwijderen?',
 		description: 'Deze gebruiker verliest toegang tot dit huishouden.',
@@ -106,6 +129,15 @@ async function assignOwner(userId: number) {
 }
 
 async function destroyCurrentHousehold() {
+	if (!settingsStore.enableMultiTenancy) {
+		await confirm({
+			title: 'Niet beschikbaar in single-household modus',
+			description: 'Het standaardhuishouden kan in deze modus niet worden verwijderd.',
+			color: 'warning'
+		})
+		return
+	}
+
 	const ok = await confirm({
 		title: 'Huishouden verwijderen?',
 		description:
@@ -131,6 +163,19 @@ function getErrorMessage(error: unknown, fallback: string) {
 	return error && typeof error === 'object' && 'message' in error
 		? String((error as { message?: string }).message || fallback)
 		: fallback
+}
+
+function imageUrl(pathname: string) {
+	return `/images/${pathname.replace(/^\/+/, '')}`
+}
+
+function isOnlyHouseholdOwner(userId: number) {
+	const member = settingsStore.members.find((entry) => entry.id === userId)
+
+	return (
+		member?.role === 'householdOwner' &&
+		settingsStore.members.filter((entry) => entry.role === 'householdOwner').length === 1
+	)
 }
 </script>
 
@@ -170,7 +215,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 				</UInput>
 			</UFormField>
 
-			<UFormField v-if="settingsStore.enableMultiTenancy" label="Huishouden">
+			<UFormField
+				v-if="settingsStore.enableMultiTenancy || settingsStore.enableHouseholdCreation"
+				label="Huishouden"
+			>
 				<USelect
 					:model-value="settingsStore.activeHouseholdId ?? undefined"
 					:items="householdOptions"
@@ -178,14 +226,25 @@ function getErrorMessage(error: unknown, fallback: string) {
 				/>
 			</UFormField>
 
-			<div class="divide-default divide-y">
+			<UButton
+				v-if="settingsStore.enableHouseholdCreation && !settingsStore.activeHouseholdId"
+				icon="i-lucide-plus"
+				color="neutral"
+				variant="outline"
+				class="w-fit"
+				@click="showCreateHousehold = true"
+			>
+				Nieuw huishouden maken
+			</UButton>
+
+			<div v-if="settingsStore.activeHouseholdId" class="divide-default divide-y">
 				<div v-for="member in settingsStore.members" :key="member.id" class="space-y-3">
 					<div class="flex items-center justify-between gap-3 py-3">
 						<div class="flex min-w-0 grow items-center justify-between gap-3">
 							<UUser
 								:avatar="{
 									src: member.avatarPathname
-										? `/images/${member.avatarPathname}`
+										? imageUrl(member.avatarPathname)
 										: undefined
 								}"
 								:name="member.name"
@@ -224,7 +283,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 							</div>
 						</Can>
 					</div>
-					<FormField
+					<UFormField
 						v-if="settingsStore.resetUrl"
 						label="Toegangslink"
 						description="Deel deze link met met het familielid dat je opnieuw toegang wilt geven"
@@ -244,11 +303,15 @@ function getErrorMessage(error: unknown, fallback: string) {
 								@click="handleCopyReset"
 							/>
 						</UInput>
-					</FormField>
+					</UFormField>
 				</div>
 			</div>
 
-			<Can :ability="destroyHousehold" :args="[settingsStore.currentMemberRole]">
+			<Can
+				v-if="settingsStore.activeHouseholdId && settingsStore.enableMultiTenancy"
+				:ability="destroyHousehold"
+				:args="[settingsStore.currentMemberRole]"
+			>
 				<UAlert
 					title="Huishouden verwijderen"
 					description="Alle gegevens van dit huishouden worden verwijderd."
@@ -265,5 +328,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 				/>
 			</Can>
 		</UPageCard>
+
+		<SettingsCreateHouseholdModal v-model:open="showCreateHousehold" />
 	</div>
 </template>

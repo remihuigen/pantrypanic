@@ -1,5 +1,6 @@
 import { defineApiHandler, getAuthenticatedUserId } from '#server/utils/api-core'
 import {
+	getHouseholdCreationEnabled,
 	getHouseholdContext,
 	getMultiTenancyEnabled,
 	listUserHouseholds
@@ -14,7 +15,8 @@ export default defineApiHandler(async (event) => {
 		return {
 			households,
 			activeHouseholdId: null,
-			enableMultiTenancy: isMultiTenancyEnabled
+			enableMultiTenancy: isMultiTenancyEnabled,
+			enableHouseholdCreation: getHouseholdCreationEnabled(event)
 		}
 	}
 
@@ -23,6 +25,7 @@ export default defineApiHandler(async (event) => {
 	return {
 		households,
 		activeHouseholdId: context.householdId,
-		enableMultiTenancy: context.isMultiTenancyEnabled
+		enableMultiTenancy: context.isMultiTenancyEnabled,
+		enableHouseholdCreation: getHouseholdCreationEnabled(event)
 	}
 })

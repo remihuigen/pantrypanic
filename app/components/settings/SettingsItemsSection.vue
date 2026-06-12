@@ -8,9 +8,7 @@ const editingId = ref<string | null>(null)
 const mergeTargets = ref<Record<string, string>>({})
 const draft = reactive({
 	name: '',
-	defaultUnit: '',
-	category: '',
-	notes: ''
+	defaultUnit: ''
 })
 
 watchDebounced(
@@ -25,16 +23,12 @@ function startEdit(item: (typeof settingsStore.items)[number]) {
 	editingId.value = item.id
 	draft.name = item.name
 	draft.defaultUnit = item.defaultUnit ?? ''
-	draft.category = item.category ?? ''
-	draft.notes = item.notes ?? ''
 }
 
 async function saveItem(itemId: string) {
 	await settingsStore.updateItem(itemId, {
 		name: draft.name,
-		defaultUnit: draft.defaultUnit || null,
-		category: draft.category || null,
-		notes: draft.notes || null
+		defaultUnit: draft.defaultUnit || null
 	})
 	editingId.value = null
 	toast.add({ title: 'Item opgeslagen.', color: 'success', icon: 'i-lucide-check' })
@@ -48,16 +42,20 @@ async function mergeItem(itemId: string) {
 	toast.add({ title: 'Items samengevoegd.', color: 'success', icon: 'i-lucide-check' })
 }
 
-async function deleteItem(itemId: string) {
-	const ok = await confirm({
-		title: 'Item verwijderen?',
-		description: 'Dit kan alleen als het item nergens meer wordt gebruikt.',
-		color: 'error'
-	})
+async function deleteItem(item: (typeof settingsStore.items)[number]) {
+	if (item.activeListItemUsageCount > 0) {
+		const ok = await confirm({
+			title: 'Item verwijderen?',
+			description:
+				'Dit item wordt nog gebruikt in één van je lijstjes. Weet je zeker dat je het wilt verwijderen?',
+			color: 'error'
+		})
 
-	if (!ok) return
+		if (!ok) return
+	}
 
-	await settingsStore.deleteItem(itemId)
+	await settingsStore.deleteItem(item.id)
+	toast.add({ title: 'Item verwijderd.', color: 'success', icon: 'i-lucide-check' })
 }
 </script>
 
@@ -86,9 +84,7 @@ async function deleteItem(itemId: string) {
 					<UInput v-model="draft.name" />
 					<FieldRow>
 						<UInput v-model="draft.defaultUnit" placeholder="Eenheid" />
-						<UInput v-model="draft.category" placeholder="Categorie" />
 					</FieldRow>
-					<UTextarea v-model="draft.notes" placeholder="Notities" />
 					<div class="flex gap-2">
 						<UButton icon="i-lucide-save" @click="saveItem(item.id)">Opslaan</UButton>
 						<UButton color="neutral" variant="ghost" @click="editingId = null"
@@ -113,7 +109,7 @@ async function deleteItem(itemId: string) {
 								icon="i-lucide-trash-2"
 								color="error"
 								variant="ghost"
-								@click="deleteItem(item.id)"
+								@click="deleteItem(item)"
 							/>
 						</div>
 					</div>

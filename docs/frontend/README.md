@@ -15,9 +15,11 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - `shared/utils/schemas/domain.ts`: shared Zod schemas for request contracts and frontend-consumed
   domain types.
 - `app/utils/api-client.ts`: unwraps API success/error envelopes and normalizes errors.
-- `app/composables/useStoreRefresh.ts`: interval-based polling with runtime-configured refresh
-  timing and a household-settings override loaded by the settings store.
-- `app/plugins/data-hydration.client.ts`: startup hydration refresh for persisted store caches.
+- `app/composables/useStoreRefresh.ts`: the single route-aware refresh scheduler plus the shared
+  interval primitive. Refresh timing comes from runtime config and the household-settings override
+  loaded by the settings store.
+- `app/plugins/data-hydration.client.ts`: starts the route-aware refresh scheduler after session and
+  household membership context are available.
 
 ## App Routes And Rendering
 
@@ -49,11 +51,16 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - Store state is normalized around id maps and id arrays.
 - Persisted fields are cache-like and exclude transient loading/error state.
 - Common user actions use optimistic updates with rollback/reconciliation.
-- Backend remains source of truth; polling reconciles collaborative changes.
+- Backend remains source of truth; polling reconciles collaborative changes through one global
+  scheduler that calls `orchestrateRefresh()` and only fetches the active route namespace.
+- Route pages are still responsible for fetching required data when the user enters the route.
+  Interval refresh is a background reconciliation path, not the initial page-load data source.
 - Settings is split into subroutes: general profile/theme/danger-zone controls, household
   settings/member links, canonical item maintenance, and usage stats.
 - Household-owner-only controls are rendered through Nuxt Authorization abilities; users with no
-  active household see Dutch guidance asking them to request a new household invite.
+  active household are handled globally in the app layout with Dutch guidance asking them to
+  request a new household invite, plus account deletion and household creation actions when
+  available.
 
 ## Error Feedback Pattern
 

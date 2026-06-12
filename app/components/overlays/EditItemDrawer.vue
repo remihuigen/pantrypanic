@@ -36,8 +36,8 @@ const submitLabel = computed(() => (editItemDrawer.mode.value === 'edit' ? 'Opsl
 const submitIcon = computed(() =>
 	editItemDrawer.mode.value === 'edit' ? 'i-lucide-save' : getIcon('plus')
 )
-const minimalSnapPoint = '350px'
-const expandedSnapPoint = '500px'
+const minimalSnapPoint = '380px'
+const expandedSnapPoint = '520px'
 const itemDrawerSnapPoints: Array<string | number> = [minimalSnapPoint, expandedSnapPoint]
 const itemDrawerActiveSnapPoint = ref<string | number | null>(null)
 const isOpeningToMinimal = ref(false)
@@ -49,7 +49,8 @@ const drawerUi = computed(() => ({
 		'edit-item-drawer-content',
 		isOpeningToMinimal.value ? 'edit-item-drawer-content--opening' : ''
 	],
-	overlay: 'edit-item-drawer-overlay'
+	overlay: 'edit-item-drawer-overlay',
+	footer: 'self-end'
 }))
 let resetViewFrame: number | undefined
 let openingAnimationTimeout: ReturnType<typeof setTimeout> | undefined

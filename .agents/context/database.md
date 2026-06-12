@@ -97,8 +97,9 @@ The database layer is currently exercised through authenticated API routes for:
 All domain data APIs must be scoped to the active household context. Household management actions
 are owner-gated with Nuxt Authorization abilities. Lists, recipes, and list items use status fields
 for soft deletion. Recipe items and meal-planner-day placeholder items are hard-deleted as volatile
-child/draft data. Destroying a household hard-deletes its domain data, settings, access links, and
-memberships, but leaves user accounts orphaned.
+child/draft data. Canonical item deletion from settings also hard-deletes associated list,
+recipe-item, and meal-planner-day item references. Destroying a household hard-deletes its domain
+data, settings, access links, and memberships, but leaves user accounts orphaned.
 
 ## Migration Rules
 

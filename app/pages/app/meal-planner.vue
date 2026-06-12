@@ -1,5 +1,11 @@
 <script lang="ts" setup>
 definePageMeta({ layout: 'app' })
+
+const mealPlannerStore = useMealPlannerStore()
+
+onMounted(() => {
+	void mealPlannerStore.fetchMealPlanner()
+})
 </script>
 
 <template>

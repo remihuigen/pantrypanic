@@ -1,26 +1,13 @@
-import * as refreshComposable from '~/composables/useStoreRefresh'
 import { useListsStore } from '~/stores/lists'
 import { useRecipesStore } from '~/stores/recipes'
 import * as apiClient from '~/utils/api-client'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type RefreshController = {
-	isRunning: boolean
-	isRefreshing: boolean
-	start: ReturnType<typeof vi.fn>
-	stop: ReturnType<typeof vi.fn>
-	refreshNow: ReturnType<typeof vi.fn>
-}
-
-let refreshControllers: RefreshController[] = []
-
 describe('useListsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
 		vi.restoreAllMocks()
-		refreshControllers = []
-		mockRefreshComposable()
 		vi.spyOn(apiClient, 'normalizeAppError').mockImplementation((error) => error as never)
 	})
 
@@ -692,7 +679,7 @@ describe('useListsStore', () => {
 		expect(store.listItemsById['li-1']?.name).toBe('Verplaatst')
 	})
 
-	it('opens and closes active lists with the active-list refresh controller', async () => {
+	it('opens and closes active lists without owning a refresh interval', async () => {
 		const store = useListsStore()
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
 			list: { ...createList({ id: 'list-1' }), items: [] }
@@ -702,35 +689,22 @@ describe('useListsStore', () => {
 		store.closeList()
 
 		expect(store.activeListId).toBeNull()
-		expect(refreshControllers[1]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[1]?.stop).toHaveBeenCalledTimes(1)
+		expect(apiClient.apiFetch).toHaveBeenCalledWith('/api/lists/list-1')
 	})
 
-	it('starts and stops overview refresh with the overview refresh controller', async () => {
+	it('refreshes overview data through direct store actions', async () => {
 		const store = useListsStore()
+		vi.spyOn(apiClient, 'apiFetch')
+			.mockResolvedValueOnce({ lists: [] })
+			.mockResolvedValueOnce({ items: [] })
 
 		await store.startOverviewRefresh()
 		store.stopOverviewRefresh()
 
-		expect(refreshControllers[0]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[0]?.stop).toHaveBeenCalledTimes(1)
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/lists?status=active')
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/items/suggestions')
 	})
 })
-
-function mockRefreshComposable() {
-	vi.spyOn(refreshComposable, 'useStoreRefresh').mockImplementation(() => {
-		const controller: RefreshController = {
-			isRunning: false,
-			isRefreshing: false,
-			start: vi.fn(async () => undefined),
-			stop: vi.fn(),
-			refreshNow: vi.fn(async () => undefined)
-		}
-		refreshControllers.push(controller)
-
-		return controller as never
-	})
-}
 
 function createList(overrides: Partial<ReturnType<typeof createListShape>> = {}) {
 	return {

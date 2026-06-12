@@ -260,8 +260,7 @@ export const shoppingListSchema = z.strictObject({
 export const canonicalItemSchema = z.strictObject({
 	id: domainIdSchema,
 	name: z.string(),
-	defaultUnit: z.string().optional(),
-	category: z.string().optional()
+	defaultUnit: z.string().optional()
 })
 
 export const itemSuggestionSchema = canonicalItemSchema.extend({
