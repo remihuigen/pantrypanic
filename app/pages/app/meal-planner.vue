@@ -3,7 +3,12 @@ definePageMeta({ layout: 'app' })
 </script>
 
 <template>
-	<div>
-		<h1>Meal Plannner</h1>
-	</div>
+	<PageShell>
+		<template #header>
+			<PageHeader> Weekplanner </PageHeader>
+		</template>
+		<div class="grid h-[80vh] place-items-center">
+			<AppIcon class="w-16" />
+		</div>
+	</PageShell>
 </template>
