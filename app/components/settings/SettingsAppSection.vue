@@ -10,7 +10,6 @@ const props = withDefaults(
 	}
 )
 const settingsStore = useSettingsStore()
-const toast = useToast()
 
 const refreshIntervalSeconds = ref(5)
 
