@@ -1,17 +1,30 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'auth' })
+definePageMeta({ layout: 'base' })
 
 const route = useRoute()
 const toast = useToast()
 const { fetch } = useUserSession()
 const loading = ref(true)
 
+useSeoMeta({
+	title: 'Krijg toegang tot Pantry Panic',
+	ogTitle: 'Krijg toegang tot Pantry Panic',
+	description:
+		'Krijg toegang tot je Pantry Panic account en beheer je boodschappenlijsten, recepten en meer.',
+	ogDescription:
+		'Krijg toegang tot je Pantry Panic account en beheer je boodschappenlijsten, recepten en meer.'
+})
+
 onMounted(async () => {
 	const token = typeof route.query.token === 'string' ? route.query.token : ''
 
 	if (!token) {
 		loading.value = false
-		toast.add({ title: 'Toegangslink ontbreekt.', color: 'error', icon: 'i-lucide-circle-alert' })
+		toast.add({
+			title: 'Toegangslink ontbreekt.',
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
 		return
 	}
 
@@ -42,7 +55,11 @@ onMounted(async () => {
 		<UPageCard class="mx-auto w-full max-w-md text-center">
 			<AppLogo class="mx-auto h-12 w-auto shrink-0" />
 			<p class="text-muted mt-4 text-sm">
-				{{ loading ? 'Toegang wordt voorbereid...' : 'Deze toegangslink kan niet worden gebruikt.' }}
+				{{
+					loading
+						? 'Toegang wordt voorbereid...'
+						: 'Deze toegangslink kan niet worden gebruikt.'
+				}}
 			</p>
 		</UPageCard>
 	</UContainer>

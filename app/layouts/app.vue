@@ -17,12 +17,7 @@ onMounted(async () => {
 		<EditListDrawer />
 		<AppNavigation class="z-10" />
 		<UContainer class="flex min-h-screen flex-col">
-			<AppHouseholdGate
-				v-if="resolvedHouseholdState && settingsStore.hasNoHousehold"
-			/>
-			<div v-else-if="!resolvedHouseholdState" class="py-8">
-				<USkeleton class="h-40 w-full" />
-			</div>
+			<AppHouseholdGate v-if="resolvedHouseholdState && settingsStore.hasNoHousehold" />
 			<slot v-else />
 		</UContainer>
 		<Footer />

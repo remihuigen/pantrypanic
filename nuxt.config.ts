@@ -28,11 +28,15 @@ export default defineNuxtConfig({
 		'pinia-plugin-persistedstate/nuxt',
 		'@vueuse/nuxt',
 		'@vite-pwa/nuxt',
-		'nuxt-authorization'
+		'nuxt-authorization',
+		'motion-v/nuxt'
 	],
 
 	$production: {
 		nitro: {
+			prerender: {
+				routes: ['/']
+			},
 			preset: 'cloudflare_module',
 			cloudflare: {
 				wrangler: {

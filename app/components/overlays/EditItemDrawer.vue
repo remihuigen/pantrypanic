@@ -5,7 +5,7 @@ import type { z } from 'zod'
 
 import { createOccurrenceBodySchema, domainIdSchema } from '#shared/utils/schemas/domain'
 import { useEditItemDrawer, useEditItemDrawerForm } from '~/composables/useEditItemDrawer'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 const editItemDrawer = useEditItemDrawer()
 const editItemDrawerFormId = 'edit-item-drawer-form'
@@ -44,13 +44,13 @@ const isOpeningToMinimal = ref(false)
 const isItemDrawerExpanded = computed(() => itemDrawerActiveSnapPoint.value === expandedSnapPoint)
 const areItemOptionsVisible = ref(false)
 const isMoreOptionsButtonVisible = ref(true)
+const keyboardOffsetBottom = ref(0)
 const drawerUi = computed(() => ({
 	content: [
 		'edit-item-drawer-content',
 		isOpeningToMinimal.value ? 'edit-item-drawer-content--opening' : ''
 	],
-	overlay: 'edit-item-drawer-overlay',
-	footer: 'self-end'
+	overlay: 'edit-item-drawer-overlay'
 }))
 let resetViewFrame: number | undefined
 let openingAnimationTimeout: ReturnType<typeof setTimeout> | undefined
@@ -152,6 +152,62 @@ function handleDrawerAnimationEnd(isOpen: boolean) {
 	stopOpeningAnimation()
 	resetItemOptionsView()
 	itemDrawerActiveSnapPoint.value = null
+	resetKeyboardOffset()
+}
+
+function updateKeyboardOffset() {
+	if (!import.meta.client || !isTextInputFocused()) {
+		setKeyboardOffset(0)
+		return
+	}
+
+	const visualViewport = window.visualViewport
+
+	if (!visualViewport) {
+		setKeyboardOffset(0)
+		return
+	}
+
+	setKeyboardOffset(
+		Math.max(
+			0,
+			Math.round(window.innerHeight - visualViewport.height - visualViewport.offsetTop)
+		)
+	)
+}
+
+function setKeyboardOffset(offset: number) {
+	keyboardOffsetBottom.value = offset
+
+	if (!import.meta.client) {
+		return
+	}
+
+	document.documentElement.style.setProperty('--edit-item-drawer-keyboard-offset', `${offset}px`)
+}
+
+function resetKeyboardOffset() {
+	keyboardOffsetBottom.value = 0
+
+	if (!import.meta.client) {
+		return
+	}
+
+	document.documentElement.style.removeProperty('--edit-item-drawer-keyboard-offset')
+}
+
+function isTextInputFocused() {
+	if (!import.meta.client) {
+		return false
+	}
+
+	const activeElement = document.activeElement
+
+	return (
+		activeElement instanceof HTMLInputElement ||
+		activeElement instanceof HTMLTextAreaElement ||
+		(activeElement instanceof HTMLElement && activeElement.isContentEditable)
+	)
 }
 
 const exampleItems = [
@@ -211,6 +267,39 @@ watch(
 
 watch(isItemDrawerExpanded, (isExpanded) => {
 	syncItemOptionsView(isExpanded)
+})
+
+watch(
+	() => editItemDrawer.isOpen.value,
+	(isOpen, _wasOpen, onCleanup) => {
+		if (!import.meta.client || !isOpen) {
+			resetKeyboardOffset()
+			return
+		}
+
+		const visualViewport = window.visualViewport
+		const updateOffset = () => updateKeyboardOffset()
+
+		updateKeyboardOffset()
+		window.addEventListener('focusin', updateOffset)
+		window.addEventListener('focusout', updateOffset)
+		window.addEventListener('resize', updateOffset)
+		visualViewport?.addEventListener('resize', updateOffset)
+		visualViewport?.addEventListener('scroll', updateOffset)
+
+		onCleanup(() => {
+			window.removeEventListener('focusin', updateOffset)
+			window.removeEventListener('focusout', updateOffset)
+			window.removeEventListener('resize', updateOffset)
+			visualViewport?.removeEventListener('resize', updateOffset)
+			visualViewport?.removeEventListener('scroll', updateOffset)
+			resetKeyboardOffset()
+		})
+	}
+)
+
+onBeforeUnmount(() => {
+	resetKeyboardOffset()
 })
 </script>
 
@@ -437,6 +526,10 @@ watch(isItemDrawerExpanded, (isExpanded) => {
 :global(.edit-item-drawer-overlay[data-state='closed']) {
 	opacity: 0 !important;
 	transition: opacity 250ms ease-in !important;
+}
+
+:global(.edit-item-drawer-content[data-vaul-drawer-direction='bottom']) {
+	bottom: var(--edit-item-drawer-keyboard-offset, 0px);
 }
 
 @keyframes edit-item-drawer-slide-to-minimal {

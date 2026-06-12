@@ -657,6 +657,19 @@ describe('household utilities', () => {
 		expect(db.delete).not.toHaveBeenCalled()
 	})
 
+	it('prevents deleting the only single-household account before membership has been hydrated', async () => {
+		vi.mocked(db.select)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+
+		await expect(deleteAccount({} as never, 1)).rejects.toMatchObject({
+			statusCode: 409,
+			message:
+				'Je kunt je account niet verwijderen omdat dit de laatste toegang tot de app zou verwijderen.'
+		})
+		expect(db.delete).not.toHaveBeenCalled()
+	})
+
 	it('creates household settings when missing and returns existing settings when present', async () => {
 		let settingsValues: unknown
 		vi.mocked(db.select)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { clearHouseholdAppData } from '#shared/utils/abilities'
+import { clearHouseholdAppData, destroyHousehold } from '#shared/utils/abilities'
 
 const settingsStore = useSettingsStore()
 const confirm = useConfirmDialog()
@@ -134,6 +134,37 @@ function getErrorMessage(error: unknown, fallback: string) {
 		? String((error as { message?: string }).message || fallback)
 		: fallback
 }
+
+async function destroyCurrentHousehold() {
+	if (!settingsStore.enableMultiTenancy) {
+		await confirm({
+			title: 'Niet beschikbaar in single-household modus',
+			description: 'Het standaardhuishouden kan in deze modus niet worden verwijderd.',
+			color: 'warning'
+		})
+		return
+	}
+
+	const ok = await confirm({
+		title: 'Huishouden verwijderen?',
+		description:
+			'Alle lijsten, items, recepten, plannerdata en lidmaatschappen worden verwijderd. Gebruikersaccounts blijven bestaan.',
+		color: 'error'
+	})
+
+	if (!ok) return
+
+	try {
+		await settingsStore.destroyHousehold()
+		toast.add({ title: 'Huishouden verwijderd.', color: 'success', icon: 'i-lucide-check' })
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Huishouden kon niet worden verwijderd.'),
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
+	}
+}
 </script>
 
 <template>
@@ -188,6 +219,27 @@ function getErrorMessage(error: unknown, fallback: string) {
 				}
 			]"
 		/>
+
+		<Can
+			v-if="settingsStore.activeHouseholdId && settingsStore.enableMultiTenancy"
+			:ability="destroyHousehold"
+			:args="[settingsStore.currentMemberRole]"
+		>
+			<UAlert
+				title="Huishouden verwijderen"
+				description="Alle gegevens van dit huishouden worden verwijderd."
+				variant="subtle"
+				color="error"
+				:actions="[
+					{
+						label: 'Huishouden verwijderen',
+						icon: getIcon('trash'),
+						onClick: destroyCurrentHousehold,
+						color: 'error'
+					}
+				]"
+			/>
+		</Can>
 
 		<UAlert
 			variant="subtle"

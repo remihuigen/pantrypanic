@@ -30,6 +30,7 @@ catalog:
   eslint-config-prettier: 10.1.8
   eslint-plugin-jsdoc: 62.8.1
   husky: 9.1.7
+  motion-v: 2.3.0
   nuxt: 4.4.6
   nuxt-auth-utils: 0.5.29
   nuxt-authorization: 0.3.5
@@ -38,6 +39,7 @@ catalog:
   prettier: 3.8.1
   prettier-plugin-mdc: 0.2.1
   prettier-plugin-tailwindcss: 0.7.2
+  shaders: 2.5.130
   sortablejs: 1.15.7
   tailwindcss: 4.3.0
   typescript: 6.0.3

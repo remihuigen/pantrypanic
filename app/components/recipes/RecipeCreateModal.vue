@@ -1,0 +1,226 @@
+<script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+import type { CreateRecipeInput, UpdateRecipeInput } from '#shared/utils/schemas/domain'
+
+import { createRecipeBodySchema } from '#shared/utils/schemas/domain'
+import { z } from 'zod'
+
+type RecipeFormState = Omit<CreateRecipeInput, 'items'> & {
+	items: []
+}
+
+const props = defineProps<{
+	recipeId?: string
+}>()
+
+const isOpen = defineModel<boolean>('open', { default: false })
+
+const emit = defineEmits<{
+	created: [recipeId: string]
+	updated: [recipeId: string]
+}>()
+
+const recipesStore = useRecipesStore()
+const toast = useToast()
+const recipeFormSchema = createRecipeBodySchema.extend({
+	sourceUrl: z.union([z.literal(''), z.url({ error: 'Bron moet een geldige URL zijn.' })]).optional()
+})
+type RecipeFormData = z.output<typeof recipeFormSchema>
+const state = reactive<RecipeFormState>({
+	name: '',
+	description: undefined,
+	servings: undefined,
+	sourceUrl: undefined,
+	notes: undefined,
+	items: []
+})
+
+const isEditing = computed(() => Boolean(props.recipeId))
+const modalTitle = computed(() => (isEditing.value ? 'Recept wijzigen' : 'Nieuw recept'))
+const modalDescription = computed(() =>
+	isEditing.value ? 'Werk de receptinstellingen bij.' : 'Maak een recept aan.'
+)
+const submitLabel = computed(() => (isEditing.value ? 'Opslaan' : 'Aanmaken'))
+const submitIcon = computed(() => (isEditing.value ? 'i-lucide-save' : 'i-lucide-plus'))
+const canSubmit = computed(() => state.name.trim().length > 0 && !recipesStore.isSaving)
+
+watch(
+	() => [isOpen.value, props.recipeId] as const,
+	([open]) => {
+		if (!open) {
+			return
+		}
+
+		syncState()
+	},
+	{ immediate: true }
+)
+
+async function submitRecipe(event: FormSubmitEvent<RecipeFormData>) {
+	try {
+		if (props.recipeId) {
+			await updateRecipe(props.recipeId, event.data)
+			isOpen.value = false
+			emit('updated', props.recipeId)
+			return
+		}
+
+		const recipe = await createRecipe(event.data)
+
+		resetState()
+		isOpen.value = false
+		emit('created', recipe.id)
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(
+				error,
+				isEditing.value
+					? 'Recept kon niet worden bijgewerkt.'
+					: 'Recept kon niet worden aangemaakt.'
+			),
+			color: 'error',
+			duration: 8000,
+			icon: 'i-lucide-circle-alert'
+		})
+	}
+}
+
+async function createRecipe(data: RecipeFormData) {
+	return await recipesStore.createRecipe({
+		name: data.name.trim(),
+		description: normalizeOptionalText(data.description),
+		servings: data.servings,
+		sourceUrl: normalizeOptionalText(data.sourceUrl),
+		notes: normalizeOptionalText(data.notes),
+		items: []
+	})
+}
+
+async function updateRecipe(recipeId: string, data: RecipeFormData) {
+	const input: UpdateRecipeInput = {
+		name: data.name.trim(),
+		description: normalizeNullableText(data.description),
+		servings: data.servings ?? null,
+		sourceUrl: normalizeNullableText(data.sourceUrl),
+		notes: normalizeNullableText(data.notes)
+	}
+
+	await recipesStore.updateRecipe(recipeId, input)
+	await recipesStore.fetchRecipe(recipeId).catch(() => undefined)
+}
+
+function syncState() {
+	if (!props.recipeId) {
+		resetState()
+		return
+	}
+
+	const recipe = recipesStore.recipesById[props.recipeId]
+
+	Object.assign(state, {
+		name: recipe?.name ?? '',
+		description: recipe?.description,
+		servings: recipe?.servings,
+		sourceUrl: recipe?.sourceUrl,
+		notes: recipe?.notes,
+		items: []
+	})
+}
+
+function resetState() {
+	Object.assign(state, {
+		name: '',
+		description: undefined,
+		servings: undefined,
+		sourceUrl: undefined,
+		notes: undefined,
+		items: []
+	})
+}
+
+function normalizeOptionalText(value: string | undefined) {
+	const normalized = value?.trim()
+
+	return normalized ? normalized : undefined
+}
+
+function normalizeNullableText(value: string | undefined) {
+	const normalized = value?.trim()
+
+	return normalized ? normalized : null
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+	if (error && typeof error === 'object' && 'message' in error) {
+		const message = (error as { message?: unknown }).message
+
+		if (typeof message === 'string' && message.length > 0) {
+			return message
+		}
+	}
+
+	if (error instanceof Error && error.message) {
+		return error.message
+	}
+
+	return fallback
+}
+</script>
+
+<template>
+	<UModal v-model:open="isOpen" :title="modalTitle" :description="modalDescription">
+		<template #body>
+			<UForm
+				:schema="recipeFormSchema"
+				:state="state"
+				class="grid gap-4"
+				@submit="submitRecipe"
+			>
+				<UFormField label="Naam" name="name" required>
+					<UInput v-model="state.name" placeholder="Pasta pesto" autofocus />
+				</UFormField>
+				<UFormField label="Beschrijving" name="description">
+					<UTextarea
+						v-model="state.description"
+						placeholder="Korte notitie voor de receptenlijst"
+						:rows="3"
+					/>
+				</UFormField>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-[120px_1fr]">
+					<UFormField label="Porties" name="servings">
+						<UInputNumber v-model="state.servings" :min="1" />
+					</UFormField>
+					<UFormField label="Bron" name="sourceUrl">
+						<UInput
+							v-model="state.sourceUrl"
+							type="url"
+							placeholder="https://..."
+							icon="i-lucide-link"
+						/>
+					</UFormField>
+				</div>
+				<UFormField label="Notities" name="notes">
+					<UTextarea
+						v-model="state.notes"
+						placeholder="Bereiding, variaties of geheugensteuntjes"
+						:rows="3"
+					/>
+				</UFormField>
+				<div class="flex justify-end gap-2">
+					<UButton color="neutral" variant="soft" @click="isOpen = false">
+						Annuleren
+					</UButton>
+					<UButton
+						type="submit"
+						color="primary"
+						:icon="submitIcon"
+						:loading="recipesStore.isSaving"
+						:disabled="!canSubmit"
+					>
+						{{ submitLabel }}
+					</UButton>
+				</div>
+			</UForm>
+		</template>
+	</UModal>
+</template>

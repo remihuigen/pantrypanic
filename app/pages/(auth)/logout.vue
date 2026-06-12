@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-definePageMeta({ layout: 'auth' })
+definePageMeta({ layout: 'base' })
 const { clear } = useUserSession()
 
 onMounted(async () => {

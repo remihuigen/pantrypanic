@@ -28,7 +28,7 @@ const totals = computed(() => settingsStore.stats?.totals)
 					<p class="text-lg font-semibold">{{ entry[1] }}</p>
 				</div>
 			</div>
-			<div class="mt-4 space-y-2">
+			<div v-if="settingsStore.stats?.mostUsedItems?.length" class="mt-4 space-y-2">
 				<h3 class="text-sm font-bold">Meest gebruikte items</h3>
 				<div
 					v-for="item in settingsStore.stats?.mostUsedItems ?? []"

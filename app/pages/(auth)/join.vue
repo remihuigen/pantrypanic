@@ -3,7 +3,16 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 
 import { z } from 'zod'
 
-definePageMeta({ layout: 'auth' })
+definePageMeta({ layout: 'base' })
+
+useSeoMeta({
+	title: 'Neem deel aan mijn huishouden op Pantry Panic',
+	ogTitle: 'Neem deel aan mijn huishouden op Pantry Panic',
+	description:
+		'Sluit je aan bij mijn huishouden op Pantry Panic en deel boodschappenlijsten, recepten en meer.',
+	ogDescription:
+		'Sluit je aan bij mijn huishouden op Pantry Panic en deel boodschappenlijsten, recepten en meer.'
+})
 
 const schema = z.strictObject({
 	name: z.string().min(1, 'Naam is verplicht.'),
@@ -27,7 +36,11 @@ async function submit(event: FormSubmitEvent<Schema>) {
 	const token = typeof route.query.token === 'string' ? route.query.token : ''
 
 	if (!token) {
-		toast.add({ title: 'Uitnodigingslink ontbreekt.', color: 'error', icon: 'i-lucide-circle-alert' })
+		toast.add({
+			title: 'Uitnodigingslink ontbreekt.',
+			color: 'error',
+			icon: 'i-lucide-circle-alert'
+		})
 		return
 	}
 
