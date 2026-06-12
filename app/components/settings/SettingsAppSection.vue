@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { manageHousehold } from '#shared/utils/abilities'
-
 const props = withDefaults(
 	defineProps<{
 		showTheme?: boolean
@@ -23,13 +21,6 @@ watch(
 	},
 	{ immediate: true }
 )
-
-async function saveSettings() {
-	await settingsStore.updateSettings({
-		refreshIntervalMs: refreshIntervalSeconds.value * 1000
-	})
-	toast.add({ title: 'Instellingen opgeslagen.', color: 'success', icon: 'i-lucide-check' })
-}
 </script>
 
 <template>
