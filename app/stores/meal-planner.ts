@@ -7,7 +7,6 @@ import type {
 	UpdateOccurrenceInput
 } from '~~/shared/utils/schemas/domain'
 
-import { useStoreRefresh } from '~/composables/useStoreRefresh'
 import { apiFetch, normalizeAppError } from '~/utils/api-client'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -38,13 +37,6 @@ export const useMealPlannerStore = defineStore(
 				.map((dayId) => mealPlannerDaysById.value[dayId])
 				.filter((day): day is MealPlannerDay => Boolean(day))
 		)
-
-		const plannerRefresh = useStoreRefresh({
-			immediate: false,
-			refresh: async () => {
-				await fetchMealPlanner()
-			}
-		})
 
 		function setStoreError(err: unknown) {
 			const appError = normalizeAppError(err)
@@ -515,11 +507,11 @@ export const useMealPlannerStore = defineStore(
 		}
 
 		async function startRefresh() {
-			await plannerRefresh.start()
+			await fetchMealPlanner()
 		}
 
 		function stopRefresh() {
-			plannerRefresh.stop()
+			// Refresh scheduling is centralized in useRefreshScheduler.
 		}
 
 		function removeDayItem(dayId: string, dayItemId: string) {
@@ -549,7 +541,7 @@ export const useMealPlannerStore = defineStore(
 			clearMealPlanner,
 			startRefresh,
 			stopRefresh,
-			refreshNow: plannerRefresh.refreshNow
+			refreshNow: fetchMealPlanner
 		}
 	},
 	{

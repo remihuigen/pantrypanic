@@ -54,6 +54,7 @@
 		"husky": "catalog:",
 		"nuxt": "catalog:",
 		"nuxt-auth-utils": "catalog:",
+		"nuxt-authorization": "catalog:",
 		"ofetch": "catalog:",
 		"pinia-plugin-persistedstate": "catalog:",
 		"prettier": "catalog:",

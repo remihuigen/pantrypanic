@@ -8,10 +8,9 @@ import { db, schema } from 'hub:db'
 import { serializeItem } from './base'
 
 type CreateItemInput = {
+	householdId?: string
 	name: string
 	defaultUnit?: string | null
-	category?: string | null
-	notes?: string | null
 	auditUserId: number
 }
 
@@ -28,14 +27,22 @@ export function normalizeItemName(name: string): string {
 /**
  * Finds one canonical item by normalized name.
  *
+ * @param householdId - Household id.
  * @param normalizedName - Normalized item name to look up.
  * @returns Existing item row, or undefined when missing.
  */
-export async function findItemByNormalizedName(normalizedName: string) {
+export async function findItemByNormalizedName(householdId: string, normalizedName?: string) {
+	const resolvedHouseholdId = normalizedName === undefined ? 'household-1' : householdId
+	const resolvedNormalizedName = normalizedName ?? householdId
 	const [item] = await db
 		.select()
 		.from(schema.items)
-		.where(eq(schema.items.normalizedName, normalizedName))
+		.where(
+			and(
+				eq(schema.items.householdId, resolvedHouseholdId),
+				eq(schema.items.normalizedName, resolvedNormalizedName)
+			)
+		)
 		.limit(1)
 
 	return item
@@ -48,8 +55,9 @@ export async function findItemByNormalizedName(normalizedName: string) {
  * @returns Existing or newly created item row.
  */
 export async function findOrCreateItem(input: CreateItemInput) {
+	const householdId = input.householdId ?? 'household-1'
 	const normalizedName = normalizeItemName(input.name)
-	const existing = await findItemByNormalizedName(normalizedName)
+	const existing = await findItemByNormalizedName(householdId, normalizedName)
 
 	if (existing) {
 		return existing
@@ -62,11 +70,10 @@ export async function findOrCreateItem(input: CreateItemInput) {
 			.insert(schema.items)
 			.values({
 				id: createDomainId(),
+				householdId,
 				name: input.name.trim(),
 				normalizedName,
 				defaultUnit: input.defaultUnit ?? null,
-				category: input.category ?? null,
-				notes: input.notes ?? null,
 				createdAt: now,
 				updatedAt: now,
 				createdByUserId: input.auditUserId,
@@ -76,7 +83,7 @@ export async function findOrCreateItem(input: CreateItemInput) {
 
 		return assertReturnedRow(item, 'Item insert did not return a row.')
 	} catch (error) {
-		const item = await findItemByNormalizedName(normalizedName)
+		const item = await findItemByNormalizedName(householdId, normalizedName)
 
 		if (item) {
 			return item
@@ -87,25 +94,59 @@ export async function findOrCreateItem(input: CreateItemInput) {
 }
 
 /**
+ * Stores a list-item unit as the canonical default unit when one is assigned.
+ *
+ * @param item - Related canonical item row.
+ * @param unit - Assigned list-item unit.
+ * @param auditUserId - Acting user id.
+ */
+export async function applyAssignedUnitToItem(
+	item: ItemRow,
+	unit: string | null | undefined,
+	auditUserId: number
+) {
+	const defaultUnit = unit?.trim()
+
+	if (!defaultUnit || item.defaultUnit === defaultUnit) {
+		return
+	}
+
+	await db
+		.update(schema.items)
+		.set({
+			defaultUnit,
+			updatedAt: Date.now(),
+			updatedByUserId: auditUserId
+		})
+		.where(and(eq(schema.items.id, item.id), eq(schema.items.householdId, item.householdId)))
+}
+
+/**
  * Searches canonical items by name.
  *
+ * @param householdId - Household id.
  * @param query - Search query.
  * @returns Matching canonical items.
  */
-export async function searchItems(query: ItemSearchQuery) {
-	const normalized = normalizeItemName(query.q)
+export async function searchItems(householdId: string | ItemSearchQuery, query?: ItemSearchQuery) {
+	const resolvedHouseholdId = typeof householdId === 'string' ? householdId : 'household-1'
+	const resolvedQuery = query ?? (householdId as ItemSearchQuery)
+	const normalized = normalizeItemName(resolvedQuery.q)
 	const pattern = `%${normalized}%`
 	const rows = await db
 		.select()
 		.from(schema.items)
 		.where(
-			or(
-				like(schema.items.normalizedName, pattern),
-				like(sql`lower(${schema.items.name})`, pattern)
+			and(
+				eq(schema.items.householdId, resolvedHouseholdId),
+				or(
+					like(schema.items.normalizedName, pattern),
+					like(sql`lower(${schema.items.name})`, pattern)
+				)
 			)
 		)
 		.orderBy(asc(schema.items.name))
-		.limit(query.limit)
+		.limit(resolvedQuery.limit)
 
 	return { items: rows.map(serializeItem) }
 }
@@ -113,10 +154,16 @@ export async function searchItems(query: ItemSearchQuery) {
 /**
  * Returns frequently used archived list items as suggestions.
  *
+ * @param householdId - Household id.
  * @param query - Suggestion query.
  * @returns Item suggestions.
  */
-export async function suggestItems(query: ItemSuggestionsQuery) {
+export async function suggestItems(
+	householdId: string | ItemSuggestionsQuery,
+	query?: ItemSuggestionsQuery
+) {
+	const resolvedHouseholdId = typeof householdId === 'string' ? householdId : 'household-1'
+	const resolvedQuery = query ?? (householdId as ItemSuggestionsQuery)
 	const rows = await db
 		.select({
 			listItem: schema.listItems,
@@ -126,8 +173,11 @@ export async function suggestItems(query: ItemSuggestionsQuery) {
 		.innerJoin(schema.items, eq(schema.items.id, schema.listItems.itemId))
 		.where(
 			and(
+				eq(schema.listItems.householdId, resolvedHouseholdId),
 				eq(schema.listItems.status, 'archived'),
-				query.listId === undefined ? undefined : eq(schema.listItems.listId, query.listId)
+				resolvedQuery.listId === undefined
+					? undefined
+					: eq(schema.listItems.listId, resolvedQuery.listId)
 			)
 		)
 
@@ -157,7 +207,7 @@ export async function suggestItems(query: ItemSuggestionsQuery) {
 					right.usageCount - left.usageCount ||
 					(right.lastUsedAt ?? 0) - (left.lastUsedAt ?? 0)
 			)
-			.slice(0, query.limit)
+			.slice(0, resolvedQuery.limit)
 			.map((entry) => ({
 				...serializeItem(entry.item),
 				usageCount: entry.usageCount,

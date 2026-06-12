@@ -7,6 +7,8 @@ export default defineAppConfig({
 		},
 		formField: {
 			slots: {
+				label: 'font-bold',
+				description: 'mb-2',
 				root: 'grid'
 			}
 		},
@@ -33,6 +35,16 @@ export default defineAppConfig({
 		select: {
 			slots: {
 				base: 'w-full'
+			}
+		},
+		inputNumber: {
+			slots: {
+				root: 'w-full'
+			}
+		},
+		alert: {
+			slots: {
+				title: 'font-bold'
 			}
 		}
 	}

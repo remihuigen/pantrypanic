@@ -46,8 +46,7 @@ export function serializeItem(item: ItemRow) {
 	return {
 		id: item.id,
 		name: item.name,
-		defaultUnit: optional(item.defaultUnit),
-		category: optional(item.category)
+		defaultUnit: optional(item.defaultUnit)
 	}
 }
 
@@ -179,13 +178,20 @@ export function auditFields(audit: Audit) {
  * Loads a non-deleted list or throws 404-style API error.
  *
  * @param listId - List id.
+ * @param householdId - Active household id.
  * @returns Existing list row.
  */
-export async function findListOrThrow(listId: string) {
+export async function findListOrThrow(listId: string, householdId: string) {
 	const [list] = await db
 		.select()
 		.from(schema.lists)
-		.where(and(eq(schema.lists.id, listId), ne(schema.lists.status, 'deleted')))
+		.where(
+			and(
+				eq(schema.lists.id, listId),
+				eq(schema.lists.householdId, householdId),
+				ne(schema.lists.status, 'deleted')
+			)
+		)
 		.limit(1)
 
 	return assertFound(list)
@@ -195,13 +201,20 @@ export async function findListOrThrow(listId: string) {
  * Loads a non-deleted list item or throws 404-style API error.
  *
  * @param listItemId - List item id.
+ * @param householdId - Active household id.
  * @returns Existing list-item row.
  */
-export async function findListItemOrThrow(listItemId: string) {
+export async function findListItemOrThrow(listItemId: string, householdId: string) {
 	const [listItem] = await db
 		.select()
 		.from(schema.listItems)
-		.where(and(eq(schema.listItems.id, listItemId), ne(schema.listItems.status, 'deleted')))
+		.where(
+			and(
+				eq(schema.listItems.id, listItemId),
+				eq(schema.listItems.householdId, householdId),
+				ne(schema.listItems.status, 'deleted')
+			)
+		)
 		.limit(1)
 
 	return assertFound(listItem)
@@ -211,13 +224,20 @@ export async function findListItemOrThrow(listItemId: string) {
  * Loads a non-deleted recipe or throws 404-style API error.
  *
  * @param recipeId - Recipe id.
+ * @param householdId - Active household id.
  * @returns Existing recipe row.
  */
-export async function findRecipeOrThrow(recipeId: string) {
+export async function findRecipeOrThrow(recipeId: string, householdId: string) {
 	const [recipe] = await db
 		.select()
 		.from(schema.recipes)
-		.where(and(eq(schema.recipes.id, recipeId), ne(schema.recipes.status, 'deleted')))
+		.where(
+			and(
+				eq(schema.recipes.id, recipeId),
+				eq(schema.recipes.householdId, householdId),
+				ne(schema.recipes.status, 'deleted')
+			)
+		)
 		.limit(1)
 
 	return assertFound(recipe)
@@ -227,13 +247,19 @@ export async function findRecipeOrThrow(recipeId: string) {
  * Loads a recipe item or throws 404-style API error.
  *
  * @param recipeItemId - Recipe item id.
+ * @param householdId - Active household id.
  * @returns Existing recipe-item row.
  */
-export async function findRecipeItemOrThrow(recipeItemId: string) {
+export async function findRecipeItemOrThrow(recipeItemId: string, householdId: string) {
 	const [recipeItem] = await db
 		.select()
 		.from(schema.recipeItems)
-		.where(eq(schema.recipeItems.id, recipeItemId))
+		.where(
+			and(
+				eq(schema.recipeItems.id, recipeItemId),
+				eq(schema.recipeItems.householdId, householdId)
+			)
+		)
 		.limit(1)
 
 	return assertFound(recipeItem)
@@ -243,13 +269,19 @@ export async function findRecipeItemOrThrow(recipeItemId: string) {
  * Loads a meal-planner day by weekday number or throws 404-style API error.
  *
  * @param dayOfWeek - Weekday number.
+ * @param householdId - Active household id.
  * @returns Existing meal-planner-day row.
  */
-export async function findMealPlannerDayOrThrow(dayOfWeek: number) {
+export async function findMealPlannerDayOrThrow(dayOfWeek: number, householdId: string) {
 	const [day] = await db
 		.select()
 		.from(schema.mealPlannerDays)
-		.where(eq(schema.mealPlannerDays.dayOfWeek, dayOfWeek))
+		.where(
+			and(
+				eq(schema.mealPlannerDays.dayOfWeek, dayOfWeek),
+				eq(schema.mealPlannerDays.householdId, householdId)
+			)
+		)
 		.limit(1)
 
 	return assertFound(day)
@@ -259,13 +291,22 @@ export async function findMealPlannerDayOrThrow(dayOfWeek: number) {
  * Loads a meal-planner-day item or throws 404-style API error.
  *
  * @param mealPlannerDayItemId - Meal-planner-day item id.
+ * @param householdId - Active household id.
  * @returns Existing meal-planner-day-item row.
  */
-export async function findMealPlannerDayItemOrThrow(mealPlannerDayItemId: string) {
+export async function findMealPlannerDayItemOrThrow(
+	mealPlannerDayItemId: string,
+	householdId: string
+) {
 	const [dayItem] = await db
 		.select()
 		.from(schema.mealPlannerDayItems)
-		.where(eq(schema.mealPlannerDayItems.id, mealPlannerDayItemId))
+		.where(
+			and(
+				eq(schema.mealPlannerDayItems.id, mealPlannerDayItemId),
+				eq(schema.mealPlannerDayItems.householdId, householdId)
+			)
+		)
 		.limit(1)
 
 	return assertFound(dayItem)
@@ -274,13 +315,14 @@ export async function findMealPlannerDayItemOrThrow(mealPlannerDayItemId: string
 /**
  * Calculates the next position for active lists.
  *
+ * @param householdId - Active household id.
  * @returns Next zero-based list position.
  */
-export async function getNextListPosition() {
+export async function getNextListPosition(householdId: string) {
 	const [last] = await db
 		.select({ position: schema.lists.position })
 		.from(schema.lists)
-		.where(eq(schema.lists.status, 'active'))
+		.where(and(eq(schema.lists.householdId, householdId), eq(schema.lists.status, 'active')))
 		.orderBy(desc(schema.lists.position))
 		.limit(1)
 
@@ -291,15 +333,17 @@ export async function getNextListPosition() {
  * Calculates the next position for visible list items.
  *
  * @param listId - Parent list id.
+ * @param householdId - Active household id.
  * @returns Next zero-based list-item position.
  */
-export async function getNextListItemPosition(listId: string) {
+export async function getNextListItemPosition(listId: string, householdId: string) {
 	const [last] = await db
 		.select({ position: schema.listItems.position })
 		.from(schema.listItems)
 		.where(
 			and(
 				eq(schema.listItems.listId, listId),
+				eq(schema.listItems.householdId, householdId),
 				inArray(schema.listItems.status, ['unchecked', 'checked'])
 			)
 		)
@@ -313,13 +357,19 @@ export async function getNextListItemPosition(listId: string) {
  * Calculates the next position for recipe items.
  *
  * @param recipeId - Parent recipe id.
+ * @param householdId - Active household id.
  * @returns Next zero-based recipe-item position.
  */
-export async function getNextRecipeItemPosition(recipeId: string) {
+export async function getNextRecipeItemPosition(recipeId: string, householdId: string) {
 	const [last] = await db
 		.select({ position: schema.recipeItems.position })
 		.from(schema.recipeItems)
-		.where(eq(schema.recipeItems.recipeId, recipeId))
+		.where(
+			and(
+				eq(schema.recipeItems.recipeId, recipeId),
+				eq(schema.recipeItems.householdId, householdId)
+			)
+		)
 		.orderBy(desc(schema.recipeItems.position))
 		.limit(1)
 
@@ -330,13 +380,22 @@ export async function getNextRecipeItemPosition(recipeId: string) {
  * Calculates the next position for meal-planner-day items.
  *
  * @param mealPlannerDayId - Parent meal-planner-day id.
+ * @param householdId - Active household id.
  * @returns Next zero-based day-item position.
  */
-export async function getNextMealPlannerDayItemPosition(mealPlannerDayId: string) {
+export async function getNextMealPlannerDayItemPosition(
+	mealPlannerDayId: string,
+	householdId: string
+) {
 	const [last] = await db
 		.select({ position: schema.mealPlannerDayItems.position })
 		.from(schema.mealPlannerDayItems)
-		.where(eq(schema.mealPlannerDayItems.mealPlannerDayId, mealPlannerDayId))
+		.where(
+			and(
+				eq(schema.mealPlannerDayItems.mealPlannerDayId, mealPlannerDayId),
+				eq(schema.mealPlannerDayItems.householdId, householdId)
+			)
+		)
 		.orderBy(desc(schema.mealPlannerDayItems.position))
 		.limit(1)
 
@@ -347,9 +406,10 @@ export async function getNextMealPlannerDayItemPosition(mealPlannerDayId: string
  * Returns ordered recipe items with joined canonical item rows.
  *
  * @param recipeId - Recipe id.
+ * @param householdId - Active household id.
  * @returns Serialized recipe items.
  */
-export async function getRecipeItems(recipeId: string) {
+export async function getRecipeItems(recipeId: string, householdId: string) {
 	const rows = await db
 		.select({
 			recipeItem: schema.recipeItems,
@@ -357,7 +417,12 @@ export async function getRecipeItems(recipeId: string) {
 		})
 		.from(schema.recipeItems)
 		.innerJoin(schema.items, eq(schema.items.id, schema.recipeItems.itemId))
-		.where(eq(schema.recipeItems.recipeId, recipeId))
+		.where(
+			and(
+				eq(schema.recipeItems.recipeId, recipeId),
+				eq(schema.recipeItems.householdId, householdId)
+			)
+		)
 		.orderBy(asc(schema.recipeItems.position), asc(schema.recipeItems.createdAt))
 
 	return rows.map((row) => serializeRecipeItem(row.recipeItem, row.item))
@@ -366,12 +431,14 @@ export async function getRecipeItems(recipeId: string) {
 /**
  * Returns meal-planner days ordered by configured weekday sequence.
  *
+ * @param householdId - Active household id.
  * @returns Existing meal-planner-day rows.
  */
-export async function getMealPlannerDays() {
+export async function getMealPlannerDays(householdId: string) {
 	const rows = await db
 		.select()
 		.from(schema.mealPlannerDays)
+		.where(eq(schema.mealPlannerDays.householdId, householdId))
 		.orderBy(asc(schema.mealPlannerDays.dayOfWeek))
 
 	return mealPlannerDayNumbers
@@ -387,6 +454,7 @@ export async function getMealPlannerDays() {
  */
 export async function appendListItemsFromRows(options: {
 	listId: string
+	householdId: string
 	userId: number
 	rows: Array<{
 		item: ItemRow
@@ -399,7 +467,7 @@ export async function appendListItemsFromRows(options: {
 	}>
 }) {
 	const audit = createAudit(options.userId)
-	let position = await getNextListItemPosition(options.listId)
+	let position = await getNextListItemPosition(options.listId, options.householdId)
 	const added = []
 
 	for (const row of options.rows) {
@@ -407,6 +475,7 @@ export async function appendListItemsFromRows(options: {
 			.insert(schema.listItems)
 			.values({
 				id: createDomainId(),
+				householdId: options.householdId,
 				listId: options.listId,
 				itemId: row.item.id,
 				status: 'unchecked',

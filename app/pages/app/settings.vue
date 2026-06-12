@@ -1,9 +1,17 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 definePageMeta({ layout: 'app' })
 </script>
 
 <template>
-	<div>
-		<h1>Settings</h1>
-	</div>
+	<PageShell>
+		<template #header>
+			<PageHeader>Instellingen</PageHeader>
+		</template>
+
+		<SettingsNavigation />
+
+		<div class="mx-auto grid max-w-2xl gap-4 pt-4">
+			<NuxtPage />
+		</div>
+	</PageShell>
 </template>

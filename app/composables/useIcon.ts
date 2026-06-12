@@ -13,7 +13,11 @@ export const useIcon = () => {
 		archive: 'i-lucide-archive',
 		check: 'i-lucide-check',
 		new: 'lucide:sparkles',
-		download: 'lucide:download'
+		download: 'lucide:download',
+		trash: 'i-lucide-trash-2',
+		leave: 'i-lucide-log-out',
+		copy: 'i-lucide-copy',
+		search: 'i-lucide-search'
 	} as const
 
 	/**

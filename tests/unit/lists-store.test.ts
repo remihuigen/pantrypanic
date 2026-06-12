@@ -1,26 +1,13 @@
-import * as refreshComposable from '~/composables/useStoreRefresh'
 import { useListsStore } from '~/stores/lists'
 import { useRecipesStore } from '~/stores/recipes'
 import * as apiClient from '~/utils/api-client'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type RefreshController = {
-	isRunning: boolean
-	isRefreshing: boolean
-	start: ReturnType<typeof vi.fn>
-	stop: ReturnType<typeof vi.fn>
-	refreshNow: ReturnType<typeof vi.fn>
-}
-
-let refreshControllers: RefreshController[] = []
-
 describe('useListsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
 		vi.restoreAllMocks()
-		refreshControllers = []
-		mockRefreshComposable()
 		vi.spyOn(apiClient, 'normalizeAppError').mockImplementation((error) => error as never)
 	})
 
@@ -610,7 +597,89 @@ describe('useListsStore', () => {
 		expect(store.itemsById['item-2']?.name).toBe('Brood')
 	})
 
-	it('opens and closes active lists with the active-list refresh controller', async () => {
+	it('handles missing ids and no-parameter item lookups', async () => {
+		const store = useListsStore()
+		vi.spyOn(apiClient, 'apiFetch')
+			.mockResolvedValueOnce({ items: [] })
+			.mockResolvedValueOnce({ items: [] })
+
+		expect(store.listById('missing')).toBeNull()
+		expect(store.listItemsForList('missing')).toEqual([])
+
+		await store.fetchSuggestions()
+		await store.searchItems('melk')
+
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/items/suggestions')
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/items/search?q=melk')
+	})
+
+	it('does not add archived lists to active ids when creating a list', async () => {
+		const store = useListsStore()
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			list: createList({ id: 'archived', status: 'archived', position: 0 })
+		})
+
+		await store.createList({ name: 'Archief' })
+
+		expect(store.activeListIds).toEqual([])
+		expect(store.listsById.archived?.status).toBe('archived')
+	})
+
+	it('rolls back archived list deletion failures', async () => {
+		const store = useListsStore()
+		store.listsById['archived'] = createList({
+			id: 'archived',
+			status: 'archived',
+			position: 0
+		})
+		store.archivedListIds = ['archived']
+		vi.spyOn(apiClient, 'apiFetch').mockRejectedValueOnce({
+			code: 'CONFLICT',
+			message: 'Verwijderen mislukt.'
+		})
+
+		await expect(store.deleteList('archived')).rejects.toEqual({
+			code: 'CONFLICT',
+			message: 'Verwijderen mislukt.'
+		})
+
+		expect(store.archivedListIds).toEqual(['archived'])
+		expect(store.listsById.archived?.status).toBe('archived')
+	})
+
+	it('handles missing list items for checked, unchecked, and deleted mutations', async () => {
+		const store = useListsStore()
+		const apiFetch = vi.spyOn(apiClient, 'apiFetch')
+
+		await expect(store.checkListItem('missing')).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		})
+		await expect(store.uncheckListItem('missing')).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		})
+		await expect(store.deleteListItem('missing')).rejects.toMatchObject({
+			code: 'NOT_FOUND'
+		})
+		expect(apiFetch).not.toHaveBeenCalled()
+	})
+
+	it('moves list items between lists on update responses', async () => {
+		const store = useListsStore()
+		store.listItemsById['li-1'] = createListItem({ id: 'li-1', listId: 'list-1' })
+		store.listItemIdsByListId['list-1'] = ['li-1']
+		store.listItemIdsByListId['list-2'] = []
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			listItem: createListItem({ id: 'li-1', listId: 'list-2', name: 'Verplaatst' })
+		})
+
+		await store.updateListItem('li-1', { listId: 'list-2' } as never)
+
+		expect(store.listItemIdsByListId['list-1']).toEqual([])
+		expect(store.listItemIdsByListId['list-2']).toEqual(['li-1'])
+		expect(store.listItemsById['li-1']?.name).toBe('Verplaatst')
+	})
+
+	it('opens and closes active lists without owning a refresh interval', async () => {
 		const store = useListsStore()
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
 			list: { ...createList({ id: 'list-1' }), items: [] }
@@ -620,35 +689,22 @@ describe('useListsStore', () => {
 		store.closeList()
 
 		expect(store.activeListId).toBeNull()
-		expect(refreshControllers[1]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[1]?.stop).toHaveBeenCalledTimes(1)
+		expect(apiClient.apiFetch).toHaveBeenCalledWith('/api/lists/list-1')
 	})
 
-	it('starts and stops overview refresh with the overview refresh controller', async () => {
+	it('refreshes overview data through direct store actions', async () => {
 		const store = useListsStore()
+		vi.spyOn(apiClient, 'apiFetch')
+			.mockResolvedValueOnce({ lists: [] })
+			.mockResolvedValueOnce({ items: [] })
 
 		await store.startOverviewRefresh()
 		store.stopOverviewRefresh()
 
-		expect(refreshControllers[0]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[0]?.stop).toHaveBeenCalledTimes(1)
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/lists?status=active')
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/items/suggestions')
 	})
 })
-
-function mockRefreshComposable() {
-	vi.spyOn(refreshComposable, 'useStoreRefresh').mockImplementation(() => {
-		const controller: RefreshController = {
-			isRunning: false,
-			isRefreshing: false,
-			start: vi.fn(async () => undefined),
-			stop: vi.fn(),
-			refreshNow: vi.fn(async () => undefined)
-		}
-		refreshControllers.push(controller)
-
-		return controller as never
-	})
-}
 
 function createList(overrides: Partial<ReturnType<typeof createListShape>> = {}) {
 	return {

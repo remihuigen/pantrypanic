@@ -30,17 +30,22 @@ Implemented:
 - blob CRUD/validation API routes
 - Pantry Panic domain API routes for lists, list items, items, recipes, recipe items, and meal
   planner workflows
+- household-scoped multi-tenancy data model with singleton behavior when `ENABLE_MULTI_TENANCY` is
+  disabled
+- settings subroutes for profile/theme/danger-zone controls, household
+  members/invites/reset links/settings, canonical item maintenance, and usage stats
+- household-owner role checks for household management actions through Nuxt Authorization
 - safe raster image serving from blob storage
 - build-time HTTP admin-user seed from `.env`
 - Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
-  updates, and polling refresh controls
+  updates, and one route-aware polling refresh scheduler
 - Pantry Panic grocery-list UI for lists and list items
+- prompt-based PWA update and Chromium-style install prompt handling
 - human docs under `docs/`
 
 Not implemented yet:
 
-- fine-grained permissions around API routes
-- PWA install/offline behavior
+- offline behavior beyond generated service-worker asset caching
 - shopping workflow screens
 
 ## Core Directories
@@ -48,7 +53,8 @@ Not implemented yet:
 - `app/`: Nuxt frontend; product pages live under `app/pages/app/**` and map to `/app/**`.
 - `app/stores/`: Pinia domain stores for lists, recipes, and meal planner.
 - `app/utils/api-client.ts`: shared frontend API wrapper with normalized app errors.
-- `app/composables/useStoreRefresh.ts`: reusable polling lifecycle helper.
+- `app/composables/useStoreRefresh.ts`: route-aware refresh scheduler and reusable polling
+  lifecycle helper.
 - `shared/utils/schemas/domain.ts`: shared Zod schemas and inferred domain types reused by backend
   and frontend.
 - `shared/types/api.ts`: shared API envelope and app error type contracts.

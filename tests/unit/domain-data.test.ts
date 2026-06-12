@@ -61,8 +61,6 @@ describe('domain data helpers', () => {
 			findOrCreateItem({
 				name: ' Milk ',
 				defaultUnit: 'liter',
-				category: 'Dairy',
-				notes: 'Organic',
 				auditUserId: 7
 			})
 		).resolves.toBe(item)

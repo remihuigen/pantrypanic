@@ -1,25 +1,12 @@
-import * as refreshComposable from '~/composables/useStoreRefresh'
 import { useRecipesStore } from '~/stores/recipes'
 import * as apiClient from '~/utils/api-client'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type RefreshController = {
-	isRunning: boolean
-	isRefreshing: boolean
-	start: ReturnType<typeof vi.fn>
-	stop: ReturnType<typeof vi.fn>
-	refreshNow: ReturnType<typeof vi.fn>
-}
-
-let refreshControllers: RefreshController[] = []
-
 describe('useRecipesStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
 		vi.restoreAllMocks()
-		refreshControllers = []
-		mockRefreshComposable()
 		vi.spyOn(apiClient, 'normalizeAppError').mockImplementation((error) => error as never)
 	})
 
@@ -368,11 +355,13 @@ describe('useRecipesStore', () => {
 		expect(store.recipeItemsById['ri-2']?.position).toBe(1)
 	})
 
-	it('opens, closes, and refreshes recipes through refresh controllers', async () => {
+	it('opens, closes, and refreshes recipes through direct store actions', async () => {
 		const store = useRecipesStore()
-		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
-			recipe: createRecipeDetail({ id: 'recipe-1', items: [] })
-		})
+		vi.spyOn(apiClient, 'apiFetch')
+			.mockResolvedValueOnce({
+				recipe: createRecipeDetail({ id: 'recipe-1', items: [] })
+			})
+			.mockResolvedValueOnce({ recipes: [] })
 
 		await store.openRecipe('recipe-1')
 		store.closeRecipe()
@@ -380,27 +369,117 @@ describe('useRecipesStore', () => {
 		store.stopRecipesRefresh()
 
 		expect(store.activeRecipeId).toBeNull()
-		expect(refreshControllers[1]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[1]?.stop).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[0]?.start).toHaveBeenCalledTimes(1)
-		expect(refreshControllers[0]?.stop).toHaveBeenCalledTimes(1)
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/recipes/recipe-1')
+		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/recipes?status=active')
+	})
+
+	it('does not duplicate active ids when creating an already-known recipe', async () => {
+		const store = useRecipesStore()
+		store.activeRecipeIds = ['recipe-1']
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			recipe: createRecipeDetail({ id: 'recipe-1', name: 'Bekend', items: [] })
+		})
+
+		await store.createRecipe({ name: 'Bekend', items: [] })
+
+		expect(store.activeRecipeIds).toEqual(['recipe-1'])
+		expect(store.recipesById['recipe-1']?.name).toBe('Bekend')
+	})
+
+	it('handles successful updates for recipes that are not in local state', async () => {
+		const store = useRecipesStore()
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			recipe: { id: 'missing', updatedAt: 10 }
+		})
+
+		await expect(store.updateRecipe('missing', { name: 'Nieuw' })).resolves.toEqual({
+			id: 'missing',
+			updatedAt: 10
+		})
+		expect(store.recipesById.missing).toBeUndefined()
+	})
+
+	it('rolls back archived recipe deletes with their item ids', async () => {
+		const store = useRecipesStore()
+		store.recipesById['recipe-1'] = createRecipeSummary({
+			id: 'recipe-1',
+			status: 'archived'
+		})
+		store.archivedRecipeIds = ['recipe-1']
+		store.recipeItemsById['ri-1'] = createRecipeItem({ id: 'ri-1', recipeId: 'recipe-1' })
+		store.recipeItemIdsByRecipeId['recipe-1'] = ['ri-1']
+		vi.spyOn(apiClient, 'apiFetch').mockRejectedValueOnce({
+			code: 'CONFLICT',
+			message: 'Verwijderen mislukt.'
+		})
+
+		await expect(store.deleteRecipe('recipe-1')).rejects.toEqual({
+			code: 'CONFLICT',
+			message: 'Verwijderen mislukt.'
+		})
+
+		expect(store.archivedRecipeIds).toEqual(['recipe-1'])
+		expect(store.recipeItemIdsByRecipeId['recipe-1']).toEqual(['ri-1'])
+		expect(store.recipesById['recipe-1']?.status).toBe('archived')
+	})
+
+	it('does nothing when deleting a missing recipe item', async () => {
+		const store = useRecipesStore()
+		const apiFetch = vi.spyOn(apiClient, 'apiFetch')
+
+		await expect(store.deleteRecipeItem('missing')).resolves.toBeUndefined()
+
+		expect(apiFetch).not.toHaveBeenCalled()
+		expect(store.isSaving).toBe(false)
+	})
+
+	it('removes optimistic recipe items after add failures', async () => {
+		const store = useRecipesStore()
+		vi.spyOn(apiClient, 'apiFetch').mockRejectedValueOnce({
+			code: 'CONFLICT',
+			message: 'Toevoegen mislukt.'
+		})
+
+		await expect(store.addRecipeItem('recipe-1', { name: 'Tomaat' })).rejects.toEqual({
+			code: 'CONFLICT',
+			message: 'Toevoegen mislukt.'
+		})
+
+		expect(store.recipeItemIdsByRecipeId['recipe-1']).toEqual([])
+		expect(Object.keys(store.recipeItemsById)).toEqual([])
+	})
+
+	it('updates missing recipe items without local merge side effects', async () => {
+		const store = useRecipesStore()
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			recipeItem: { id: 'missing', updatedAt: 11 }
+		})
+
+		await expect(store.updateRecipeItem('missing', { amount: null, unit: null })).resolves.toEqual({
+			id: 'missing',
+			updatedAt: 11
+		})
+		expect(store.recipeItemsById.missing).toBeUndefined()
+	})
+
+	it('removes stale recipe items when fetched details no longer include them', async () => {
+		const store = useRecipesStore()
+		store.recipeItemsById.stale = createRecipeItem({ id: 'stale', recipeId: 'recipe-1' })
+		store.recipeItemsById.keep = createRecipeItem({ id: 'keep', recipeId: 'recipe-1' })
+		store.recipeItemIdsByRecipeId['recipe-1'] = ['stale', 'keep']
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			recipe: createRecipeDetail({
+				id: 'recipe-1',
+				items: [createRecipeItem({ id: 'keep', recipeId: 'recipe-1' })]
+			})
+		})
+
+		await store.fetchRecipe('recipe-1')
+
+		expect(store.recipeItemsById.stale).toBeUndefined()
+		expect(store.recipeItemIdsByRecipeId['recipe-1']).toEqual(['keep'])
 	})
 })
-
-function mockRefreshComposable() {
-	vi.spyOn(refreshComposable, 'useStoreRefresh').mockImplementation(() => {
-		const controller: RefreshController = {
-			isRunning: false,
-			isRefreshing: false,
-			start: vi.fn(async () => undefined),
-			stop: vi.fn(),
-			refreshNow: vi.fn(async () => undefined)
-		}
-		refreshControllers.push(controller)
-
-		return controller as never
-	})
-}
 
 function createRecipeSummary(overrides: Partial<ReturnType<typeof createRecipeSummaryShape>> = {}) {
 	return {

@@ -478,7 +478,7 @@ describe('pantry api domain helpers', () => {
 			)
 
 		await expect(searchItems({ q: 'milk', limit: 10 })).resolves.toEqual({
-			items: [{ id: 'item-1', name: 'Milk', defaultUnit: undefined, category: undefined }]
+			items: [{ id: 'item-1', name: 'Milk', defaultUnit: undefined }]
 		})
 		const suggestions = await suggestItems({ limit: 10 })
 		expect(suggestions.items[0]).toMatchObject({ id: 'item-1', usageCount: 2, lastUsedAt: 30 })
@@ -665,6 +665,98 @@ describe('pantry api domain helpers', () => {
 		})
 		await expect(deleteMealPlannerDayItem('mdi-1')).resolves.toEqual({ ok: true })
 	})
+
+	it('handles household-scoped domain call signatures directly', async () => {
+		vi.mocked(db.select)
+			.mockReturnValueOnce(createSelectBuilder([listRow({ id: 'list-1' })]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow({ id: 'list-1' })]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow({ id: 'list-1' })]) as never)
+			.mockReturnValueOnce(createSelectBuilder([recipeRow({ id: 'recipe-1' })]) as never)
+			.mockReturnValueOnce(createSelectBuilder([recipeRow({ id: 'recipe-1' })]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([recipeRow({ id: 'recipe-1' })]) as never)
+			.mockReturnValueOnce(createSelectBuilder([recipeRow({ id: 'recipe-1' })]) as never)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					mealPlannerDayRow({ id: 'day-1', dayOfWeek: 1, type: 'placeholder' })
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					mealPlannerDayRow({ id: 'day-1', dayOfWeek: 1, type: 'placeholder' })
+				]) as never
+			)
+
+		vi.mocked(db.insert)
+			.mockReturnValueOnce(createInsertBuilder([listRow({ id: 'created-list' })]) as never)
+			.mockReturnValueOnce(createInsertBuilder([recipeRow({ id: 'created-recipe' })]) as never)
+
+		vi.mocked(db.update)
+			.mockReturnValueOnce(createUpdateBuilder([{ id: 'list-1', position: 0 }]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([listRow({ id: 'list-1' })]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([recipeRow({ id: 'recipe-1', updatedAt: 9 })]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([{ id: 'ri-1', position: 0 }]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([]) as never)
+			.mockReturnValueOnce(
+				createUpdateBuilder([
+					mealPlannerDayRow({
+						id: 'day-1',
+						dayOfWeek: 1,
+						type: 'placeholder',
+						placeholderName: 'Restjes'
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(createUpdateBuilder([{ id: 'mdi-1', position: 0 }]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([]) as never)
+			.mockReturnValueOnce(createUpdateBuilder([{ id: 'day-1' }, { id: 'day-2' }]) as never)
+		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder() as never)
+
+		await expect(listShoppingLists('household', 'active')).resolves.toMatchObject({
+			lists: [{ id: 'list-1' }]
+		})
+		await expect(createShoppingList('household', { name: 'New' }, 1)).resolves.toMatchObject({
+			list: { id: 'created-list' }
+		})
+		await expect(reorderShoppingLists('household', ['list-1', 'missing'], 1)).resolves.toEqual({
+			lists: [{ id: 'list-1', position: 0 }]
+		})
+		await expect(getShoppingList('household', 'list-1')).resolves.toMatchObject({
+			list: { id: 'list-1', items: [] }
+		})
+		await expect(updateShoppingList('household', 'list-1', {}, 1)).resolves.toMatchObject({
+			list: { id: 'list-1' }
+		})
+		await expect(listRecipes('household', { status: 'active' })).resolves.toMatchObject({
+			recipes: [{ id: 'recipe-1' }]
+		})
+		await expect(createRecipe('household', { name: 'Pasta' }, 1)).resolves.toMatchObject({
+			recipe: { id: 'created-recipe', items: [] }
+		})
+		await expect(getRecipe('household', 'recipe-1')).resolves.toMatchObject({
+			recipe: { id: 'recipe-1', items: [] }
+		})
+		await expect(updateRecipe('household', 'recipe-1', {}, 1)).resolves.toEqual({
+			recipe: { id: 'recipe-1', updatedAt: 9 }
+		})
+		await expect(reorderRecipeItems('household', 'recipe-1', ['ri-1', 'missing'], 1)).resolves.toEqual({
+			items: [{ id: 'ri-1', position: 0 }]
+		})
+		await expect(
+			updateMealPlannerDay('household', 1, { type: 'placeholder', placeholderName: 'Restjes' }, 1)
+		).resolves.toMatchObject({
+			day: { id: 'day-1', placeholderName: 'Restjes' }
+		})
+		await expect(
+			reorderMealPlannerDayItems('household', 1, ['mdi-1', 'missing'], 1)
+		).resolves.toEqual({
+			items: [{ id: 'mdi-1', position: 0 }]
+		})
+		await expect(clearMealPlanner('household', 1)).resolves.toEqual({ clearedDays: 2 })
+	})
 })
 
 function listRow(overrides: Partial<Record<string, unknown>> = {}) {
@@ -690,8 +782,6 @@ function itemRow(overrides: Partial<Record<string, unknown>> = {}) {
 		name: 'Milk',
 		normalizedName: 'milk',
 		defaultUnit: null,
-		category: null,
-		notes: null,
 		createdAt: 1,
 		updatedAt: 2,
 		createdByUserId: 1,

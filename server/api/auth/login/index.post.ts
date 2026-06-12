@@ -1,3 +1,4 @@
+import { resolveInitialHouseholdId } from '#server/utils/domains/households'
 import {
 	findUserForAuthentication,
 	serializeUser,
@@ -32,13 +33,17 @@ export default defineEventHandler(async (event) => {
 		await updateUserPasswordHash(user.id, await hashPassword(body.password))
 	}
 
+	const activeHouseholdId = await resolveInitialHouseholdId(user.id, event)
+
 	await setUserSession(event, {
 		user: {
 			id: user.id,
 			name: user.name,
-			email: user.email
+			email: user.email,
+			avatarPathname: user.avatarPathname ?? undefined
 		},
-		loggedInAt: new Date().toISOString()
+		loggedInAt: new Date().toISOString(),
+		activeHouseholdId
 	})
 
 	return {

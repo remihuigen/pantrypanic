@@ -45,6 +45,43 @@ If you don't already have a Cloudflare account, you can create one at
 [https://dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up). The free tier is more
 than enough for most households.
 
+### Single vs. Multi household
+
+Pantry Panic can run in two household modes. Pick the smallest mode that matches how you want to use
+the instance.
+
+**Single household mode** is the default:
+
+```bash
+ENABLE_MULTI_TENANCY=false
+```
+
+Use this for a private family instance where everyone belongs to the same household. The app creates
+or reuses one default household named `Thuis`, all seeded/admin users are attached to it, and domain
+data such as lists, recipes, items, and the meal planner are scoped to that singleton household.
+This is the simplest and most predictable setup for most self-hosted installs.
+
+**Multi household mode** enables household switching:
+
+```bash
+ENABLE_MULTI_TENANCY=true
+```
+
+Use this when one Pantry Panic instance should host multiple separate households. Users only see data
+for households they are a member of, and the active household is stored in their session. Existing
+household owners can invite others with invite links from settings. Household owners can manage
+members, promote other members to owner, create reset links, change household settings, clear app
+data, and destroy the household. Regular members can still use the app's core grocery, recipe, and
+meal-planner flows.
+
+`ENABLE_HOUSEHOLD_CREATION=true` lets logged-in users create their first or an extra household from
+the household selector. Keep it `false` when household owners should control membership strictly
+through invite links. `ENABLE_PUBLIC_REGISTRATION=false` keeps public account creation disabled;
+invite-link onboarding still works because invites are token-gated. Public registration is
+configuration-only for now and is not exposed in the app yet. If a user no longer belongs to any
+household and household creation is disabled, they need a new invite from a household owner before
+they can use the app again.
+
 ### 1️⃣ Step 1: Create Cloudflare Resources
 
 Create the following resources in your Cloudflare dashboard:
@@ -117,6 +154,22 @@ ADMIN_USER_EMAIL=<initial-user-email>
 
 # Choose a password with at least 8 characters
 ADMIN_USER_PASSWORD=<initial-user-password>
+
+# Household mode
+ENABLE_MULTI_TENANCY=false
+ENABLE_HOUSEHOLD_CREATION=false
+ENABLE_PUBLIC_REGISTRATION=false
+
+# App defaults
+NUXT_PUBLIC_REFRESH_INTERVAL=5000
+NUXT_PANTRY_DEFAULT_LIST_NAME=Boodschappen
+NUXT_PANTRY_DEFAULT_USER_LIST_LIMIT=50
+NUXT_PANTRY_MAX_USER_LIST_LIMIT=100
+NUXT_PANTRY_DEFAULT_ITEM_SEARCH_LIMIT=10
+NUXT_PANTRY_MAX_ITEM_SEARCH_LIMIT=50
+NUXT_PANTRY_DEFAULT_BLOB_LIST_LIMIT=100
+NUXT_PANTRY_MAX_BLOB_LIST_LIMIT=1000
+NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE=32MB
 ```
 
 ### 7️⃣ Step 7: Deploy
@@ -193,16 +246,28 @@ Install dependencies:
 pnpm install
 ```
 
-Copy `.example.env` to `.env` and update the values as needed.
-
-Runtime-tunable Pantry defaults live in `runtimeConfig.pantry` and can be overridden through Nuxt
-environment variables:
+Copy `.example.env` to `.env` and update the values as needed. The important local configuration
+values are:
 
 ```bash
+ENABLE_MULTI_TENANCY=false
+ENABLE_HOUSEHOLD_CREATION=false
+ENABLE_PUBLIC_REGISTRATION=false
+NUXT_PUBLIC_REFRESH_INTERVAL=5000
 NUXT_PANTRY_DEFAULT_LIST_NAME=Boodschappen
+NUXT_PANTRY_DEFAULT_USER_LIST_LIMIT=50
+NUXT_PANTRY_MAX_USER_LIST_LIMIT=100
 NUXT_PANTRY_DEFAULT_ITEM_SEARCH_LIMIT=10
+NUXT_PANTRY_MAX_ITEM_SEARCH_LIMIT=50
+NUXT_PANTRY_DEFAULT_BLOB_LIST_LIMIT=100
+NUXT_PANTRY_MAX_BLOB_LIST_LIMIT=1000
 NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE=32MB
 ```
+
+`ENABLE_MULTI_TENANCY`, `ENABLE_HOUSEHOLD_CREATION`, and `ENABLE_PUBLIC_REGISTRATION` are available
+in public runtime config for UI affordances and private runtime config for server decisions. API
+routes read the private values. The `NUXT_PANTRY_*` variables are wired directly to
+`runtimeConfig.pantry` in `nuxt.config.ts`.
 
 Production blob and database configuration also expects the following variables, though they
 are not required for local development:

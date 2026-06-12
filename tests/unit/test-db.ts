@@ -10,7 +10,9 @@ export function createSelectBuilder<T>(rows: T[]) {
 	return Object.assign(builder, {
 		from: () => builder,
 		innerJoin: () => builder,
+		leftJoin: () => builder,
 		where: () => builder,
+		groupBy: () => builder,
 		orderBy: () => builder,
 		limit: () => builder,
 		offset: () => builder

@@ -1,3 +1,21 @@
+const pantryDefaultListName = process.env.NUXT_PANTRY_DEFAULT_LIST_NAME ?? 'Boodschappen'
+
+function readNumberEnv(name: string, fallback: number) {
+	const value = process.env[name]
+
+	if (!value) return fallback
+
+	const parsed = Number(value)
+
+	return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const enableMultiTenancy = process.env.ENABLE_MULTI_TENANCY === 'true'
+const enableHouseholdCreation =
+	enableMultiTenancy && process.env.ENABLE_HOUSEHOLD_CREATION === 'true'
+const enablePublicRegistration =
+	enableMultiTenancy && process.env.ENABLE_PUBLIC_REGISTRATION === 'true'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 	modules: [
@@ -9,7 +27,8 @@ export default defineNuxtConfig({
 		'@pinia/nuxt',
 		'pinia-plugin-persistedstate/nuxt',
 		'@vueuse/nuxt',
-		'@vite-pwa/nuxt'
+		'@vite-pwa/nuxt',
+		'nuxt-authorization'
 	],
 
 	$production: {
@@ -50,6 +69,13 @@ export default defineNuxtConfig({
 		}
 	},
 
+	components: [
+		{
+			path: '~/components',
+			pathPrefix: false
+		}
+	],
+
 	devtools: {
 		enabled: true
 	},
@@ -58,19 +84,29 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		adminApiKey: process.env.ADMIN_API_KEY ?? '',
+		enableMultiTenancy,
+		enableHouseholdCreation,
+		enablePublicRegistration,
+		session: {
+			password: process.env.NUXT_SESSION_PASSWORD ?? '',
+			maxAge: 60 * 60 * 24 * 30
+		},
 		pantry: {
-			defaultListName: 'Boodschappen',
-			defaultUserListLimit: 50,
-			maxUserListLimit: 100,
-			defaultItemSearchLimit: 10,
-			maxItemSearchLimit: 50,
-			defaultBlobListLimit: 100,
-			maxBlobListLimit: 1000,
-			managedBlobMaxUploadSize: '32MB'
+			defaultListName: pantryDefaultListName,
+			defaultUserListLimit: readNumberEnv('NUXT_PANTRY_DEFAULT_USER_LIST_LIMIT', 50),
+			maxUserListLimit: readNumberEnv('NUXT_PANTRY_MAX_USER_LIST_LIMIT', 100),
+			defaultItemSearchLimit: readNumberEnv('NUXT_PANTRY_DEFAULT_ITEM_SEARCH_LIMIT', 10),
+			maxItemSearchLimit: readNumberEnv('NUXT_PANTRY_MAX_ITEM_SEARCH_LIMIT', 50),
+			defaultBlobListLimit: readNumberEnv('NUXT_PANTRY_DEFAULT_BLOB_LIST_LIMIT', 100),
+			maxBlobListLimit: readNumberEnv('NUXT_PANTRY_MAX_BLOB_LIST_LIMIT', 1000),
+			managedBlobMaxUploadSize: process.env.NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE ?? '32MB'
 		},
 
 		public: {
-			refreshInterval: 5000,
+			refreshInterval: readNumberEnv('NUXT_PUBLIC_REFRESH_INTERVAL', 5000),
+			enableMultiTenancy,
+			enableHouseholdCreation,
+			enablePublicRegistration,
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."
@@ -105,7 +141,8 @@ export default defineNuxtConfig({
 				'@tiptap/starter-kit',
 				'@tiptap/markdown',
 				'@tiptap/**',
-				'sortablejs'
+				'sortablejs',
+				'workbox-window'
 			]
 		}
 	},
@@ -124,7 +161,10 @@ export default defineNuxtConfig({
 	},
 
 	pwa: {
-		registerType: 'autoUpdate',
+		registerType: 'prompt',
+		client: {
+			installPrompt: 'pantrypanic:hide-install-prompt'
+		},
 
 		manifest: {
 			id: '/app/',

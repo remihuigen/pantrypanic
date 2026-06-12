@@ -11,5 +11,7 @@ export default defineEventHandler(async (event) => {
 		'Invalid user list query'
 	)
 
+	console.log(query)
+
 	return listUsers(query)
 })

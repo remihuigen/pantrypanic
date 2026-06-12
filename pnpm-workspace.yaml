@@ -32,6 +32,7 @@ catalog:
   husky: 9.1.7
   nuxt: 4.4.6
   nuxt-auth-utils: 0.5.29
+  nuxt-authorization: 0.3.5
   ofetch: 1.5.1
   pinia-plugin-persistedstate: 4.7.1
   prettier: 3.8.1

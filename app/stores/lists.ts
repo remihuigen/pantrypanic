@@ -12,7 +12,6 @@ import type {
 	UpdateListItemInput
 } from '~~/shared/utils/schemas/domain'
 
-import { useStoreRefresh } from '~/composables/useStoreRefresh'
 import { apiFetch, normalizeAppError } from '~/utils/api-client'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -71,25 +70,6 @@ export const useListsStore = defineStore(
 				]
 			})
 		)
-
-		const overviewRefresh = useStoreRefresh({
-			immediate: false,
-			refresh: async () => {
-				await Promise.all([fetchLists('active'), fetchSuggestions()])
-			}
-		})
-
-		const activeListRefresh = useStoreRefresh({
-			enabled: computed(() => Boolean(activeListId.value)),
-			immediate: false,
-			refresh: async () => {
-				if (!activeListId.value) {
-					return
-				}
-
-				await fetchList(activeListId.value)
-			}
-		})
 
 		function listById(listId: string) {
 			return listsById.value[listId] ?? null
@@ -871,20 +851,30 @@ export const useListsStore = defineStore(
 		async function openList(listId: string) {
 			activeListId.value = listId
 			await fetchList(listId)
-			await activeListRefresh.start()
 		}
 
 		function closeList() {
 			activeListId.value = null
-			activeListRefresh.stop()
 		}
 
 		async function startOverviewRefresh() {
-			await overviewRefresh.start()
+			await refreshOverviewNow()
 		}
 
 		function stopOverviewRefresh() {
-			overviewRefresh.stop()
+			// Refresh scheduling is centralized in useRefreshScheduler.
+		}
+
+		async function refreshOverviewNow() {
+			await Promise.all([fetchLists('active'), fetchSuggestions()])
+		}
+
+		async function refreshActiveListNow() {
+			if (!activeListId.value) {
+				return
+			}
+
+			await fetchList(activeListId.value)
 		}
 
 		return {
@@ -926,8 +916,8 @@ export const useListsStore = defineStore(
 			closeList,
 			startOverviewRefresh,
 			stopOverviewRefresh,
-			refreshOverviewNow: overviewRefresh.refreshNow,
-			refreshActiveListNow: activeListRefresh.refreshNow
+			refreshOverviewNow,
+			refreshActiveListNow
 		}
 	},
 	{

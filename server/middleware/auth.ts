@@ -2,7 +2,12 @@ import { isAuthenticated } from '#server/utils/auth'
 import { defineEventHandler, getRequestURL, setResponseStatus } from 'h3'
 
 const PROTECTED_PATH_PREFIXES = ['/api/', '/images/']
-const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/_auth/session'])
+const PUBLIC_PATHS = new Set([
+	'/api/auth/login',
+	'/api/_auth/session',
+	'/api/access-links/invite/accept',
+	'/api/access-links/reset/accept'
+])
 const PUBLIC_PATH_PREFIXES = ['/api/_nuxt', '/api/_auth']
 
 /**

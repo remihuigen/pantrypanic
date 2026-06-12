@@ -1,0 +1,1018 @@
+import type { HouseholdUserRole } from '#server/db/schema'
+import type { H3Event } from 'h3'
+
+import { getAuthenticatedUserId, throwApiError } from '#server/utils/api-core'
+import { createDomainId } from '#server/utils/api-helpers'
+import { seedInitialDomainData } from '#server/utils/domains/seed'
+import { and, asc, eq, isNull, ne, or, sql } from 'drizzle-orm'
+import { db, schema } from 'hub:db'
+
+const DEFAULT_HOUSEHOLD_NAME = 'Thuis'
+const DEFAULT_REFRESH_INTERVAL_MS = 5000
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const RESET_TTL_MS = 30 * 60 * 1000
+
+export type HouseholdContext = {
+	householdId: string
+	userId: number
+	isMultiTenancyEnabled: boolean
+	role?: HouseholdUserRole | null
+}
+
+type AccessLinkType = 'invite' | 'reset'
+type HouseholdMembershipSummary = {
+	householdId: string
+	role: HouseholdUserRole
+}
+type HouseholdContextAbility =
+	| typeof import('#shared/utils/abilities').manageHousehold
+	| typeof import('#shared/utils/abilities').destroyHousehold
+	| typeof import('#shared/utils/abilities').clearHouseholdAppData
+type HouseholdContextOptions = {
+	authorize?: HouseholdContextAbility
+}
+
+/**
+ * Resolves the active household for a request and enforces membership.
+ *
+ * @param event - H3 request event.
+ * @param options - Optional authorization requirements for the resolved household.
+ * @returns Household context for domain-scoped API work.
+ */
+export async function getHouseholdContext(
+	event: H3Event,
+	options: HouseholdContextOptions = {}
+): Promise<HouseholdContext> {
+	const userId = await getAuthenticatedUserId(event)
+	const isMultiTenancyEnabled = getMultiTenancyEnabled(event)
+
+	if (!isMultiTenancyEnabled) {
+		const household = await ensureDefaultHousehold(userId, event)
+
+		return authorizeHouseholdContext(event, options, {
+			householdId: household.id,
+			userId,
+			isMultiTenancyEnabled
+		})
+	}
+
+	const session = await getUserSession(event)
+	const activeHouseholdId = session.activeHouseholdId
+
+	if (activeHouseholdId && (await isHouseholdMember(activeHouseholdId, userId))) {
+		return authorizeHouseholdContext(event, options, {
+			householdId: activeHouseholdId,
+			userId,
+			isMultiTenancyEnabled
+		})
+	}
+
+	const [membership] = await db
+		.select({ householdId: schema.householdUsers.householdId })
+		.from(schema.householdUsers)
+		.where(eq(schema.householdUsers.userId, userId))
+		.orderBy(asc(schema.householdUsers.createdAt), asc(schema.householdUsers.householdId))
+		.limit(1)
+
+	if (!membership) {
+		throwApiError({
+			code: 'FORBIDDEN',
+			statusCode: 403,
+			message: 'Je hebt geen toegang tot een huishouden.'
+		})
+	}
+
+	await setActiveHouseholdSession(event, membership.householdId)
+
+	return authorizeHouseholdContext(event, options, {
+		householdId: membership.householdId,
+		userId,
+		isMultiTenancyEnabled
+	})
+}
+
+/**
+ * Ensures a default household exists and includes the given user.
+ *
+ * @param userId - User id to attach to the default household.
+ * @param event - Optional H3 request event for runtime-configured seeding.
+ * @returns Default household summary.
+ */
+export async function ensureDefaultHousehold(userId: number, event?: H3Event) {
+	const [existing] = await db
+		.select()
+		.from(schema.households)
+		.orderBy(asc(schema.households.createdAt), asc(schema.households.id))
+		.limit(1)
+
+	if (existing) {
+		await ensureHouseholdMembership(existing.id, userId, 'householdOwner')
+		await ensureHouseholdSettings(existing.id, userId)
+		return existing
+	}
+
+	const now = Date.now()
+	const [household] = await db
+		.insert(schema.households)
+		.values({
+			id: createDomainId(),
+			name: DEFAULT_HOUSEHOLD_NAME,
+			createdAt: now,
+			updatedAt: now
+		})
+		.returning()
+
+	if (!household) {
+		throwApiError({
+			code: 'INTERNAL_ERROR',
+			statusCode: 500,
+			message: 'Huishouden kon niet worden aangemaakt.'
+		})
+	}
+
+	await ensureHouseholdMembership(household.id, userId, 'householdOwner')
+	await ensureHouseholdSettings(household.id, userId, now)
+	await seedInitialDomainData(userId, household.id, event)
+
+	return household
+}
+
+/**
+ * Creates a new household for the current authenticated user.
+ *
+ * @param event - H3 request event.
+ * @param userId - Acting user id.
+ * @param name - Household name.
+ * @returns Created household and active household id.
+ */
+export async function createHousehold(event: H3Event, userId: number, name: string) {
+	if (!getHouseholdCreationEnabled(event)) {
+		throwApiError({
+			code: 'FORBIDDEN',
+			statusCode: 403,
+			message: 'Nieuwe huishoudens aanmaken is uitgeschakeld.'
+		})
+	}
+
+	const now = Date.now()
+	const [household] = await db
+		.insert(schema.households)
+		.values({
+			id: createDomainId(),
+			name: name.trim(),
+			createdAt: now,
+			updatedAt: now
+		})
+		.returning()
+
+	if (!household) {
+		throwApiError({
+			code: 'INTERNAL_ERROR',
+			statusCode: 500,
+			message: 'Huishouden kon niet worden aangemaakt.'
+		})
+	}
+
+	await ensureHouseholdMembership(household.id, userId, 'householdOwner')
+	await ensureHouseholdSettings(household.id, userId, now)
+	await seedInitialDomainData(userId, household.id, event)
+	await setActiveHouseholdSession(event, household.id)
+
+	return {
+		household: {
+			id: household.id,
+			name: household.name,
+			role: 'householdOwner' as const,
+			createdAt: household.createdAt
+		},
+		activeHouseholdId: household.id
+	}
+}
+
+/**
+ * Lists households available to a user.
+ *
+ * @param userId - Current user id.
+ * @returns Household summaries.
+ */
+export async function listUserHouseholds(userId: number) {
+	const rows = await db
+		.select({
+			id: schema.households.id,
+			name: schema.households.name,
+			createdAt: schema.households.createdAt,
+			role: schema.householdUsers.role
+		})
+		.from(schema.householdUsers)
+		.innerJoin(schema.households, eq(schema.households.id, schema.householdUsers.householdId))
+		.where(eq(schema.householdUsers.userId, userId))
+		.orderBy(asc(schema.households.name), asc(schema.households.createdAt))
+
+	return rows
+}
+
+/**
+ * Switches the active household stored in the session.
+ *
+ * @param event - H3 request event.
+ * @param householdId - Household to activate.
+ * @returns Active household session summary.
+ */
+export async function switchHousehold(event: H3Event, householdId: string) {
+	const userId = await getAuthenticatedUserId(event)
+
+	if (!(await isHouseholdMember(householdId, userId))) {
+		throwApiError({
+			code: 'FORBIDDEN',
+			statusCode: 403,
+			message: 'Je hebt geen toegang tot dit huishouden.'
+		})
+	}
+
+	await setActiveHouseholdSession(event, householdId)
+
+	return { activeHouseholdId: householdId }
+}
+
+/**
+ * Resolves the household that should become active after login.
+ *
+ * @param userId - Authenticated user id.
+ * @param event - Optional request event for runtime config.
+ * @returns Household id, or undefined when the user has no membership.
+ */
+export async function resolveInitialHouseholdId(userId: number, event?: H3Event) {
+	if (!getMultiTenancyEnabled(event)) {
+		return (await ensureDefaultHousehold(userId, event)).id
+	}
+
+	const [membership] = await db
+		.select({ householdId: schema.householdUsers.householdId })
+		.from(schema.householdUsers)
+		.where(eq(schema.householdUsers.userId, userId))
+		.orderBy(asc(schema.householdUsers.createdAt), asc(schema.householdUsers.householdId))
+		.limit(1)
+
+	return membership?.householdId
+}
+
+/**
+ * Returns household members in display order.
+ *
+ * @param householdId - Household id.
+ * @returns Member summaries.
+ */
+export async function listHouseholdMembers(householdId: string) {
+	return db
+		.select({
+			id: schema.users.id,
+			name: schema.users.name,
+			email: schema.users.email,
+			avatarPathname: schema.users.avatarPathname,
+			role: schema.householdUsers.role,
+			createdAt: schema.householdUsers.createdAt
+		})
+		.from(schema.householdUsers)
+		.innerJoin(schema.users, eq(schema.users.id, schema.householdUsers.userId))
+		.where(eq(schema.householdUsers.householdId, householdId))
+		.orderBy(asc(schema.users.name), asc(schema.users.email))
+}
+
+/**
+ * Removes a user from one household while keeping the account.
+ *
+ * @param householdId - Household id.
+ * @param userId - Member user id to remove.
+ * @returns Removed user summary.
+ */
+export async function removeHouseholdMember(householdId: string, userId: number) {
+	const memberCount = await countHouseholdMembers(householdId)
+
+	if (memberCount <= 1) {
+		throwApiError({
+			code: 'CONFLICT',
+			statusCode: 409,
+			message: 'Minimaal één gezinslid moet toegang houden.'
+		})
+	}
+
+	await assertMemberCanBeRemoved(householdId, userId)
+	const [removed] = await db
+		.delete(schema.householdUsers)
+		.where(
+			and(
+				eq(schema.householdUsers.householdId, householdId),
+				eq(schema.householdUsers.userId, userId)
+			)
+		)
+		.returning({ userId: schema.householdUsers.userId })
+
+	if (!removed) {
+		throwApiError({
+			code: 'NOT_FOUND',
+			statusCode: 404,
+			message: 'Gezinslid niet gevonden.'
+		})
+	}
+
+	return { removedUserId: userId }
+}
+
+/**
+ * Reads the role for one household membership.
+ *
+ * @param householdId - Household id.
+ * @param userId - Member user id.
+ * @returns Membership role, or null when missing.
+ */
+export async function getHouseholdMembershipRole(householdId: string, userId: number) {
+	const [membership] = await db
+		.select({ role: schema.householdUsers.role })
+		.from(schema.householdUsers)
+		.where(
+			and(
+				eq(schema.householdUsers.householdId, householdId),
+				eq(schema.householdUsers.userId, userId)
+			)
+		)
+		.limit(1)
+
+	return membership?.role ?? null
+}
+
+async function authorizeHouseholdContext(
+	event: H3Event,
+	options: HouseholdContextOptions,
+	context: HouseholdContext
+): Promise<HouseholdContext> {
+	if (!options.authorize) {
+		return context
+	}
+
+	const role = await getHouseholdMembershipRole(context.householdId, context.userId)
+
+	await authorize(event, options.authorize, role)
+
+	return { ...context, role }
+}
+
+/**
+ * Promotes an existing household member to owner.
+ *
+ * @param householdId - Household id.
+ * @param userId - Member user id to promote.
+ * @returns Updated member role summary.
+ */
+export async function assignHouseholdOwner(householdId: string, userId: number) {
+	const [updated] = await db
+		.update(schema.householdUsers)
+		.set({ role: 'householdOwner' })
+		.where(
+			and(
+				eq(schema.householdUsers.householdId, householdId),
+				eq(schema.householdUsers.userId, userId)
+			)
+		)
+		.returning({ userId: schema.householdUsers.userId, role: schema.householdUsers.role })
+
+	if (!updated) {
+		throwApiError({
+			code: 'NOT_FOUND',
+			statusCode: 404,
+			message: 'Gezinslid niet gevonden.'
+		})
+	}
+
+	return { userId: updated.userId, role: updated.role }
+}
+
+/**
+ * Removes the current user from a household, destroying it when they are the last member.
+ *
+ * @param event - H3 request event.
+ * @param householdId - Household id to leave.
+ * @param userId - Current user id.
+ * @returns Leave result and whether the household was destroyed.
+ */
+export async function leaveHousehold(event: H3Event, householdId: string, userId: number) {
+	const memberCount = await countHouseholdMembers(householdId)
+
+	if (memberCount <= 1) {
+		if (!getMultiTenancyEnabled(event)) {
+			throwApiError({
+				code: 'CONFLICT',
+				statusCode: 409,
+				message:
+					'Het standaardhuishouden kan in single-household modus niet worden verwijderd.'
+			})
+		}
+
+		await destroyHouseholdById(householdId)
+		await setFirstAvailableHouseholdSession(event, userId)
+		return { leftHouseholdId: householdId, destroyedHousehold: true }
+	}
+
+	await assertMemberCanBeRemoved(householdId, userId)
+	await db
+		.delete(schema.householdUsers)
+		.where(
+			and(
+				eq(schema.householdUsers.householdId, householdId),
+				eq(schema.householdUsers.userId, userId)
+			)
+		)
+	await setFirstAvailableHouseholdSession(event, userId)
+
+	return { leftHouseholdId: householdId, destroyedHousehold: false }
+}
+
+/**
+ * Destroys the active household and all associated domain data.
+ *
+ * @param event - H3 request event.
+ * @param householdId - Household id to destroy.
+ * @param userId - Current user id for session fallback.
+ * @returns Destroyed household summary.
+ */
+export async function destroyCurrentHousehold(event: H3Event, householdId: string, userId: number) {
+	if (!getMultiTenancyEnabled(event)) {
+		throwApiError({
+			code: 'CONFLICT',
+			statusCode: 409,
+			message: 'Het standaardhuishouden kan in single-household modus niet worden verwijderd.'
+		})
+	}
+
+	await destroyHouseholdById(householdId)
+	await setFirstAvailableHouseholdSession(event, userId)
+
+	return { destroyedHouseholdId: householdId }
+}
+
+/**
+ * Deletes a user account after enforcing household ownership and membership rules.
+ *
+ * @param event - H3 request event.
+ * @param userId - User id to delete.
+ * @returns Deleted user summary.
+ */
+export async function deleteAccount(event: H3Event, userId: number) {
+	const memberships = await listMembershipSummaries(userId)
+
+	if (!getMultiTenancyEnabled(event)) {
+		for (const membership of memberships) {
+			const memberCount = await countHouseholdMembers(membership.householdId)
+			const ownerCount = await countHouseholdOwners(membership.householdId)
+
+			if (memberCount <= 1) {
+				throwApiError({
+					code: 'CONFLICT',
+					statusCode: 409,
+					message:
+						'Je kunt je account niet verwijderen omdat dit het standaardhuishouden zou verwijderen.'
+				})
+			}
+
+			if (membership.role === 'householdOwner' && ownerCount <= 1) {
+				throwApiError({
+					code: 'CONFLICT',
+					statusCode: 409,
+					message: 'Wijs eerst een nieuwe eigenaar aan.'
+				})
+			}
+		}
+	}
+
+	for (const membership of memberships) {
+		await assertMemberCanBeRemoved(membership.householdId, userId)
+	}
+
+	for (const membership of memberships) {
+		const memberCount = await countHouseholdMembers(membership.householdId)
+
+		if (memberCount <= 1) {
+			await destroyHouseholdById(membership.householdId)
+			continue
+		}
+
+		await db
+			.delete(schema.householdUsers)
+			.where(
+				and(
+					eq(schema.householdUsers.householdId, membership.householdId),
+					eq(schema.householdUsers.userId, userId)
+				)
+			)
+	}
+
+	await db.delete(schema.householdUsers).where(eq(schema.householdUsers.userId, userId))
+	await clearDeletedUserReferences(userId)
+	await db.delete(schema.users).where(eq(schema.users.id, userId))
+
+	await clearSessionForDeletedUser(event, userId)
+
+	return { deletedUserId: userId }
+}
+
+/**
+ * Deletes one household and all household-scoped domain data.
+ *
+ * @param householdId - Household id to destroy.
+ */
+export async function destroyHouseholdById(householdId: string) {
+	await db.delete(schema.listItems).where(eq(schema.listItems.householdId, householdId))
+	await db.delete(schema.recipeItems).where(eq(schema.recipeItems.householdId, householdId))
+	await db
+		.delete(schema.mealPlannerDayItems)
+		.where(eq(schema.mealPlannerDayItems.householdId, householdId))
+	await db
+		.delete(schema.mealPlannerDays)
+		.where(eq(schema.mealPlannerDays.householdId, householdId))
+	await db.delete(schema.recipes).where(eq(schema.recipes.householdId, householdId))
+	await db.delete(schema.lists).where(eq(schema.lists.householdId, householdId))
+	await db.delete(schema.items).where(eq(schema.items.householdId, householdId))
+	await db.delete(schema.accessLinks).where(eq(schema.accessLinks.householdId, householdId))
+	await db
+		.delete(schema.householdSettings)
+		.where(eq(schema.householdSettings.householdId, householdId))
+	await db.delete(schema.householdUsers).where(eq(schema.householdUsers.householdId, householdId))
+	await db.delete(schema.households).where(eq(schema.households.id, householdId))
+}
+
+/**
+ * Reads or creates household settings.
+ *
+ * @param householdId - Household id.
+ * @param userId - User id for audit.
+ * @param now - Timestamp used for created and updated metadata.
+ * @returns Household settings.
+ */
+export async function ensureHouseholdSettings(
+	householdId: string,
+	userId: number,
+	now = Date.now()
+) {
+	const [existing] = await db
+		.select()
+		.from(schema.householdSettings)
+		.where(eq(schema.householdSettings.householdId, householdId))
+		.limit(1)
+
+	if (existing) {
+		return existing
+	}
+
+	const [settings] = await db
+		.insert(schema.householdSettings)
+		.values({
+			householdId,
+			refreshIntervalMs: DEFAULT_REFRESH_INTERVAL_MS,
+			createdAt: now,
+			updatedAt: now,
+			updatedByUserId: userId
+		})
+		.returning()
+
+	if (!settings) {
+		throwApiError({
+			code: 'INTERNAL_ERROR',
+			statusCode: 500,
+			message: 'Instellingen konden niet worden aangemaakt.'
+		})
+	}
+
+	return settings
+}
+
+/**
+ * Updates household settings.
+ *
+ * @param householdId - Household id.
+ * @param userId - Acting user id.
+ * @param input - Settings patch.
+ * @returns Updated settings.
+ */
+export async function updateHouseholdSettings(
+	householdId: string,
+	userId: number,
+	input: { refreshIntervalMs: number }
+) {
+	await ensureHouseholdSettings(householdId, userId)
+	const now = Date.now()
+	const [settings] = await db
+		.update(schema.householdSettings)
+		.set({
+			refreshIntervalMs: input.refreshIntervalMs,
+			updatedAt: now,
+			updatedByUserId: userId
+		})
+		.where(eq(schema.householdSettings.householdId, householdId))
+		.returning()
+
+	if (!settings) {
+		throwApiError({
+			code: 'INTERNAL_ERROR',
+			statusCode: 500,
+			message: 'Instellingen konden niet worden opgeslagen.'
+		})
+	}
+
+	return settings
+}
+
+/**
+ * Creates a one-time invite or reset link token.
+ *
+ * @param input - Link target and creator.
+ * @returns Raw token and persisted link metadata.
+ */
+export async function createAccessLink(input: {
+	type: AccessLinkType
+	householdId: string
+	createdByUserId: number
+	userId?: number
+}) {
+	const token = createRandomToken()
+	const tokenHash = await hashAccessToken(token)
+	const now = Date.now()
+	const ttl = input.type === 'invite' ? INVITE_TTL_MS : RESET_TTL_MS
+	const [link] = await db
+		.insert(schema.accessLinks)
+		.values({
+			id: createDomainId(),
+			householdId: input.householdId,
+			userId: input.userId ?? null,
+			type: input.type,
+			tokenHash,
+			expiresAt: now + ttl,
+			consumedAt: null,
+			createdAt: now,
+			createdByUserId: input.createdByUserId
+		})
+		.returning()
+
+	if (!link) {
+		throwApiError({
+			code: 'INTERNAL_ERROR',
+			statusCode: 500,
+			message: 'Link kon niet worden aangemaakt.'
+		})
+	}
+
+	return { token, link }
+}
+
+/**
+ * Loads and consumes an access link by raw token.
+ *
+ * @param token - Raw one-time token.
+ * @param type - Required link type.
+ * @returns Consumed link.
+ */
+export async function consumeAccessLink(token: string, type: AccessLinkType) {
+	const tokenHash = await hashAccessToken(token)
+	const now = Date.now()
+	const [link] = await db
+		.select()
+		.from(schema.accessLinks)
+		.where(
+			and(
+				eq(schema.accessLinks.tokenHash, tokenHash),
+				eq(schema.accessLinks.type, type),
+				isNull(schema.accessLinks.consumedAt)
+			)
+		)
+		.limit(1)
+
+	if (!link || link.expiresAt < now) {
+		throwApiError({
+			code: 'NOT_FOUND',
+			statusCode: 404,
+			message: 'Deze link is verlopen of bestaat niet.'
+		})
+	}
+
+	const [consumed] = await db
+		.update(schema.accessLinks)
+		.set({ consumedAt: now })
+		.where(and(eq(schema.accessLinks.id, link.id), isNull(schema.accessLinks.consumedAt)))
+		.returning()
+
+	if (!consumed) {
+		throwApiError({
+			code: 'CONFLICT',
+			statusCode: 409,
+			message: 'Deze link is al gebruikt.'
+		})
+	}
+
+	return consumed
+}
+
+/**
+ * Adds a user to a household when missing.
+ *
+ * @param householdId - Household id.
+ * @param userId - User id.
+ * @param role - Role to assign when creating or upgrading the membership.
+ */
+export async function ensureHouseholdMembership(
+	householdId: string,
+	userId: number,
+	role: HouseholdUserRole = 'member'
+) {
+	const [existing] = await db
+		.select({ userId: schema.householdUsers.userId, role: schema.householdUsers.role })
+		.from(schema.householdUsers)
+		.where(
+			and(
+				eq(schema.householdUsers.householdId, householdId),
+				eq(schema.householdUsers.userId, userId)
+			)
+		)
+		.limit(1)
+
+	if (existing) {
+		if (role === 'householdOwner' && existing.role !== 'householdOwner') {
+			await db
+				.update(schema.householdUsers)
+				.set({ role })
+				.where(
+					and(
+						eq(schema.householdUsers.householdId, householdId),
+						eq(schema.householdUsers.userId, userId)
+					)
+				)
+		}
+		return
+	}
+
+	await db.insert(schema.householdUsers).values({
+		householdId,
+		userId,
+		role,
+		createdAt: Date.now()
+	})
+}
+
+/**
+ * Reads whether household multi-tenancy is enabled on the server.
+ *
+ * @param event - Optional H3 request event.
+ * @returns True when multi-tenancy is enabled.
+ */
+export function getMultiTenancyEnabled(event?: H3Event): boolean {
+	return useRuntimeConfig(event).enableMultiTenancy === true
+}
+
+/**
+ * Reads whether logged-in users can create households.
+ *
+ * @param event - Optional H3 request event.
+ * @returns True when household creation is enabled.
+ */
+export function getHouseholdCreationEnabled(event?: H3Event): boolean {
+	return useRuntimeConfig(event).enableHouseholdCreation === true
+}
+
+async function isHouseholdMember(householdId: string, userId: number): Promise<boolean> {
+	const [membership] = await db
+		.select({ userId: schema.householdUsers.userId })
+		.from(schema.householdUsers)
+		.where(
+			and(
+				eq(schema.householdUsers.householdId, householdId),
+				eq(schema.householdUsers.userId, userId)
+			)
+		)
+		.limit(1)
+
+	return Boolean(membership)
+}
+
+async function countHouseholdMembers(householdId: string) {
+	const [memberCount] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(schema.householdUsers)
+		.where(eq(schema.householdUsers.householdId, householdId))
+
+	return Number(memberCount?.count ?? 0)
+}
+
+async function countHouseholdOwners(householdId: string) {
+	const [ownerCount] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(schema.householdUsers)
+		.where(
+			and(
+				eq(schema.householdUsers.householdId, householdId),
+				eq(schema.householdUsers.role, 'householdOwner')
+			)
+		)
+
+	return Number(ownerCount?.count ?? 0)
+}
+
+async function assertMemberCanBeRemoved(householdId: string, userId: number) {
+	const role = await getHouseholdMembershipRole(householdId, userId)
+
+	if (!role) {
+		throwApiError({
+			code: 'NOT_FOUND',
+			statusCode: 404,
+			message: 'Gezinslid niet gevonden.'
+		})
+	}
+
+	if (role !== 'householdOwner') {
+		return
+	}
+
+	const memberCount = await countHouseholdMembers(householdId)
+	const ownerCount = await countHouseholdOwners(householdId)
+
+	if (memberCount > 1 && ownerCount <= 1) {
+		throwApiError({
+			code: 'CONFLICT',
+			statusCode: 409,
+			message: 'Wijs eerst een nieuwe eigenaar aan.'
+		})
+	}
+}
+
+async function listMembershipSummaries(userId: number): Promise<HouseholdMembershipSummary[]> {
+	return db
+		.select({
+			householdId: schema.householdUsers.householdId,
+			role: schema.householdUsers.role
+		})
+		.from(schema.householdUsers)
+		.where(eq(schema.householdUsers.userId, userId))
+}
+
+async function clearDeletedUserReferences(userId: number): Promise<void> {
+	const fallbackUserId = await getFallbackUserId(userId)
+
+	await db
+		.delete(schema.accessLinks)
+		.where(
+			or(
+				eq(schema.accessLinks.userId, userId),
+				eq(schema.accessLinks.createdByUserId, userId)
+			)
+		)
+
+	await db
+		.update(schema.householdSettings)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.householdSettings.updatedByUserId, userId))
+
+	await db
+		.update(schema.listItems)
+		.set({
+			checkedByUserId: null,
+			archivedByUserId: null,
+			deletedByUserId: null
+		})
+		.where(
+			or(
+				eq(schema.listItems.checkedByUserId, userId),
+				eq(schema.listItems.archivedByUserId, userId),
+				eq(schema.listItems.deletedByUserId, userId)
+			)
+		)
+
+	if (!fallbackUserId) {
+		return
+	}
+
+	await reassignAuditUserReferences(userId, fallbackUserId)
+}
+
+async function getFallbackUserId(userId: number): Promise<number | null> {
+	const [user] = await db
+		.select({ id: schema.users.id })
+		.from(schema.users)
+		.where(ne(schema.users.id, userId))
+		.orderBy(asc(schema.users.id))
+		.limit(1)
+
+	return user?.id ?? null
+}
+
+async function reassignAuditUserReferences(userId: number, fallbackUserId: number): Promise<void> {
+	await db
+		.update(schema.lists)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.lists.createdByUserId, userId))
+	await db
+		.update(schema.lists)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.lists.updatedByUserId, userId))
+	await db
+		.update(schema.items)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.items.createdByUserId, userId))
+	await db
+		.update(schema.items)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.items.updatedByUserId, userId))
+	await db
+		.update(schema.recipes)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.recipes.createdByUserId, userId))
+	await db
+		.update(schema.recipes)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.recipes.updatedByUserId, userId))
+	await db
+		.update(schema.recipeItems)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.recipeItems.createdByUserId, userId))
+	await db
+		.update(schema.recipeItems)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.recipeItems.updatedByUserId, userId))
+	await db
+		.update(schema.mealPlannerDays)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDays.createdByUserId, userId))
+	await db
+		.update(schema.mealPlannerDays)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDays.updatedByUserId, userId))
+	await db
+		.update(schema.mealPlannerDayItems)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDayItems.createdByUserId, userId))
+	await db
+		.update(schema.mealPlannerDayItems)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDayItems.updatedByUserId, userId))
+	await db
+		.update(schema.listItems)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.listItems.createdByUserId, userId))
+	await db
+		.update(schema.listItems)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.listItems.updatedByUserId, userId))
+}
+
+async function clearSessionForDeletedUser(event: H3Event, userId: number): Promise<void> {
+	const session = await getUserSession(event)
+	const sessionUserId = Number(session?.user?.id)
+
+	if (sessionUserId === userId) {
+		await clearUserSession(event)
+	}
+}
+
+async function setFirstAvailableHouseholdSession(event: H3Event, userId: number) {
+	const session = await getUserSession(event)
+
+	if (!session.user) {
+		return
+	}
+
+	const [membership] = await db
+		.select({ householdId: schema.householdUsers.householdId })
+		.from(schema.householdUsers)
+		.where(eq(schema.householdUsers.userId, userId))
+		.orderBy(asc(schema.householdUsers.createdAt), asc(schema.householdUsers.householdId))
+		.limit(1)
+
+	await setUserSession(event, {
+		user: session.user,
+		loggedInAt: session.loggedInAt,
+		activeHouseholdId: membership?.householdId
+	})
+}
+
+async function setActiveHouseholdSession(event: H3Event, householdId: string): Promise<void> {
+	const session = await getUserSession(event)
+
+	if (!session.user) {
+		return
+	}
+
+	await setUserSession(event, {
+		user: session.user,
+		loggedInAt: session.loggedInAt,
+		activeHouseholdId: householdId
+	})
+}
+
+function createRandomToken(): string {
+	const bytes = new Uint8Array(32)
+	crypto.getRandomValues(bytes)
+
+	return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+async function hashAccessToken(token: string): Promise<string> {
+	const data = new TextEncoder().encode(token)
+	const digest = await crypto.subtle.digest('SHA-256', data)
+
+	return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}

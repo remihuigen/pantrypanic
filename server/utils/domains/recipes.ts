@@ -27,22 +27,31 @@ import {
 } from './base'
 import { findOrCreateItem } from './items'
 
+const DEFAULT_HOUSEHOLD_ID = 'household-1'
+
 /**
  * Lists recipes by status and optional query.
  *
+ * @param householdId - Household id.
  * @param query - Recipe query.
  * @returns Recipes.
  */
-export async function listRecipes(query: z.infer<typeof recipeQuerySchema>) {
+export async function listRecipes(
+	householdId: string | z.infer<typeof recipeQuerySchema>,
+	query?: z.infer<typeof recipeQuerySchema>
+) {
+	const resolvedHouseholdId = typeof householdId === 'string' ? householdId : DEFAULT_HOUSEHOLD_ID
+	const resolvedQuery = query ?? (householdId as z.infer<typeof recipeQuerySchema>)
 	const rows = await db
 		.select()
 		.from(schema.recipes)
 		.where(
 			and(
-				eq(schema.recipes.status, query.status),
-				query.q === undefined
+				eq(schema.recipes.householdId, resolvedHouseholdId),
+				eq(schema.recipes.status, resolvedQuery.status),
+				resolvedQuery.q === undefined
 					? undefined
-					: like(sql`lower(${schema.recipes.name})`, `%${query.q.toLowerCase()}%`)
+					: like(sql`lower(${schema.recipes.name})`, `%${resolvedQuery.q.toLowerCase()}%`)
 			)
 		)
 		.orderBy(asc(schema.recipes.name), desc(schema.recipes.updatedAt))
@@ -53,21 +62,31 @@ export async function listRecipes(query: z.infer<typeof recipeQuerySchema>) {
 /**
  * Creates a recipe and optional ingredients.
  *
+ * @param householdId - Household id.
  * @param input - Validated recipe payload.
  * @param userId - Audit user id.
  * @returns Created recipe detail.
  */
-export async function createRecipe(input: z.infer<typeof createRecipeBodySchema>, userId: number) {
-	const audit = createAudit(userId)
+export async function createRecipe(
+	householdId: string | z.infer<typeof createRecipeBodySchema>,
+	input: z.infer<typeof createRecipeBodySchema> | number,
+	userId?: number
+) {
+	const resolvedHouseholdId = typeof householdId === 'string' ? householdId : DEFAULT_HOUSEHOLD_ID
+	const resolvedInput =
+		typeof householdId === 'string' ? (input as z.infer<typeof createRecipeBodySchema>) : householdId
+	const resolvedUserId = typeof householdId === 'string' ? Number(userId) : Number(input)
+	const audit = createAudit(resolvedUserId)
 	const [recipe] = await db
 		.insert(schema.recipes)
 		.values({
 			id: createDomainId(),
-			name: input.name,
-			description: input.description ?? null,
-			servings: input.servings ?? null,
-			sourceUrl: input.sourceUrl ?? null,
-			notes: input.notes ?? null,
+			householdId: resolvedHouseholdId,
+			name: resolvedInput.name,
+			description: resolvedInput.description ?? null,
+			servings: resolvedInput.servings ?? null,
+			sourceUrl: resolvedInput.sourceUrl ?? null,
+			notes: resolvedInput.notes ?? null,
 			status: 'active',
 			archivedAt: null,
 			deletedAt: null,
@@ -78,12 +97,17 @@ export async function createRecipe(input: z.infer<typeof createRecipeBodySchema>
 	const createdRecipe = assertRow(recipe)
 	const recipeItems = []
 
-	for (const [index, ingredient] of (input.items ?? []).entries()) {
-		const item = await findOrCreateItem({ name: ingredient.name, auditUserId: userId })
+	for (const [index, ingredient] of (resolvedInput.items ?? []).entries()) {
+		const item = await findOrCreateItem({
+			householdId: resolvedHouseholdId,
+			name: ingredient.name,
+			auditUserId: resolvedUserId
+		})
 		const [recipeItem] = await db
 			.insert(schema.recipeItems)
 			.values({
 				id: createDomainId(),
+				householdId: resolvedHouseholdId,
 				recipeId: createdRecipe.id,
 				itemId: item.id,
 				amount: ingredient.amount ?? null,
@@ -108,12 +132,15 @@ export async function createRecipe(input: z.infer<typeof createRecipeBodySchema>
 /**
  * Returns recipe detail with ordered ingredients.
  *
+ * @param householdId - Household id.
  * @param recipeId - Recipe id.
  * @returns Recipe detail.
  */
-export async function getRecipe(recipeId: string) {
-	const recipe = await findRecipeOrThrow(recipeId)
-	const items = await getRecipeItems(recipeId)
+export async function getRecipe(householdId: string, recipeId?: string) {
+	const resolvedHouseholdId = recipeId === undefined ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedRecipeId = recipeId ?? householdId
+	const recipe = await findRecipeOrThrow(resolvedRecipeId, resolvedHouseholdId)
+	const items = await getRecipeItems(resolvedRecipeId, resolvedHouseholdId)
 
 	return {
 		recipe: {
@@ -126,17 +153,19 @@ export async function getRecipe(recipeId: string) {
 /**
  * Updates recipe metadata.
  *
+ * @param householdId - Household id.
  * @param recipeId - Recipe id.
  * @param input - Validated recipe update payload.
  * @param userId - Audit user id.
  * @returns Updated recipe summary.
  */
 export async function updateRecipe(
+	householdId: string,
 	recipeId: string,
 	input: z.infer<typeof updateRecipeBodySchema>,
 	userId: number
 ) {
-	await findRecipeOrThrow(recipeId)
+	await findRecipeOrThrow(recipeId, householdId)
 	const audit = createAudit(userId)
 	const [recipe] = await db
 		.update(schema.recipes)
@@ -149,7 +178,7 @@ export async function updateRecipe(
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.recipes.id, recipeId))
+		.where(and(eq(schema.recipes.id, recipeId), eq(schema.recipes.householdId, householdId)))
 		.returning()
 
 	const updated = assertRow(recipe)
@@ -159,12 +188,13 @@ export async function updateRecipe(
 /**
  * Archives a recipe.
  *
+ * @param householdId - Household id.
  * @param recipeId - Recipe id.
  * @param userId - Audit user id.
  * @returns Archived recipe summary.
  */
-export async function archiveRecipe(recipeId: string, userId: number) {
-	await findRecipeOrThrow(recipeId)
+export async function archiveRecipe(householdId: string, recipeId: string, userId: number) {
+	await findRecipeOrThrow(recipeId, householdId)
 	const audit = createAudit(userId)
 	const [recipe] = await db
 		.update(schema.recipes)
@@ -174,7 +204,7 @@ export async function archiveRecipe(recipeId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.recipes.id, recipeId))
+		.where(and(eq(schema.recipes.id, recipeId), eq(schema.recipes.householdId, householdId)))
 		.returning()
 
 	const archived = assertRow(recipe)
@@ -184,12 +214,13 @@ export async function archiveRecipe(recipeId: string, userId: number) {
 /**
  * Soft-deletes a recipe.
  *
+ * @param householdId - Household id.
  * @param recipeId - Recipe id.
  * @param userId - Audit user id.
  * @returns Deleted recipe summary.
  */
-export async function deleteRecipe(recipeId: string, userId: number) {
-	await findRecipeOrThrow(recipeId)
+export async function deleteRecipe(householdId: string, recipeId: string, userId: number) {
+	await findRecipeOrThrow(recipeId, householdId)
 	const audit = createAudit(userId)
 	const [recipe] = await db
 		.update(schema.recipes)
@@ -199,7 +230,7 @@ export async function deleteRecipe(recipeId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.recipes.id, recipeId))
+		.where(and(eq(schema.recipes.id, recipeId), eq(schema.recipes.householdId, householdId)))
 		.returning()
 
 	const deleted = assertRow(recipe)
@@ -209,24 +240,27 @@ export async function deleteRecipe(recipeId: string, userId: number) {
 /**
  * Adds an ingredient to a recipe.
  *
+ * @param householdId - Household id.
  * @param recipeId - Recipe id.
  * @param input - Validated ingredient payload.
  * @param userId - Audit user id.
  * @returns Created recipe item.
  */
 export async function addRecipeItem(
+	householdId: string,
 	recipeId: string,
 	input: z.infer<typeof createOccurrenceBodySchema>,
 	userId: number
 ) {
-	await findRecipeOrThrow(recipeId)
+	await findRecipeOrThrow(recipeId, householdId)
 	const audit = createAudit(userId)
-	const item = await findOrCreateItem({ name: input.name, auditUserId: userId })
-	const position = await getNextRecipeItemPosition(recipeId)
+	const item = await findOrCreateItem({ householdId, name: input.name, auditUserId: userId })
+	const position = await getNextRecipeItemPosition(recipeId, householdId)
 	const [recipeItem] = await db
 		.insert(schema.recipeItems)
 		.values({
 			id: createDomainId(),
+			householdId,
 			recipeId,
 			itemId: item.id,
 			amount: input.amount ?? null,
@@ -243,17 +277,28 @@ export async function addRecipeItem(
 /**
  * Reorders recipe items.
  *
+ * @param householdId - Household id.
  * @param recipeId - Recipe id.
  * @param orderedIds - Ordered recipe item ids.
  * @param userId - Audit user id.
  * @returns Updated item positions.
  */
-export async function reorderRecipeItems(recipeId: string, orderedIds: string[], userId: number) {
-	await findRecipeOrThrow(recipeId)
-	const audit = createAudit(userId)
+export async function reorderRecipeItems(
+	householdId: string,
+	recipeId: string | string[],
+	orderedIds: string[] | number,
+	userId?: number
+) {
+	const isLegacyCall = Array.isArray(recipeId)
+	const resolvedHouseholdId = isLegacyCall ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedRecipeId = isLegacyCall ? householdId : (recipeId as string)
+	const resolvedOrderedIds = isLegacyCall ? recipeId : (orderedIds as string[])
+	const resolvedUserId = isLegacyCall ? Number(orderedIds) : Number(userId)
+	await findRecipeOrThrow(resolvedRecipeId, resolvedHouseholdId)
+	const audit = createAudit(resolvedUserId)
 	const updated = []
 
-	for (const [position, id] of orderedIds.entries()) {
+	for (const [position, id] of resolvedOrderedIds.entries()) {
 		const [row] = await db
 			.update(schema.recipeItems)
 			.set({
@@ -261,7 +306,13 @@ export async function reorderRecipeItems(recipeId: string, orderedIds: string[],
 				updatedAt: audit.now,
 				updatedByUserId: audit.userId
 			})
-			.where(and(eq(schema.recipeItems.id, id), eq(schema.recipeItems.recipeId, recipeId)))
+			.where(
+				and(
+					eq(schema.recipeItems.id, id),
+					eq(schema.recipeItems.householdId, resolvedHouseholdId),
+					eq(schema.recipeItems.recipeId, resolvedRecipeId)
+				)
+			)
 			.returning({ id: schema.recipeItems.id, position: schema.recipeItems.position })
 
 		if (row) {
@@ -275,14 +326,20 @@ export async function reorderRecipeItems(recipeId: string, orderedIds: string[],
 /**
  * Copies recipe ingredients into a shopping list.
  *
+ * @param householdId - Household id.
  * @param recipeId - Recipe id.
  * @param listId - Target list id.
  * @param userId - Audit user id.
  * @returns Added list items.
  */
-export async function addRecipeToList(recipeId: string, listId: string, userId: number) {
-	await findRecipeOrThrow(recipeId)
-	await findListOrThrow(listId)
+export async function addRecipeToList(
+	householdId: string,
+	recipeId: string,
+	listId: string,
+	userId: number
+) {
+	await findRecipeOrThrow(recipeId, householdId)
+	await findListOrThrow(listId, householdId)
 	const ingredients = await db
 		.select({
 			recipeItem: schema.recipeItems,
@@ -290,11 +347,17 @@ export async function addRecipeToList(recipeId: string, listId: string, userId: 
 		})
 		.from(schema.recipeItems)
 		.innerJoin(schema.items, eq(schema.items.id, schema.recipeItems.itemId))
-		.where(eq(schema.recipeItems.recipeId, recipeId))
+		.where(
+			and(
+				eq(schema.recipeItems.recipeId, recipeId),
+				eq(schema.recipeItems.householdId, householdId)
+			)
+		)
 		.orderBy(asc(schema.recipeItems.position), asc(schema.recipeItems.createdAt))
 
 	const addedItems = await appendListItemsFromRows({
 		listId,
+		householdId,
 		userId,
 		rows: ingredients.map((row) => ({
 			item: row.item,
@@ -313,17 +376,19 @@ export async function addRecipeToList(recipeId: string, listId: string, userId: 
 /**
  * Updates a recipe item.
  *
+ * @param householdId - Household id.
  * @param recipeItemId - Recipe item id.
  * @param input - Validated update payload.
  * @param userId - Audit user id.
  * @returns Updated recipe item summary.
  */
 export async function updateRecipeItem(
+	householdId: string,
 	recipeItemId: string,
 	input: z.infer<typeof updateOccurrenceBodySchema>,
 	userId: number
 ) {
-	await findRecipeItemOrThrow(recipeItemId)
+	await findRecipeItemOrThrow(recipeItemId, householdId)
 	const audit = createAudit(userId)
 	const [row] = await db
 		.update(schema.recipeItems)
@@ -334,7 +399,12 @@ export async function updateRecipeItem(
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.recipeItems.id, recipeItemId))
+		.where(
+			and(
+				eq(schema.recipeItems.id, recipeItemId),
+				eq(schema.recipeItems.householdId, householdId)
+			)
+		)
 		.returning()
 
 	const recipeItem = assertRow(row)
@@ -344,12 +414,20 @@ export async function updateRecipeItem(
 /**
  * Hard-deletes a recipe item.
  *
+ * @param householdId - Household id.
  * @param recipeItemId - Recipe item id.
  * @returns Ok response.
  */
-export async function deleteRecipeItem(recipeItemId: string) {
-	await findRecipeItemOrThrow(recipeItemId)
-	await db.delete(schema.recipeItems).where(eq(schema.recipeItems.id, recipeItemId))
+export async function deleteRecipeItem(householdId: string, recipeItemId: string) {
+	await findRecipeItemOrThrow(recipeItemId, householdId)
+	await db
+		.delete(schema.recipeItems)
+		.where(
+			and(
+				eq(schema.recipeItems.id, recipeItemId),
+				eq(schema.recipeItems.householdId, householdId)
+			)
+		)
 
 	return { ok: true }
 }

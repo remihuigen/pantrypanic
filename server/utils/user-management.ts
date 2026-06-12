@@ -1,14 +1,19 @@
+import type { userSchema } from '#shared/utils/schemas/domain'
 import type { H3Event } from 'h3'
 
+import {
+	deleteAccount,
+	ensureDefaultHousehold,
+	ensureHouseholdMembership
+} from '#server/utils/domains/households'
 import { seedInitialDomainData } from '#server/utils/domains/seed'
+import { userEmailSchema } from '#shared/utils/schemas/domain'
 import { and, asc, eq, ne } from 'drizzle-orm'
 import { createError } from 'h3'
 import { db, schema } from 'hub:db'
 import { z } from 'zod'
 
 const userIdSchema = z.coerce.number().int().positive()
-
-const userEmailSchema = z.email().trim().toLowerCase()
 
 /**
  * Creates the user-list query schema with runtime-configured pagination defaults.
@@ -31,21 +36,19 @@ export function createUserListQuerySchema(event?: H3Event) {
 	})
 }
 
-export const createUserBodySchema = z.strictObject({
-	name: z.string().trim().min(1).max(120),
-	email: userEmailSchema,
-	password: z.string().min(1).max(1024)
-})
-
 export const updateUserBodySchema = z
 	.strictObject({
 		name: z.string().trim().min(1).max(120).optional(),
 		email: userEmailSchema.optional(),
+		avatarPathname: z.string().trim().min(1).max(500).nullable().optional(),
 		password: z.string().min(1).max(1024).optional()
 	})
 	.refine(
 		(value) =>
-			value.name !== undefined || value.email !== undefined || value.password !== undefined,
+			value.name !== undefined ||
+			value.email !== undefined ||
+			value.avatarPathname !== undefined ||
+			value.password !== undefined,
 		{
 			error: 'At least one user field must be provided'
 		}
@@ -64,6 +67,7 @@ export function serializeUser(user: UserRow) {
 		id: user.id,
 		name: user.name,
 		email: user.email,
+		avatarPathname: user.avatarPathname ?? undefined,
 		createdAt: user.createdAt
 	}
 }
@@ -150,10 +154,14 @@ export async function getUserById(userId: number) {
  * Creates a user after checking email uniqueness.
  *
  * @param input - Validated create-user payload.
+ * @param options - Optional creation behavior.
  * @returns Created public user record.
  * @throws HTTP 409 when the email is already in use.
  */
-export async function createUser(input: z.infer<typeof createUserBodySchema>) {
+export async function createUser(
+	input: z.infer<typeof userSchema>,
+	options: { seedDefaultHousehold?: boolean } = {}
+) {
 	await assertEmailAvailable(input.email)
 	const hashedPassword = await hashPassword(input.password)
 
@@ -167,7 +175,14 @@ export async function createUser(input: z.infer<typeof createUserBodySchema>) {
 		})
 		.returning()
 
-	return serializeUser(assertReturnedUser(user))
+	const createdUser = assertReturnedUser(user)
+
+	if (options.seedDefaultHousehold ?? true) {
+		const household = await ensureDefaultHousehold(createdUser.id)
+		await seedInitialDomainData(createdUser.id, household.id)
+	}
+
+	return serializeUser(createdUser)
 }
 
 /**
@@ -199,6 +214,7 @@ export async function updateUser(userId: number, input: z.infer<typeof updateUse
 		.set({
 			...(input.name !== undefined ? { name: input.name } : {}),
 			...(input.email !== undefined ? { email: input.email } : {}),
+			...(input.avatarPathname !== undefined ? { avatarPathname: input.avatarPathname } : {}),
 			...(input.password !== undefined
 				? { password: await hashPassword(input.password) }
 				: {})
@@ -210,21 +226,14 @@ export async function updateUser(userId: number, input: z.infer<typeof updateUse
 }
 
 /**
- * Deletes an existing user by id.
+ * Deletes an existing user by id through the account deletion flow.
  *
+ * @param event - H3 request event.
  * @param userId - User id to delete.
- * @throws HTTP 404 when the user does not exist.
+ * @returns Deleted user summary.
  */
-export async function deleteUser(userId: number) {
-	const [user] = await db.delete(schema.users).where(eq(schema.users.id, userId)).returning()
-
-	if (!user) {
-		throw createError({
-			statusCode: 404,
-			statusMessage: 'Not Found',
-			message: 'User not found'
-		})
-	}
+export async function deleteUser(event: H3Event, userId: number) {
+	return deleteAccount(event, userId)
 }
 
 /**
@@ -251,6 +260,16 @@ export async function findUserForAuthentication(email: string) {
  */
 export async function updateUserPasswordHash(userId: number, passwordHash: string) {
 	await db.update(schema.users).set({ password: passwordHash }).where(eq(schema.users.id, userId))
+}
+
+/**
+ * Adds an existing user to a household.
+ *
+ * @param userId - User id.
+ * @param householdId - Household id.
+ */
+export async function addUserToHousehold(userId: number, householdId: string) {
+	await ensureHouseholdMembership(householdId, userId)
 }
 
 async function findUserById(userId: number) {

@@ -13,6 +13,16 @@ export default withNuxt(
 	},
 
 	{
+		languageOptions: {
+			globals: {
+				clearUserSession: 'readonly',
+				getUserSession: 'readonly',
+				hashPassword: 'readonly',
+				passwordNeedsReHash: 'readonly',
+				setUserSession: 'readonly',
+				verifyPassword: 'readonly'
+			}
+		},
 		rules: {
 			'vue/multi-word-component-names': 'off',
 			'no-unused-vars': [

@@ -87,12 +87,17 @@ describe('api core utilities', () => {
 
 	it('wraps known and unknown errors in API envelopes', async () => {
 		const known = defineApiHandler(() => {
-			throwApiError({ code: 'NOT_FOUND', statusCode: 404, message: 'Niet gevonden.' })
+			throwApiError({
+				code: 'NOT_FOUND',
+				statusCode: 404,
+				message: 'Niet gevonden.',
+				details: { id: ['Ongeldig.'] }
+			})
 		})
 		const knownEvent = createResponseEvent()
 		await expect(known(knownEvent)).resolves.toEqual({
 			success: false,
-			error: { code: 'NOT_FOUND', message: 'Niet gevonden.' }
+			error: { code: 'NOT_FOUND', message: 'Niet gevonden.', details: { id: ['Ongeldig.'] } }
 		})
 		expect(knownEvent.node.res.statusCode).toBe(404)
 
@@ -105,6 +110,40 @@ describe('api core utilities', () => {
 			error: { code: 'INTERNAL_ERROR', message: 'Er is iets misgegaan.' }
 		})
 		expect(unknownEvent.node.res.statusCode).toBe(500)
+	})
+
+	it('maps HTTP-like errors to API error codes and default messages', async () => {
+		const cases = [
+			{ statusCode: 401, code: 'UNAUTHORIZED', message: 'Login vereist.' },
+			{ statusCode: 403, code: 'FORBIDDEN', message: 'Geen toegang.' },
+			{ statusCode: 404, code: 'NOT_FOUND', message: 'Niet gevonden.' },
+			{ statusCode: 409, code: 'CONFLICT', message: 'Conflict.' },
+			{ statusCode: 400, code: 'VALIDATION_ERROR', message: 'Ongeldig.' },
+			{ statusCode: 418, code: 'INTERNAL_ERROR', message: '' }
+		]
+
+		for (const item of cases) {
+			const handler = defineApiHandler(() => {
+				throw { statusCode: item.statusCode, message: item.message }
+			})
+			const event = createResponseEvent()
+
+			await expect(handler(event)).resolves.toEqual({
+				success: false,
+				error: {
+					code: item.code,
+					message: item.message || 'Er is iets misgegaan.'
+				}
+			})
+			expect(event.node.res.statusCode).toBe(item.statusCode)
+		}
+	})
+
+	it('rejects unauthenticated requests when no seed fallback user exists', async () => {
+		getUserSession.mockResolvedValueOnce({})
+		vi.mocked(db.select).mockReturnValueOnce(createSelectBuilder([]) as never)
+
+		await expect(getAuthenticatedUserId({} as never)).rejects.toThrow('Je bent niet ingelogd.')
 	})
 })
 

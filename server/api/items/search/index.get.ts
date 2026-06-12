@@ -1,8 +1,10 @@
-import { defineApiHandler, parseApiQuery } from '#server/utils/api-core'
 import { createItemSearchQuerySchema, searchItems } from '#server/domains'
+import { defineApiHandler, parseApiQuery } from '#server/utils/api-core'
+import { getHouseholdContext } from '#server/utils/domains/households'
 
-export default defineApiHandler((event) => {
+export default defineApiHandler(async (event) => {
+	const { householdId } = await getHouseholdContext(event)
 	const query = parseApiQuery(event, createItemSearchQuerySchema(event))
 
-	return searchItems(query)
+	return searchItems(householdId, query)
 })

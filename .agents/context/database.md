@@ -11,7 +11,13 @@ Current tables:
   - `name`: required text
   - `email`: required unique text
   - `password`: required text, stores a scrypt hash for new/updated users
+  - `avatar_pathname`: optional blob pathname for the profile avatar
   - `createdAt`: required timestamp integer
+- `households`
+- `household_users`
+  - includes `role`: `member` or `householdOwner`
+- `household_settings`
+- `access_links`
 - `lists`
 - `items`
 - `recipes`
@@ -38,8 +44,10 @@ Current migration files live under `server/db/migrations/sqlite/`.
   at `NUXT_PUBLIC_SITE_URL` with `x-api-token: ADMIN_API_KEY`.
 - The admin seed runs from Nuxt `build:done` and creates the user through `POST /api/users` only
   when `GET /api/users?email=<email>&limit=1` returns no matching user.
-- `createUser()` calls `seedInitialDomainData(user.id)` after creating a user, so fresh deployments
-  seed the default list and meal planner immediately after the initial admin user is created.
+- `createUser()` creates/joins the default household and seeds household domain data by default.
+  The created/default membership is a `householdOwner`.
+  Invite onboarding can opt out of default-household seeding and attach the new user only to the
+  invited household.
 - Migration `0001_worried_jasper_sitwell.sql` also seeds default domain rows when at least one user
   already exists before the migration runs.
 - User create/update flows hash passwords before storing them.
@@ -52,11 +60,14 @@ Current migration files live under `server/db/migrations/sqlite/`.
 - `recipeStatusValues`: `active`, `archived`, `deleted`
 - `listItemSourceTypeValues`: `manual`, `recipe`, `meal_planner_recipe`, `meal_planner_placeholder`
 - `mealPlannerDayTypeValues`: `empty`, `recipe`, `placeholder`
+- `householdUserRoleValues`: `member`, `householdOwner`
 
 ## Domain Seed Data
 
 Seeded domain data:
 
+- one default household named `Thuis` when needed
+- household-owner user membership in that household for default/self-hosted flows
 - one active list using `runtimeConfig.pantry.defaultListName` (default `Boodschappen`)
 - seven `meal_planner_days` rows, day 1 through day 7, all `empty`
 
@@ -79,10 +90,16 @@ The database layer is currently exercised through authenticated API routes for:
 - shopping lists and list items
 - canonical item search and suggestions
 - recipes and recipe items
-- the singleton seven-day meal planner
+- one seven-day meal planner per household
+- household settings, members, access links, profile, canonical-item maintenance, clear-data, and
+  usage stats
 
-Lists, recipes, and list items use status fields for soft deletion. Recipe items and
-meal-planner-day placeholder items are hard-deleted as volatile child/draft data.
+All domain data APIs must be scoped to the active household context. Household management actions
+are owner-gated with Nuxt Authorization abilities. Lists, recipes, and list items use status fields
+for soft deletion. Recipe items and meal-planner-day placeholder items are hard-deleted as volatile
+child/draft data. Canonical item deletion from settings also hard-deletes associated list,
+recipe-item, and meal-planner-day item references. Destroying a household hard-deletes its domain
+data, settings, access links, and memberships, but leaves user accounts orphaned.
 
 ## Migration Rules
 

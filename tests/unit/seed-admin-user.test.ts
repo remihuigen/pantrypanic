@@ -15,7 +15,9 @@ describe('admin user seed script', () => {
 			'ADMIN_USER_EMAIL',
 			'ADMIN_USER_PASSWORD',
 			'ADMIN_API_KEY',
-			'NUXT_PUBLIC_SITE_URL'
+			'NUXT_PUBLIC_SITE_URL',
+			'ENABLE_MULTI_TENANCY',
+			'ENABLE_PUBLIC_REGISTRATION'
 		]) {
 			Reflect.deleteProperty(process.env, key)
 		}
@@ -38,7 +40,22 @@ describe('admin user seed script', () => {
 
 		await seedAdminUser()
 
-		expect(infoMock).toHaveBeenCalledWith('[seed] SKIP_ADMIN_SEED is set; skipping admin user seed.')
+		expect(infoMock).toHaveBeenCalledWith(
+			'[seed] SKIP_ADMIN_SEED is set; skipping admin user seed.'
+		)
+		expect(fetchMock).not.toHaveBeenCalled()
+	})
+
+	it('skips legacy admin seed for public multi-tenant installs', async () => {
+		setRequiredEnv()
+		process.env.ENABLE_MULTI_TENANCY = 'true'
+		process.env.ENABLE_PUBLIC_REGISTRATION = 'true'
+
+		await seedAdminUser()
+
+		expect(infoMock).toHaveBeenCalledWith(
+			'[seed] ENABLE_MULTI_TENANCY and ENABLE_PUBLIC_REGISTRATION are enabled; skipping admin user seed.'
+		)
 		expect(fetchMock).not.toHaveBeenCalled()
 	})
 
@@ -51,11 +68,15 @@ describe('admin user seed script', () => {
 		process.env.ADMIN_USER_EMAIL = 'admin@example.com'
 		process.env.ADMIN_USER_PASSWORD = 'secret'
 		await seedAdminUser()
-		expect(warnMock).toHaveBeenCalledWith('[seed] NUXT_PUBLIC_SITE_URL is missing; skipping HTTP admin user seed.')
+		expect(warnMock).toHaveBeenCalledWith(
+			'[seed] NUXT_PUBLIC_SITE_URL is missing; skipping HTTP admin user seed.'
+		)
 
 		process.env.NUXT_PUBLIC_SITE_URL = 'https://example.com'
 		await seedAdminUser()
-		expect(warnMock).toHaveBeenCalledWith('[seed] ADMIN_API_KEY is missing; skipping HTTP admin user seed.')
+		expect(warnMock).toHaveBeenCalledWith(
+			'[seed] ADMIN_API_KEY is missing; skipping HTTP admin user seed.'
+		)
 	})
 
 	it('skips when the remote admin user already exists', async () => {
@@ -65,7 +86,9 @@ describe('admin user seed script', () => {
 		await seedAdminUser()
 
 		expect(fetchMock).toHaveBeenCalledTimes(1)
-		expect(fetchMock.mock.calls[0]?.[0].toString()).toBe('https://example.com/api/users?email=admin%40example.com&limit=1')
+		expect(fetchMock.mock.calls[0]?.[0].toString()).toBe(
+			'https://example.com/api/users?email=admin@example.com&limit=1'
+		)
 		expect(infoMock).toHaveBeenCalledWith('[seed] Admin user already exists; skipping.')
 	})
 
@@ -78,19 +101,23 @@ describe('admin user seed script', () => {
 		await seedAdminUser()
 
 		expect(fetchMock).toHaveBeenCalledTimes(2)
-		expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
-			method: 'POST',
-			headers: {
-				accept: 'application/json',
-				'x-api-token': 'admin-key',
-				'content-type': 'application/json'
-			},
-			body: JSON.stringify({
+		const requestOptions = fetchMock.mock.calls[1]?.[1] as {
+			body?: unknown
+			headers?: Headers
+			method?: string
+		}
+		expect(requestOptions.method).toBe('POST')
+		expect(requestOptions.headers).toBeInstanceOf(Headers)
+		expect((requestOptions.headers as Headers).get('accept')).toBe('application/json')
+		expect((requestOptions.headers as Headers).get('x-api-token')).toBe('admin-key')
+		expect((requestOptions.headers as Headers).get('content-type')).toBe('application/json')
+		expect(requestOptions.body).toBe(
+			JSON.stringify({
 				name: 'admin@example.com',
 				email: 'admin@example.com',
 				password: 'secret'
 			})
-		})
+		)
 		expect(infoMock).toHaveBeenCalledWith('[seed] Admin user created.')
 	})
 
@@ -107,15 +134,16 @@ describe('admin user seed script', () => {
 
 	it('logs remote request failures without throwing', async () => {
 		setRequiredEnv()
-		fetchMock.mockResolvedValueOnce(textResponse('not allowed', { status: 403, statusText: 'Forbidden' }))
+		fetchMock.mockResolvedValueOnce(
+			textResponse('not allowed', { status: 403, statusText: 'Forbidden' })
+		)
 
 		await seedAdminUser()
 
-		expect(warnMock.mock.calls.at(-1)?.[0]).toContain(
-			'[seed] HTTP admin user seed failed; skipping. [seed] HTTP request failed with 403 Forbidden'
+	expect(warnMock.mock.calls.at(-1)?.[0]).toContain(
+			'[seed] HTTP admin user seed failed; skipping. HTTP request failed with 403 Forbidden: "not allowed"'
 		)
 	})
-
 })
 
 function setRequiredEnv() {
@@ -125,22 +153,18 @@ function setRequiredEnv() {
 	process.env.NUXT_PUBLIC_SITE_URL = 'https://example.com'
 }
 
-function jsonResponse(body: unknown, init: { status?: number, statusText?: string } = {}) {
-	return {
-		ok: (init.status ?? 200) >= 200 && (init.status ?? 200) < 300,
+function jsonResponse(body: unknown, init: { status?: number; statusText?: string } = {}) {
+	return new Response(JSON.stringify(body), {
 		status: init.status ?? 200,
 		statusText: init.statusText ?? 'OK',
-		json: vi.fn(async () => body),
-		text: vi.fn(async () => JSON.stringify(body))
-	}
+		headers: { 'content-type': 'application/json' }
+	})
 }
 
-function textResponse(body: string, init: { status: number, statusText: string }) {
-	return {
-		ok: init.status >= 200 && init.status < 300,
+function textResponse(body: string, init: { status: number; statusText: string }) {
+	return new Response(body, {
 		status: init.status,
 		statusText: init.statusText,
-		json: vi.fn(async () => JSON.parse(body)),
-		text: vi.fn(async () => body)
-	}
+		headers: { 'content-type': 'text/plain' }
+	})
 }

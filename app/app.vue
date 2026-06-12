@@ -28,6 +28,18 @@ const { $pwa } = useNuxtApp()
 const toast = useToast()
 const { getIcon } = useIcon()
 
+const installToastShown = shallowRef<boolean>(false)
+
+const installApp = async (): Promise<void> => {
+	if (!$pwa?.showInstallPrompt) return
+
+	await $pwa.install()
+}
+
+const dismissInstallPrompt = (): void => {
+	$pwa?.cancelInstall()
+}
+
 watch(
 	() => $pwa?.needRefresh,
 	(needRefresh) => {
@@ -40,10 +52,49 @@ watch(
 			duration: 12000,
 			actions: [
 				{
-					label: 'Installeren',
+					label: 'Updaten',
 					color: 'primary',
 					icon: getIcon('download'),
 					onClick: () => $pwa?.updateServiceWorker()
+				},
+				{
+					label: 'Niet nu',
+					color: 'neutral',
+					variant: 'ghost',
+					onClick: () => $pwa?.cancelPrompt()
+				}
+			]
+		})
+	},
+	{
+		immediate: true
+	}
+)
+
+watch(
+	() => $pwa?.showInstallPrompt,
+	(showInstallPrompt) => {
+		if (!showInstallPrompt || installToastShown.value) return
+
+		installToastShown.value = true
+
+		toast.add({
+			icon: getIcon('download'),
+			title: 'Installeer Pantry Panic',
+			color: 'primary',
+			duration: 12000,
+			actions: [
+				{
+					label: 'Installeren',
+					color: 'primary',
+					icon: getIcon('download'),
+					onClick: installApp
+				},
+				{
+					label: 'Niet nu',
+					color: 'neutral',
+					variant: 'ghost',
+					onClick: dismissInstallPrompt
 				}
 			]
 		})

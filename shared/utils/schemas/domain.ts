@@ -260,8 +260,7 @@ export const shoppingListSchema = z.strictObject({
 export const canonicalItemSchema = z.strictObject({
 	id: domainIdSchema,
 	name: z.string(),
-	defaultUnit: z.string().optional(),
-	category: z.string().optional()
+	defaultUnit: z.string().optional()
 })
 
 export const itemSuggestionSchema = canonicalItemSchema.extend({
@@ -348,6 +347,18 @@ export const currentUserSchema = z.strictObject({
 	id: z.string(),
 	username: z.string(),
 	displayName: z.string()
+})
+
+export const userEmailSchema = z.email('Ongeldig e-mailadres.').trim().toLowerCase()
+
+export const passwordSchema = z
+	.string()
+	.min(8, 'Wachtwoord moet minimaal 8 tekens bevatten.')
+	.max(1024, 'Wachtwoord mag maximaal 1024 tekens bevatten.')
+export const userSchema = z.strictObject({
+	name: z.string().trim().min(1).max(120, 'Naam mag maximaal 120 tekens bevatten.'),
+	email: userEmailSchema,
+	password: passwordSchema
 })
 
 export type ListStatus = z.infer<typeof listStatusSchema>

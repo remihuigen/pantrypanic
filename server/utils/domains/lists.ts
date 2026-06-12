@@ -22,19 +22,32 @@ import {
 	serializeList,
 	serializeListItem
 } from './base'
-import { findOrCreateItem } from './items'
+import { applyAssignedUnitToItem, findOrCreateItem } from './items'
+
+const DEFAULT_HOUSEHOLD_ID = 'household-1'
 
 /**
  * Lists shopping lists by status.
  *
+ * @param householdId - Household id.
  * @param status - List status to include.
  * @returns Ordered lists.
  */
-export async function listShoppingLists(status: schema.ListStatus) {
+export async function listShoppingLists(
+	householdId: string | schema.ListStatus,
+	status?: schema.ListStatus
+) {
+	const resolvedHouseholdId = status === undefined ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedStatus = status ?? (householdId as schema.ListStatus)
 	const rows = await db
 		.select()
 		.from(schema.lists)
-		.where(eq(schema.lists.status, status))
+		.where(
+			and(
+				eq(schema.lists.householdId, resolvedHouseholdId),
+				eq(schema.lists.status, resolvedStatus)
+			)
+		)
 		.orderBy(asc(schema.lists.position), asc(schema.lists.createdAt))
 
 	return {
@@ -45,22 +58,29 @@ export async function listShoppingLists(status: schema.ListStatus) {
 /**
  * Creates a reusable shopping list.
  *
+ * @param householdId - Household id.
  * @param input - Validated list creation payload.
  * @param userId - Audit user id.
  * @returns Created list.
  */
 export async function createShoppingList(
-	input: z.infer<typeof createListBodySchema>,
-	userId: number
+	householdId: string | z.infer<typeof createListBodySchema>,
+	input: z.infer<typeof createListBodySchema> | number,
+	userId?: number
 ) {
-	const audit = createAudit(userId)
-	const position = await getNextListPosition()
+	const resolvedHouseholdId = typeof householdId === 'string' ? householdId : DEFAULT_HOUSEHOLD_ID
+	const resolvedInput =
+		typeof householdId === 'string' ? (input as z.infer<typeof createListBodySchema>) : householdId
+	const resolvedUserId = typeof householdId === 'string' ? Number(userId) : Number(input)
+	const audit = createAudit(resolvedUserId)
+	const position = await getNextListPosition(resolvedHouseholdId)
 	const [list] = await db
 		.insert(schema.lists)
 		.values({
 			id: createDomainId(),
-			name: input.name,
-			icon: input.icon ?? null,
+			householdId: resolvedHouseholdId,
+			name: resolvedInput.name,
+			icon: resolvedInput.icon ?? null,
 			status: 'active',
 			position,
 			archivedAt: null,
@@ -77,15 +97,23 @@ export async function createShoppingList(
 /**
  * Reorders active shopping lists.
  *
+ * @param householdId - Household id.
  * @param orderedIds - Ordered list ids.
  * @param userId - Audit user id.
  * @returns Updated list positions.
  */
-export async function reorderShoppingLists(orderedIds: string[], userId: number) {
-	const audit = createAudit(userId)
+export async function reorderShoppingLists(
+	householdId: string | string[],
+	orderedIds: string[] | number,
+	userId?: number
+) {
+	const resolvedHouseholdId = Array.isArray(householdId) ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedOrderedIds = Array.isArray(householdId) ? householdId : (orderedIds as string[])
+	const resolvedUserId = Array.isArray(householdId) ? Number(orderedIds) : Number(userId)
+	const audit = createAudit(resolvedUserId)
 	const updated = []
 
-	for (const [position, id] of orderedIds.entries()) {
+	for (const [position, id] of resolvedOrderedIds.entries()) {
 		const [list] = await db
 			.update(schema.lists)
 			.set({
@@ -93,7 +121,13 @@ export async function reorderShoppingLists(orderedIds: string[], userId: number)
 				updatedAt: audit.now,
 				updatedByUserId: audit.userId
 			})
-			.where(and(eq(schema.lists.id, id), eq(schema.lists.status, 'active')))
+			.where(
+				and(
+					eq(schema.lists.id, id),
+					eq(schema.lists.householdId, resolvedHouseholdId),
+					eq(schema.lists.status, 'active')
+				)
+			)
 			.returning({ id: schema.lists.id, position: schema.lists.position })
 
 		if (list) {
@@ -107,11 +141,14 @@ export async function reorderShoppingLists(orderedIds: string[], userId: number)
 /**
  * Returns one list with visible list items.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @returns List detail.
  */
-export async function getShoppingList(listId: string) {
-	const list = await findListOrThrow(listId)
+export async function getShoppingList(householdId: string, listId?: string) {
+	const resolvedHouseholdId = listId === undefined ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedListId = listId ?? householdId
+	const list = await findListOrThrow(resolvedListId, resolvedHouseholdId)
 	const rows = await db
 		.select({
 			listItem: schema.listItems,
@@ -121,7 +158,8 @@ export async function getShoppingList(listId: string) {
 		.innerJoin(schema.items, eq(schema.items.id, schema.listItems.itemId))
 		.where(
 			and(
-				eq(schema.listItems.listId, listId),
+				eq(schema.listItems.listId, resolvedListId),
+				eq(schema.listItems.householdId, resolvedHouseholdId),
 				inArray(schema.listItems.status, ['unchecked', 'checked'])
 			)
 		)
@@ -138,17 +176,19 @@ export async function getShoppingList(listId: string) {
 /**
  * Updates list metadata.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @param input - Validated update payload.
  * @param userId - Audit user id.
  * @returns Updated list.
  */
 export async function updateShoppingList(
+	householdId: string,
 	listId: string,
 	input: z.infer<typeof updateListBodySchema>,
 	userId: number
 ) {
-	await findListOrThrow(listId)
+	await findListOrThrow(listId, householdId)
 	const audit = createAudit(userId)
 	const [list] = await db
 		.update(schema.lists)
@@ -158,7 +198,7 @@ export async function updateShoppingList(
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.lists.id, listId))
+		.where(and(eq(schema.lists.id, listId), eq(schema.lists.householdId, householdId)))
 		.returning()
 
 	return { list: serializeList(assertRow(list)) }
@@ -167,12 +207,13 @@ export async function updateShoppingList(
 /**
  * Archives a shopping list.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @param userId - Audit user id.
  * @returns Archived list summary.
  */
-export async function archiveShoppingList(listId: string, userId: number) {
-	await findListOrThrow(listId)
+export async function archiveShoppingList(householdId: string, listId: string, userId: number) {
+	await findListOrThrow(listId, householdId)
 	const audit = createAudit(userId)
 	const [list] = await db
 		.update(schema.lists)
@@ -182,7 +223,7 @@ export async function archiveShoppingList(listId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.lists.id, listId))
+		.where(and(eq(schema.lists.id, listId), eq(schema.lists.householdId, householdId)))
 		.returning()
 
 	const archived = assertRow(list)
@@ -198,16 +239,17 @@ export async function archiveShoppingList(listId: string, userId: number) {
 /**
  * Soft-deletes a shopping list.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @param userId - Audit user id.
  * @returns Deleted list summary.
  */
-export async function deleteShoppingList(listId: string, userId: number) {
-	await findListOrThrow(listId)
+export async function deleteShoppingList(householdId: string, listId: string, userId: number) {
+	await findListOrThrow(listId, householdId)
 	const [remainingLists] = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(schema.lists)
-		.where(ne(schema.lists.status, 'deleted'))
+		.where(and(eq(schema.lists.householdId, householdId), ne(schema.lists.status, 'deleted')))
 
 	if (Number(remainingLists?.count ?? 0) <= 1) {
 		throwApiError({
@@ -226,7 +268,7 @@ export async function deleteShoppingList(listId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.lists.id, listId))
+		.where(and(eq(schema.lists.id, listId), eq(schema.lists.householdId, householdId)))
 		.returning()
 
 	const deleted = assertRow(list)
@@ -242,12 +284,13 @@ export async function deleteShoppingList(listId: string, userId: number) {
 /**
  * Archives visible list items for a list.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @param userId - Audit user id.
  * @returns Number of archived items.
  */
-export async function clearShoppingList(listId: string, userId: number) {
-	await findListOrThrow(listId)
+export async function clearShoppingList(householdId: string, listId: string, userId: number) {
+	await findListOrThrow(listId, householdId)
 	const audit = createAudit(userId)
 	const rows = await db
 		.update(schema.listItems)
@@ -261,6 +304,7 @@ export async function clearShoppingList(listId: string, userId: number) {
 		.where(
 			and(
 				eq(schema.listItems.listId, listId),
+				eq(schema.listItems.householdId, householdId),
 				inArray(schema.listItems.status, ['unchecked', 'checked'])
 			)
 		)
@@ -272,12 +316,13 @@ export async function clearShoppingList(listId: string, userId: number) {
 /**
  * Archives checked list items for a list.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @param userId - Audit user id.
  * @returns Number of archived checked items.
  */
-export async function clearCheckedListItems(listId: string, userId: number) {
-	await findListOrThrow(listId)
+export async function clearCheckedListItems(householdId: string, listId: string, userId: number) {
+	await findListOrThrow(listId, householdId)
 	const audit = createAudit(userId)
 	const rows = await db
 		.update(schema.listItems)
@@ -288,7 +333,13 @@ export async function clearCheckedListItems(listId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(and(eq(schema.listItems.listId, listId), eq(schema.listItems.status, 'checked')))
+		.where(
+			and(
+				eq(schema.listItems.listId, listId),
+				eq(schema.listItems.householdId, householdId),
+				eq(schema.listItems.status, 'checked')
+			)
+		)
 		.returning({ id: schema.listItems.id })
 
 	return { archivedCount: rows.length }
@@ -297,24 +348,33 @@ export async function clearCheckedListItems(listId: string, userId: number) {
 /**
  * Adds a manual item occurrence to a shopping list.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @param input - Validated item input.
  * @param userId - Audit user id.
  * @returns Created list item.
  */
 export async function addListItem(
+	householdId: string,
 	listId: string,
 	input: z.infer<typeof createOccurrenceBodySchema>,
 	userId: number
 ) {
-	await findListOrThrow(listId)
+	await findListOrThrow(listId, householdId)
 	const audit = createAudit(userId)
-	const item = await findOrCreateItem({ name: input.name, auditUserId: userId })
-	const position = await getNextListItemPosition(listId)
+	const item = await findOrCreateItem({
+		householdId,
+		name: input.name,
+		defaultUnit: input.unit ?? null,
+		auditUserId: userId
+	})
+	await applyAssignedUnitToItem(item, input.unit, userId)
+	const position = await getNextListItemPosition(listId, householdId)
 	const [listItem] = await db
 		.insert(schema.listItems)
 		.values({
 			id: createDomainId(),
+			householdId,
 			listId,
 			itemId: item.id,
 			status: 'unchecked',
@@ -341,17 +401,28 @@ export async function addListItem(
 /**
  * Reorders visible list items for a list.
  *
+ * @param householdId - Household id.
  * @param listId - List id.
  * @param orderedIds - Ordered visible list item ids.
  * @param userId - Audit user id.
  * @returns Updated item positions.
  */
-export async function reorderListItems(listId: string, orderedIds: string[], userId: number) {
-	await findListOrThrow(listId)
-	const audit = createAudit(userId)
+export async function reorderListItems(
+	householdId: string,
+	listId: string | string[],
+	orderedIds: string[] | number,
+	userId?: number
+) {
+	const isLegacyCall = Array.isArray(listId)
+	const resolvedHouseholdId = isLegacyCall ? DEFAULT_HOUSEHOLD_ID : householdId
+	const resolvedListId = isLegacyCall ? householdId : (listId as string)
+	const resolvedOrderedIds = isLegacyCall ? listId : (orderedIds as string[])
+	const resolvedUserId = isLegacyCall ? Number(orderedIds) : Number(userId)
+	await findListOrThrow(resolvedListId, resolvedHouseholdId)
+	const audit = createAudit(resolvedUserId)
 	const updated = []
 
-	for (const [position, id] of orderedIds.entries()) {
+	for (const [position, id] of resolvedOrderedIds.entries()) {
 		const [row] = await db
 			.update(schema.listItems)
 			.set({
@@ -362,7 +433,8 @@ export async function reorderListItems(listId: string, orderedIds: string[], use
 			.where(
 				and(
 					eq(schema.listItems.id, id),
-					eq(schema.listItems.listId, listId),
+					eq(schema.listItems.listId, resolvedListId),
+					eq(schema.listItems.householdId, resolvedHouseholdId),
 					inArray(schema.listItems.status, ['unchecked', 'checked'])
 				)
 			)
@@ -379,23 +451,25 @@ export async function reorderListItems(listId: string, orderedIds: string[], use
 /**
  * Updates list item occurrence metadata.
  *
+ * @param householdId - Household id.
  * @param listItemId - List item id.
  * @param input - Validated update payload.
  * @param userId - Audit user id.
  * @returns Updated list item fields.
  */
 export async function updateListItem(
+	householdId: string,
 	listItemId: string,
 	input: z.infer<typeof updateListItemBodySchema>,
 	userId: number
 ) {
-	const existingListItem = await findListItemOrThrow(listItemId)
+	const existingListItem = await findListItemOrThrow(listItemId, householdId)
 	const audit = createAudit(userId)
 	const nextListId = input.listId ?? existingListItem.listId
 	const isMovingList = nextListId !== existingListItem.listId
 
 	if (isMovingList) {
-		await findListOrThrow(nextListId)
+		await findListOrThrow(nextListId, householdId)
 	}
 
 	const item =
@@ -405,11 +479,18 @@ export async function updateListItem(
 						await db
 							.select()
 							.from(schema.items)
-							.where(eq(schema.items.id, existingListItem.itemId))
+							.where(
+								and(
+									eq(schema.items.id, existingListItem.itemId),
+									eq(schema.items.householdId, householdId)
+								)
+							)
 							.limit(1)
 					)[0]
 				)
-			: await findOrCreateItem({ name: input.name, auditUserId: userId })
+			: await findOrCreateItem({ householdId, name: input.name, auditUserId: userId })
+
+	await applyAssignedUnitToItem(item, input.unit, userId)
 
 	const [row] = await db
 		.update(schema.listItems)
@@ -418,7 +499,7 @@ export async function updateListItem(
 			...(isMovingList
 				? {
 						listId: nextListId,
-						position: await getNextListItemPosition(nextListId)
+						position: await getNextListItemPosition(nextListId, householdId)
 					}
 				: {}),
 			...(input.amount === undefined ? {} : { amount: input.amount }),
@@ -427,7 +508,7 @@ export async function updateListItem(
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.listItems.id, listItemId))
+		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
 		.returning()
 
 	return {
@@ -438,12 +519,13 @@ export async function updateListItem(
 /**
  * Marks a visible list item checked.
  *
+ * @param householdId - Household id.
  * @param listItemId - List item id.
  * @param userId - Audit user id.
  * @returns Checked list item summary.
  */
-export async function checkListItem(listItemId: string, userId: number) {
-	await findListItemOrThrow(listItemId)
+export async function checkListItem(householdId: string, listItemId: string, userId: number) {
+	await findListItemOrThrow(listItemId, householdId)
 	const audit = createAudit(userId)
 	const [row] = await db
 		.update(schema.listItems)
@@ -454,7 +536,7 @@ export async function checkListItem(listItemId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.listItems.id, listItemId))
+		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
 		.returning()
 
 	const listItem = assertRow(row)
@@ -464,12 +546,13 @@ export async function checkListItem(listItemId: string, userId: number) {
 /**
  * Marks a checked list item unchecked.
  *
+ * @param householdId - Household id.
  * @param listItemId - List item id.
  * @param userId - Audit user id.
  * @returns Unchecked list item summary.
  */
-export async function uncheckListItem(listItemId: string, userId: number) {
-	await findListItemOrThrow(listItemId)
+export async function uncheckListItem(householdId: string, listItemId: string, userId: number) {
+	await findListItemOrThrow(listItemId, householdId)
 	const audit = createAudit(userId)
 	const [row] = await db
 		.update(schema.listItems)
@@ -480,7 +563,7 @@ export async function uncheckListItem(listItemId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.listItems.id, listItemId))
+		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
 		.returning()
 
 	const listItem = assertRow(row)
@@ -490,12 +573,13 @@ export async function uncheckListItem(listItemId: string, userId: number) {
 /**
  * Soft-deletes a list item.
  *
+ * @param householdId - Household id.
  * @param listItemId - List item id.
  * @param userId - Audit user id.
  * @returns Deleted list item summary.
  */
-export async function deleteListItem(listItemId: string, userId: number) {
-	await findListItemOrThrow(listItemId)
+export async function deleteListItem(householdId: string, listItemId: string, userId: number) {
+	await findListItemOrThrow(listItemId, householdId)
 	const audit = createAudit(userId)
 	const [row] = await db
 		.update(schema.listItems)
@@ -506,7 +590,7 @@ export async function deleteListItem(listItemId: string, userId: number) {
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(eq(schema.listItems.id, listItemId))
+		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
 		.returning()
 
 	const listItem = assertRow(row)

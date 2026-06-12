@@ -10,7 +10,6 @@ import type {
 	UpdateRecipeInput
 } from '~~/shared/utils/schemas/domain'
 
-import { useStoreRefresh } from '~/composables/useStoreRefresh'
 import { apiFetch, normalizeAppError } from '~/utils/api-client'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -31,25 +30,6 @@ export const useRecipesStore = defineStore(
 		const activeRecipes = computed(() => mapByIds(recipesById.value, activeRecipeIds.value))
 		const archivedRecipes = computed(() => mapByIds(recipesById.value, archivedRecipeIds.value))
 
-		const recipesRefresh = useStoreRefresh({
-			immediate: false,
-			refresh: async () => {
-				await fetchRecipes({ status: 'active' })
-			}
-		})
-
-		const activeRecipeRefresh = useStoreRefresh({
-			enabled: computed(() => Boolean(activeRecipeId.value)),
-			immediate: false,
-			refresh: async () => {
-				if (!activeRecipeId.value) {
-					return
-				}
-
-				await fetchRecipe(activeRecipeId.value)
-			}
-		})
-
 		function getRecipeItems(recipeId: string) {
 			return mapByIds(recipeItemsById.value, recipeItemIdsByRecipeId.value[recipeId] ?? [])
 		}
@@ -61,20 +41,30 @@ export const useRecipesStore = defineStore(
 		async function openRecipe(recipeId: string) {
 			setActiveRecipe(recipeId)
 			await fetchRecipe(recipeId)
-			await activeRecipeRefresh.start()
 		}
 
 		function closeRecipe() {
 			setActiveRecipe(null)
-			activeRecipeRefresh.stop()
 		}
 
 		async function startRecipesRefresh() {
-			await recipesRefresh.start()
+			await refreshRecipesNow()
 		}
 
 		function stopRecipesRefresh() {
-			recipesRefresh.stop()
+			// Refresh scheduling is centralized in useRefreshScheduler.
+		}
+
+		async function refreshRecipesNow() {
+			await fetchRecipes({ status: 'active' })
+		}
+
+		async function refreshActiveRecipeNow() {
+			if (!activeRecipeId.value) {
+				return
+			}
+
+			await fetchRecipe(activeRecipeId.value)
 		}
 
 		async function fetchRecipes(options: { status?: RecipeStatus; q?: string } = {}) {
@@ -389,6 +379,7 @@ export const useRecipesStore = defineStore(
 			const existing = recipeItemsById.value[recipeItemId]
 
 			if (!existing) {
+				isSaving.value = false
 				return
 			}
 
@@ -572,8 +563,8 @@ export const useRecipesStore = defineStore(
 			fetchRecipe,
 			startRecipesRefresh,
 			stopRecipesRefresh,
-			refreshRecipesNow: recipesRefresh.refreshNow,
-			refreshActiveRecipeNow: activeRecipeRefresh.refreshNow,
+			refreshRecipesNow,
+			refreshActiveRecipeNow,
 			createRecipe,
 			updateRecipe,
 			archiveRecipe,

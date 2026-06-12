@@ -3,10 +3,12 @@ declare module '#auth-utils' {
 		id: number
 		name: string
 		email: string
+		avatarPathname?: string
 	}
 
 	interface UserSession {
 		loggedInAt?: string
+		activeHouseholdId?: string
 	}
 }
 

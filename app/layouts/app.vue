@@ -1,65 +1,14 @@
-<script lang="ts" setup>
-const { $pwa } = useNuxtApp()
+<script setup lang="ts">
+const settingsStore = useSettingsStore()
+const resolvedHouseholdState = ref(false)
 
-const toast = useToast()
-const { getIcon } = useIcon()
-
-const installToastShown = ref<boolean>(false)
-
-/**
- * Shows the PWA install prompt.
- *
- * @returns Promise resolving when the browser install flow has completed.
- */
-const installApp = async (): Promise<void> => {
-	if (!$pwa?.showInstallPrompt) return
-
-	await $pwa.install()
-}
-
-/**
- * Dismisses the current PWA install prompt.
- *
- * @returns Promise resolving when the prompt has been cancelled.
- */
-const dismissInstallPrompt = async (): Promise<void> => {
-	if (!$pwa) return
-
-	await $pwa.cancelPrompt()
-}
-
-watch(
-	() => $pwa?.showInstallPrompt,
-	(showInstallPrompt) => {
-		if (!showInstallPrompt || installToastShown.value) return
-
-		installToastShown.value = true
-
-		toast.add({
-			icon: getIcon('download'),
-			title: 'Installeer Pantry Panic',
-			color: 'primary',
-			duration: 12000,
-			actions: [
-				{
-					label: 'Installeren',
-					color: 'primary',
-					icon: getIcon('download'),
-					onClick: installApp
-				},
-				{
-					label: 'Niet nu',
-					color: 'neutral',
-					variant: 'ghost',
-					onClick: dismissInstallPrompt
-				}
-			]
-		})
-	},
-	{
-		immediate: true
+onMounted(async () => {
+	try {
+		await Promise.all([settingsStore.fetchProfile(), settingsStore.fetchHouseholds()])
+	} finally {
+		resolvedHouseholdState.value = true
 	}
-)
+})
 </script>
 
 <template>
@@ -68,7 +17,13 @@ watch(
 		<EditListDrawer />
 		<AppNavigation class="z-10" />
 		<UContainer class="flex min-h-screen flex-col">
-			<slot />
+			<AppHouseholdGate
+				v-if="resolvedHouseholdState && settingsStore.hasNoHousehold"
+			/>
+			<div v-else-if="!resolvedHouseholdState" class="py-8">
+				<USkeleton class="h-40 w-full" />
+			</div>
+			<slot v-else />
 		</UContainer>
 		<Footer />
 	</div>
