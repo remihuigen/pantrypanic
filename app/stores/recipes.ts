@@ -14,10 +14,12 @@ import { apiFetch, normalizeAppError } from '~/utils/api-client'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+type StoredRecipe = RecipeSummary & Partial<Pick<RecipeDetail, 'sourceUrl' | 'notes'>>
+
 export const useRecipesStore = defineStore(
 	'recipes',
 	() => {
-		const recipesById = ref<EntityMap<RecipeSummary>>({})
+		const recipesById = ref<EntityMap<StoredRecipe>>({})
 		const activeRecipeIds = ref<string[]>([])
 		const archivedRecipeIds = ref<string[]>([])
 		const recipeItemsById = ref<EntityMap<RecipeItem>>({})
@@ -160,7 +162,11 @@ export const useRecipesStore = defineStore(
 						: { description: input.description ?? undefined }),
 					...(input.servings === undefined
 						? {}
-						: { servings: input.servings ?? undefined })
+						: { servings: input.servings ?? undefined }),
+					...(input.sourceUrl === undefined
+						? {}
+						: { sourceUrl: input.sourceUrl ?? undefined }),
+					...(input.notes === undefined ? {} : { notes: input.notes ?? undefined })
 				}
 			}
 
@@ -465,18 +471,21 @@ export const useRecipesStore = defineStore(
 			recipesById.value[recipe.id] = {
 				...(recipesById.value[recipe.id] ?? {}),
 				...recipe
-			} as RecipeSummary
+			} as StoredRecipe
 		}
 
 		function upsertRecipeDetail(recipe: RecipeDetail) {
-			upsertRecipeSummary({
+			recipesById.value[recipe.id] = {
+				...(recipesById.value[recipe.id] ?? {}),
 				id: recipe.id,
 				name: recipe.name,
 				description: recipe.description,
 				servings: recipe.servings,
+				sourceUrl: recipe.sourceUrl,
+				notes: recipe.notes,
 				status: recipe.status,
 				updatedAt: recipesById.value[recipe.id]?.updatedAt ?? Date.now()
-			})
+			}
 		}
 
 		function upsertRecipeItem(item: RecipeItem) {

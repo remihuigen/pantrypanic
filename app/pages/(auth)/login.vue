@@ -4,7 +4,16 @@ import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
 import { z } from 'zod'
 
 definePageMeta({
-	layout: 'auth'
+	layout: 'base'
+})
+
+useSeoMeta({
+	title: 'Log in bij Pantry Panic',
+	ogTitle: 'Log in bij Pantry Panic',
+	description:
+		'Log in bij je Pantry Panic account en beheer je boodschappenlijsten, recepten en meer.',
+	ogDescription:
+		'Log in bij je Pantry Panic account en beheer je boodschappenlijsten, recepten en meer.'
 })
 
 const loginSchema = z.object({

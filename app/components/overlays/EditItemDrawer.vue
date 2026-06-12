@@ -50,8 +50,7 @@ const drawerUi = computed(() => ({
 		'edit-item-drawer-content',
 		isOpeningToMinimal.value ? 'edit-item-drawer-content--opening' : ''
 	],
-	overlay: 'edit-item-drawer-overlay',
-	footer: 'self-end'
+	overlay: 'edit-item-drawer-overlay'
 }))
 let resetViewFrame: number | undefined
 let openingAnimationTimeout: ReturnType<typeof setTimeout> | undefined
@@ -170,7 +169,10 @@ function updateKeyboardOffset() {
 	}
 
 	setKeyboardOffset(
-		Math.max(0, Math.round(window.innerHeight - visualViewport.height - visualViewport.offsetTop))
+		Math.max(
+			0,
+			Math.round(window.innerHeight - visualViewport.height - visualViewport.offsetTop)
+		)
 	)
 }
 
@@ -181,10 +183,7 @@ function setKeyboardOffset(offset: number) {
 		return
 	}
 
-	document.documentElement.style.setProperty(
-		'--edit-item-drawer-keyboard-offset',
-		`${offset}px`
-	)
+	document.documentElement.style.setProperty('--edit-item-drawer-keyboard-offset', `${offset}px`)
 }
 
 function resetKeyboardOffset() {

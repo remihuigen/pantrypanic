@@ -20,7 +20,8 @@ useSeoMeta({
 	ogTitle: title,
 	ogDescription: description,
 	twitterCard: 'summary_large_image',
-	robots: 'noindex, nofollow'
+	robots: 'noindex, nofollow',
+	ogImage: '/meta.jpg'
 })
 
 const { $pwa } = useNuxtApp()

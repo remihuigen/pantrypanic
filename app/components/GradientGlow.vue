@@ -4,7 +4,7 @@
 		style="
 			background: radial-gradient(
 				ellipse at center,
-				color-mix(in oklch, var(--ui-primary) 6%, transparent) 0%,
+				color-mix(in oklch, var(--ui-primary) 16%, transparent) 0%,
 				transparent 70%
 			);
 		"

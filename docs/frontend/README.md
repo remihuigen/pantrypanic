@@ -55,6 +55,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   scheduler that calls `orchestrateRefresh()` and only fetches the active route namespace.
 - Route pages are still responsible for fetching required data when the user enters the route.
   Interval refresh is a background reconciliation path, not the initial page-load data source.
+- Recipe overview favorites are derived from local per-user browser usage counts. The count is
+  incremented when a recipe is copied to a list and is not synchronized through the backend.
 - Settings is split into subroutes: general profile/theme/danger-zone controls, household
   settings/member links, canonical item maintenance, and usage stats.
 - Household-owner-only controls are rendered through Nuxt Authorization abilities; users with no

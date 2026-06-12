@@ -2,7 +2,7 @@
 import type { ButtonProps } from '@nuxt/ui'
 
 definePageMeta({
-	// colorMode: 'dark'
+	layout: 'base'
 })
 
 const { title, description } = useRuntimeConfig().public.identity
@@ -29,7 +29,7 @@ const heroLinks: ButtonProps[] = [
 		to: '/app',
 		color: 'primary',
 		size: 'xl',
-		icon: 'lucide:arrow-right'
+		trailingIcon: 'lucide:arrow-right'
 	},
 	{
 		label: 'See features',
@@ -179,7 +179,7 @@ const { copy, copied } = useClipboard()
 			}"
 		>
 			<template #top>
-				<GradientGlow class="top-0 h-1/2 w-2/3" />
+				<GradientGlow class="top-0 h-1/2 w-2/3 opacity-70" />
 			</template>
 
 			<template #headline>
@@ -349,7 +349,7 @@ const { copy, copied } = useClipboard()
 			}"
 		>
 			<template #top>
-				<GradientGlow class="bottom-0 h-1/2 w-2/3" />
+				<GradientGlow class="bottom-0 h-3/4 w-full" />
 			</template>
 
 			<template #title>

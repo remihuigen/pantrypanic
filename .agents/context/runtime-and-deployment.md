@@ -31,6 +31,8 @@ The product app UI is namespaced under `/app`:
 - `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
 - Auth and future public/marketing pages remain outside `/app`; add explicit prerender route rules
   for marketing pages when they are introduced.
+- Recipe overview favorites are local browser state keyed per user profile. They are incremented
+  when a recipe is copied to a list and are not synchronized through the backend.
 
 ## Authentication
 

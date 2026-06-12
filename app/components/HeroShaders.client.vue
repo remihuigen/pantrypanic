@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Pixelate, Plasma, Shader, SineWave } from 'shaders/vue'
 
-const { value: colorMode } = useColorMode()
+const colorMode = useColorMode()
 </script>
 
 <template>
@@ -24,8 +24,8 @@ const { value: colorMode } = useColorMode()
 			<Plasma
 				:balance="57"
 				color-a="#eb533a"
-				:color-b="colorMode === 'dark' ? '#090b0c' : '#f9fbfb'"
-				:contrast="colorMode === 'dark' ? 1.6 : 1.4"
+				:color-b="colorMode.value === 'dark' ? '#090b0c' : '#f9fbfb'"
+				:contrast="colorMode.value === 'dark' ? 1.6 : 1.4"
 				:density="3.3"
 				:intensity="1.8"
 				:visible="true"
