@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 import { getAuthenticatedUserId, throwApiError } from '#server/utils/api-core'
 import { createDomainId } from '#server/utils/api-helpers'
 import { seedInitialDomainData } from '#server/utils/domains/seed'
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, ne, or, sql } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
 
 const DEFAULT_HOUSEHOLD_NAME = 'Thuis'
@@ -95,6 +95,7 @@ export async function getHouseholdContext(
  * Ensures a default household exists and includes the given user.
  *
  * @param userId - User id to attach to the default household.
+ * @param event - Optional H3 request event for runtime-configured seeding.
  * @returns Default household summary.
  */
 export async function ensureDefaultHousehold(userId: number, event?: H3Event) {
@@ -215,6 +216,7 @@ export async function listUserHouseholds(userId: number) {
  *
  * @param event - H3 request event.
  * @param householdId - Household to activate.
+ * @returns Active household session summary.
  */
 export async function switchHousehold(event: H3Event, householdId: string) {
 	const userId = await getAuthenticatedUserId(event)
@@ -281,6 +283,7 @@ export async function listHouseholdMembers(householdId: string) {
  *
  * @param householdId - Household id.
  * @param userId - Member user id to remove.
+ * @returns Removed user summary.
  */
 export async function removeHouseholdMember(householdId: string, userId: number) {
 	const memberCount = await countHouseholdMembers(householdId)
@@ -315,6 +318,13 @@ export async function removeHouseholdMember(householdId: string, userId: number)
 	return { removedUserId: userId }
 }
 
+/**
+ * Reads the role for one household membership.
+ *
+ * @param householdId - Household id.
+ * @param userId - Member user id.
+ * @returns Membership role, or null when missing.
+ */
 export async function getHouseholdMembershipRole(householdId: string, userId: number) {
 	const [membership] = await db
 		.select({ role: schema.householdUsers.role })
@@ -346,6 +356,13 @@ async function authorizeHouseholdContext(
 	return { ...context, role }
 }
 
+/**
+ * Promotes an existing household member to owner.
+ *
+ * @param householdId - Household id.
+ * @param userId - Member user id to promote.
+ * @returns Updated member role summary.
+ */
 export async function assignHouseholdOwner(householdId: string, userId: number) {
 	const [updated] = await db
 		.update(schema.householdUsers)
@@ -369,6 +386,14 @@ export async function assignHouseholdOwner(householdId: string, userId: number) 
 	return { userId: updated.userId, role: updated.role }
 }
 
+/**
+ * Removes the current user from a household, destroying it when they are the last member.
+ *
+ * @param event - H3 request event.
+ * @param householdId - Household id to leave.
+ * @param userId - Current user id.
+ * @returns Leave result and whether the household was destroyed.
+ */
 export async function leaveHousehold(event: H3Event, householdId: string, userId: number) {
 	const memberCount = await countHouseholdMembers(householdId)
 
@@ -401,6 +426,14 @@ export async function leaveHousehold(event: H3Event, householdId: string, userId
 	return { leftHouseholdId: householdId, destroyedHousehold: false }
 }
 
+/**
+ * Destroys the active household and all associated domain data.
+ *
+ * @param event - H3 request event.
+ * @param householdId - Household id to destroy.
+ * @param userId - Current user id for session fallback.
+ * @returns Destroyed household summary.
+ */
 export async function destroyCurrentHousehold(event: H3Event, householdId: string, userId: number) {
 	if (!getMultiTenancyEnabled(event)) {
 		throwApiError({
@@ -416,6 +449,13 @@ export async function destroyCurrentHousehold(event: H3Event, householdId: strin
 	return { destroyedHouseholdId: householdId }
 }
 
+/**
+ * Deletes a user account after enforcing household ownership and membership rules.
+ *
+ * @param event - H3 request event.
+ * @param userId - User id to delete.
+ * @returns Deleted user summary.
+ */
 export async function deleteAccount(event: H3Event, userId: number) {
 	const memberships = await listMembershipSummaries(userId)
 
@@ -465,17 +505,20 @@ export async function deleteAccount(event: H3Event, userId: number) {
 			)
 	}
 
-	try {
-		await db.delete(schema.users).where(eq(schema.users.id, userId))
-	} catch (err) {
-		console.log(err)
-	}
+	await db.delete(schema.householdUsers).where(eq(schema.householdUsers.userId, userId))
+	await clearDeletedUserReferences(userId)
+	await db.delete(schema.users).where(eq(schema.users.id, userId))
 
-	await clearUserSession(event)
+	await clearSessionForDeletedUser(event, userId)
 
 	return { deletedUserId: userId }
 }
 
+/**
+ * Deletes one household and all household-scoped domain data.
+ *
+ * @param householdId - Household id to destroy.
+ */
 export async function destroyHouseholdById(householdId: string) {
 	await db.delete(schema.listItems).where(eq(schema.listItems.householdId, householdId))
 	await db.delete(schema.recipeItems).where(eq(schema.recipeItems.householdId, householdId))
@@ -501,6 +544,7 @@ export async function destroyHouseholdById(householdId: string) {
  *
  * @param householdId - Household id.
  * @param userId - User id for audit.
+ * @param now - Timestamp used for created and updated metadata.
  * @returns Household settings.
  */
 export async function ensureHouseholdSettings(
@@ -670,6 +714,7 @@ export async function consumeAccessLink(token: string, type: AccessLinkType) {
  *
  * @param householdId - Household id.
  * @param userId - User id.
+ * @param role - Role to assign when creating or upgrading the membership.
  */
 export async function ensureHouseholdMembership(
 	householdId: string,
@@ -710,10 +755,22 @@ export async function ensureHouseholdMembership(
 	})
 }
 
+/**
+ * Reads whether household multi-tenancy is enabled on the server.
+ *
+ * @param event - Optional H3 request event.
+ * @returns True when multi-tenancy is enabled.
+ */
 export function getMultiTenancyEnabled(event?: H3Event): boolean {
 	return useRuntimeConfig(event).enableMultiTenancy === true
 }
 
+/**
+ * Reads whether logged-in users can create households.
+ *
+ * @param event - Optional H3 request event.
+ * @returns True when household creation is enabled.
+ */
 export function getHouseholdCreationEnabled(event?: H3Event): boolean {
 	return useRuntimeConfig(event).enableHouseholdCreation === true
 }
@@ -791,6 +848,124 @@ async function listMembershipSummaries(userId: number): Promise<HouseholdMembers
 		})
 		.from(schema.householdUsers)
 		.where(eq(schema.householdUsers.userId, userId))
+}
+
+async function clearDeletedUserReferences(userId: number): Promise<void> {
+	const fallbackUserId = await getFallbackUserId(userId)
+
+	await db
+		.delete(schema.accessLinks)
+		.where(
+			or(
+				eq(schema.accessLinks.userId, userId),
+				eq(schema.accessLinks.createdByUserId, userId)
+			)
+		)
+
+	await db
+		.update(schema.householdSettings)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.householdSettings.updatedByUserId, userId))
+
+	await db
+		.update(schema.listItems)
+		.set({
+			checkedByUserId: null,
+			archivedByUserId: null,
+			deletedByUserId: null
+		})
+		.where(
+			or(
+				eq(schema.listItems.checkedByUserId, userId),
+				eq(schema.listItems.archivedByUserId, userId),
+				eq(schema.listItems.deletedByUserId, userId)
+			)
+		)
+
+	if (!fallbackUserId) {
+		return
+	}
+
+	await reassignAuditUserReferences(userId, fallbackUserId)
+}
+
+async function getFallbackUserId(userId: number): Promise<number | null> {
+	const [user] = await db
+		.select({ id: schema.users.id })
+		.from(schema.users)
+		.where(ne(schema.users.id, userId))
+		.orderBy(asc(schema.users.id))
+		.limit(1)
+
+	return user?.id ?? null
+}
+
+async function reassignAuditUserReferences(userId: number, fallbackUserId: number): Promise<void> {
+	await db
+		.update(schema.lists)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.lists.createdByUserId, userId))
+	await db
+		.update(schema.lists)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.lists.updatedByUserId, userId))
+	await db
+		.update(schema.items)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.items.createdByUserId, userId))
+	await db
+		.update(schema.items)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.items.updatedByUserId, userId))
+	await db
+		.update(schema.recipes)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.recipes.createdByUserId, userId))
+	await db
+		.update(schema.recipes)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.recipes.updatedByUserId, userId))
+	await db
+		.update(schema.recipeItems)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.recipeItems.createdByUserId, userId))
+	await db
+		.update(schema.recipeItems)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.recipeItems.updatedByUserId, userId))
+	await db
+		.update(schema.mealPlannerDays)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDays.createdByUserId, userId))
+	await db
+		.update(schema.mealPlannerDays)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDays.updatedByUserId, userId))
+	await db
+		.update(schema.mealPlannerDayItems)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDayItems.createdByUserId, userId))
+	await db
+		.update(schema.mealPlannerDayItems)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.mealPlannerDayItems.updatedByUserId, userId))
+	await db
+		.update(schema.listItems)
+		.set({ createdByUserId: fallbackUserId })
+		.where(eq(schema.listItems.createdByUserId, userId))
+	await db
+		.update(schema.listItems)
+		.set({ updatedByUserId: fallbackUserId })
+		.where(eq(schema.listItems.updatedByUserId, userId))
+}
+
+async function clearSessionForDeletedUser(event: H3Event, userId: number): Promise<void> {
+	const session = await getUserSession(event)
+	const sessionUserId = Number(session?.user?.id)
+
+	if (sessionUserId === userId) {
+		await clearUserSession(event)
+	}
 }
 
 async function setFirstAvailableHouseholdSession(event: H3Event, userId: number) {

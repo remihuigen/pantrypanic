@@ -127,7 +127,7 @@ Implemented routes:
 - `GET /api/users/:userId`: read a user.
 - `PUT /api/users/:userId`: update one or more user fields.
 - `PATCH /api/users/:userId`: update one or more user fields.
-- `DELETE /api/users/:userId`: delete a user.
+- `DELETE /api/users/:userId`: delete a user through the shared account deletion flow.
 
 User logic lives in `server/utils/user-management.ts`.
 
@@ -135,6 +135,8 @@ Current limitations:
 
 - existing legacy plain-text passwords are rehashed after a successful login
 - user API responses omit `password`
+- user deletion follows the same household ownership, last-member, and orphaned-account cleanup
+  rules as `DELETE /api/profile`
 
 ## Pantry Panic Domain API Routes
 

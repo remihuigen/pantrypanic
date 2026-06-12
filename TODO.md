@@ -21,7 +21,6 @@
       can organize this better with a settings layout, and maybe a settings shell?
 - [x] If an avatar is uploaded, the profile forms clears as well (we dont want this. Avatar should
       be fully seperated from the profile form)
-- [ ] settings navigation is not sticky
 - [x] Lets split ENABLE_REGISTRATION into two flags: ENABLE_HOUSEHOLD_CREATION
       ENABLE_PUBLIC_REGISTRATION
 
@@ -57,9 +56,10 @@
       and house hold
 - [x] List items are not refresh by interval.. Only lists
 - [x] Make interval based refresh smarter -> only fetch data that is currently in view!
-- [ ] Cannot delete user account (from orphaned state) due to FK contstraints. Users that are still
+- [x] Cannot delete user account (from orphaned state) due to FK contstraints. Users that are still
       part of a household can be deleted just fine!
-- [ ] we have a users.delete endpoint and a profile.delete endpoint (the latter does al sorts of
+- [x] we have a users.delete endpoint and a profile.delete endpoint (the latter does al sorts of
       checks). Shouldnt these be merged?
-- [ ] If the last household member tries to leave a household, treat that case as on household
+- [x] If the last household member tries to leave a household, treat that case as on household
       delete (explain this to the user in the confirmation dialog)
+- [x] settings navigation is not sticky

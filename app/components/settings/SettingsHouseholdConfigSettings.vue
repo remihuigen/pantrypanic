@@ -33,16 +33,24 @@ async function saveSettings() {
 </script>
 
 <template>
-	<UPageCard variant="subtle" title="App" description="Werk je appvoorkeuren bij.">
-		<div class="space-y-4">
-			<UFormField
-				v-if="props.showTheme"
-				label="Thema"
-				description="Gebruik lichte of donkere modus"
-				class="flex items-center justify-between gap-2 not-last:pb-4"
-			>
-				<UColorModeSwitch />
-			</UFormField>
-		</div>
-	</UPageCard>
+	<Can
+		v-if="props.showRefresh"
+		:ability="manageHousehold"
+		:args="[settingsStore.currentMemberRole]"
+	>
+		<UPageCard variant="subtle" title="App" description="Werk je appvoorkeuren bij.">
+			<div class="space-y-4">
+				<div class="space-y-4">
+					<UFormField
+						label="Verversen"
+						description="Wanneer de applicatie synced met de cloud"
+					>
+						<UInputNumber v-model="refreshIntervalSeconds" :min="1" :max="300" />
+					</UFormField>
+
+					<UButton icon="i-lucide-save" @click="saveSettings">Opslaan</UButton>
+				</div>
+			</div>
+		</UPageCard>
+	</Can>
 </template>

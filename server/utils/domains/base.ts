@@ -178,6 +178,7 @@ export function auditFields(audit: Audit) {
  * Loads a non-deleted list or throws 404-style API error.
  *
  * @param listId - List id.
+ * @param householdId - Active household id.
  * @returns Existing list row.
  */
 export async function findListOrThrow(listId: string, householdId: string) {
@@ -200,6 +201,7 @@ export async function findListOrThrow(listId: string, householdId: string) {
  * Loads a non-deleted list item or throws 404-style API error.
  *
  * @param listItemId - List item id.
+ * @param householdId - Active household id.
  * @returns Existing list-item row.
  */
 export async function findListItemOrThrow(listItemId: string, householdId: string) {
@@ -222,6 +224,7 @@ export async function findListItemOrThrow(listItemId: string, householdId: strin
  * Loads a non-deleted recipe or throws 404-style API error.
  *
  * @param recipeId - Recipe id.
+ * @param householdId - Active household id.
  * @returns Existing recipe row.
  */
 export async function findRecipeOrThrow(recipeId: string, householdId: string) {
@@ -244,6 +247,7 @@ export async function findRecipeOrThrow(recipeId: string, householdId: string) {
  * Loads a recipe item or throws 404-style API error.
  *
  * @param recipeItemId - Recipe item id.
+ * @param householdId - Active household id.
  * @returns Existing recipe-item row.
  */
 export async function findRecipeItemOrThrow(recipeItemId: string, householdId: string) {
@@ -265,6 +269,7 @@ export async function findRecipeItemOrThrow(recipeItemId: string, householdId: s
  * Loads a meal-planner day by weekday number or throws 404-style API error.
  *
  * @param dayOfWeek - Weekday number.
+ * @param householdId - Active household id.
  * @returns Existing meal-planner-day row.
  */
 export async function findMealPlannerDayOrThrow(dayOfWeek: number, householdId: string) {
@@ -286,6 +291,7 @@ export async function findMealPlannerDayOrThrow(dayOfWeek: number, householdId: 
  * Loads a meal-planner-day item or throws 404-style API error.
  *
  * @param mealPlannerDayItemId - Meal-planner-day item id.
+ * @param householdId - Active household id.
  * @returns Existing meal-planner-day-item row.
  */
 export async function findMealPlannerDayItemOrThrow(
@@ -309,6 +315,7 @@ export async function findMealPlannerDayItemOrThrow(
 /**
  * Calculates the next position for active lists.
  *
+ * @param householdId - Active household id.
  * @returns Next zero-based list position.
  */
 export async function getNextListPosition(householdId: string) {
@@ -326,6 +333,7 @@ export async function getNextListPosition(householdId: string) {
  * Calculates the next position for visible list items.
  *
  * @param listId - Parent list id.
+ * @param householdId - Active household id.
  * @returns Next zero-based list-item position.
  */
 export async function getNextListItemPosition(listId: string, householdId: string) {
@@ -349,6 +357,7 @@ export async function getNextListItemPosition(listId: string, householdId: strin
  * Calculates the next position for recipe items.
  *
  * @param recipeId - Parent recipe id.
+ * @param householdId - Active household id.
  * @returns Next zero-based recipe-item position.
  */
 export async function getNextRecipeItemPosition(recipeId: string, householdId: string) {
@@ -371,6 +380,7 @@ export async function getNextRecipeItemPosition(recipeId: string, householdId: s
  * Calculates the next position for meal-planner-day items.
  *
  * @param mealPlannerDayId - Parent meal-planner-day id.
+ * @param householdId - Active household id.
  * @returns Next zero-based day-item position.
  */
 export async function getNextMealPlannerDayItemPosition(
@@ -396,6 +406,7 @@ export async function getNextMealPlannerDayItemPosition(
  * Returns ordered recipe items with joined canonical item rows.
  *
  * @param recipeId - Recipe id.
+ * @param householdId - Active household id.
  * @returns Serialized recipe items.
  */
 export async function getRecipeItems(recipeId: string, householdId: string) {
@@ -420,6 +431,7 @@ export async function getRecipeItems(recipeId: string, householdId: string) {
 /**
  * Returns meal-planner days ordered by configured weekday sequence.
  *
+ * @param householdId - Active household id.
  * @returns Existing meal-planner-day rows.
  */
 export async function getMealPlannerDays(householdId: string) {

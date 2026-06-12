@@ -6,6 +6,15 @@ const confirm = useConfirmDialog()
 const toast = useToast()
 const { getIcon } = useIcon()
 
+const leaveHouseholdDestroysHousehold = computed(
+	() => settingsStore.enableMultiTenancy && settingsStore.members.length <= 1
+)
+const leaveHouseholdDescription = computed(() =>
+	leaveHouseholdDestroysHousehold.value
+		? 'Je bent het laatste lid. Als je vertrekt, wordt dit huishouden met alle bijbehorende appdata verwijderd. Je account blijft bestaan.'
+		: 'Je account blijft bestaan, maar je verliest toegang tot dit huishouden.'
+)
+
 async function clearData() {
 	const ok = await confirm({
 		title: 'Alle appdata verwijderen?',
@@ -51,8 +60,10 @@ async function leaveHousehold() {
 	}
 
 	const ok = await confirm({
-		title: 'Huishouden verlaten?',
-		description: 'Je account blijft bestaan, maar je verliest toegang tot dit huishouden.',
+		title: leaveHouseholdDestroysHousehold.value
+			? 'Huishouden verlaten en verwijderen?'
+			: 'Huishouden verlaten?',
+		description: leaveHouseholdDescription.value,
 		color: 'error'
 	})
 
@@ -167,7 +178,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 			variant="subtle"
 			color="warning"
 			title="Huishouden verlaten"
-			description="Je account blijft bestaan, maar je verliest toegang tot dit huishouden."
+			:description="leaveHouseholdDescription"
 			:actions="[
 				{
 					label: 'Verlaat huishouden',

@@ -25,6 +25,9 @@ onMounted(async () => {
 <template>
 	<div class="space-y-4">
 		<SettingsHouseholdSection />
-		<SettingsAppSection v-if="settingsStore.activeHouseholdId" :show-theme="false" />
+		<SettingsHouseholdConfigSettings
+			v-if="settingsStore.activeHouseholdId"
+			:show-theme="false"
+		/>
 	</div>
 </template>

@@ -12,9 +12,11 @@ const links = [
 </script>
 
 <template>
-	<Fluid class="border-default bg-default/95 sticky top-0 z-10 border-b backdrop-blur">
-		<UContainer class="-ml-2 flex overflow-x-auto md:ml-auto">
-			<UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
-		</UContainer>
-	</Fluid>
+	<div class="sticky top-0 z-20">
+		<Fluid class="border-default bg-default/95 border-b backdrop-blur">
+			<UContainer class="-ml-2 flex overflow-x-auto md:ml-auto">
+				<UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
+			</UContainer>
+		</Fluid>
+	</div>
 </template>

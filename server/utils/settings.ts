@@ -74,6 +74,12 @@ export const profileUpdateBodySchema = z
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
 
+/**
+ * Converts household settings rows to API response data.
+ *
+ * @param settings - Household settings row.
+ * @returns Serialized settings.
+ */
 export function serializeSettings(settings: typeof schema.householdSettings.$inferSelect) {
 	return {
 		refreshIntervalMs: settings.refreshIntervalMs,
@@ -81,6 +87,12 @@ export function serializeSettings(settings: typeof schema.householdSettings.$inf
 	}
 }
 
+/**
+ * Reads one user's profile.
+ *
+ * @param userId - User id to read.
+ * @returns Serialized profile payload.
+ */
 export async function getProfile(userId: number) {
 	const [user] = await db
 		.select({
@@ -101,6 +113,13 @@ export async function getProfile(userId: number) {
 	return { user: serializeUserProfile(user) }
 }
 
+/**
+ * Updates one user's personal profile fields.
+ *
+ * @param userId - User id to update.
+ * @param input - Validated profile patch.
+ * @returns Serialized profile payload.
+ */
 export async function updateProfile(userId: number, input: z.infer<typeof profileUpdateBodySchema>) {
 	if (input.email !== undefined) {
 		const [existing] = await db
@@ -136,6 +155,13 @@ export async function updateProfile(userId: number, input: z.infer<typeof profil
 	return { user: serializeUserProfile(user) }
 }
 
+/**
+ * Lists all canonical items for the item vault.
+ *
+ * @param householdId - Active household id.
+ * @param query - Optional item search query.
+ * @returns Item vault rows with usage counts.
+ */
 export async function listAllItems(householdId: string, query: z.infer<typeof itemListQuerySchema>) {
 	const normalized = query.q ? `%${normalizeItemName(query.q)}%` : undefined
 	const rows = await db
@@ -165,6 +191,15 @@ export async function listAllItems(householdId: string, query: z.infer<typeof it
 	}
 }
 
+/**
+ * Updates one canonical item in the item vault.
+ *
+ * @param householdId - Active household id.
+ * @param itemId - Canonical item id.
+ * @param input - Validated item patch.
+ * @param userId - Acting user id for audit metadata.
+ * @returns Updated item payload.
+ */
 export async function updateCanonicalItem(
 	householdId: string,
 	itemId: string,
@@ -211,7 +246,19 @@ export async function updateCanonicalItem(
 	return { item: serializeSettingsItem(assertRow(item)) }
 }
 
-export async function mergeCanonicalItem(householdId: string, sourceItemId: string, targetItemId: string) {
+/**
+ * Merges one canonical item into another.
+ *
+ * @param householdId - Active household id.
+ * @param sourceItemId - Item id to remove.
+ * @param targetItemId - Item id to keep.
+ * @returns Merge summary.
+ */
+export async function mergeCanonicalItem(
+	householdId: string,
+	sourceItemId: string,
+	targetItemId: string
+) {
 	if (sourceItemId === targetItemId) {
 		throwApiError({
 			code: 'CONFLICT',
@@ -247,6 +294,13 @@ export async function mergeCanonicalItem(householdId: string, sourceItemId: stri
 	return { mergedItemId: sourceItemId, targetItemId }
 }
 
+/**
+ * Deletes one canonical item and all item references.
+ *
+ * @param householdId - Active household id.
+ * @param itemId - Item id to delete.
+ * @returns Deleted reference counts.
+ */
 export async function deleteCanonicalItem(householdId: string, itemId: string) {
 	await findItemOrThrow(householdId, itemId)
 	const usage = await countItemReferences(householdId, itemId)
@@ -280,6 +334,13 @@ export async function deleteCanonicalItem(householdId: string, itemId: string) {
 	}
 }
 
+/**
+ * Clears household app data and reseeds the default rows.
+ *
+ * @param householdId - Active household id.
+ * @param userId - Acting user id for seed audit metadata.
+ * @returns Operation result.
+ */
 export async function clearHouseholdData(householdId: string, userId: number) {
 	await db.delete(schema.listItems).where(eq(schema.listItems.householdId, householdId))
 	await db.delete(schema.recipeItems).where(eq(schema.recipeItems.householdId, householdId))
@@ -296,6 +357,12 @@ export async function clearHouseholdData(householdId: string, userId: number) {
 	return { ok: true }
 }
 
+/**
+ * Builds usage statistics for one household.
+ *
+ * @param householdId - Active household id.
+ * @returns Household statistics payload.
+ */
 export async function getHouseholdStats(householdId: string) {
 	const [totals] = await db
 		.select({

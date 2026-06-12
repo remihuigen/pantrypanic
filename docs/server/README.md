@@ -102,10 +102,11 @@ for `GET /api/users` and `server/api/users/[userId]/index.get.ts` for `GET /api/
 | `GET`    | `/api/users/:userId` | Read one user by id.                                          |
 | `PUT`    | `/api/users/:userId` | Update one or more user fields.                               |
 | `PATCH`  | `/api/users/:userId` | Update one or more user fields.                               |
-| `DELETE` | `/api/users/:userId` | Delete a user by id.                                          |
+| `DELETE` | `/api/users/:userId` | Delete a user through the shared account deletion flow.       |
 
-Responses omit the `password` field. Passwords are stored as scrypt hashes. Fine-grained permission
-checks are intentionally not implemented yet.
+Responses omit the `password` field. Passwords are stored as scrypt hashes. User deletion follows
+the same household ownership, last-member, and orphaned-account cleanup rules as `DELETE
+/api/profile`.
 
 ## Pantry Panic Domain API
 

@@ -15,6 +15,7 @@ type AuditInput = {
  *
  * @param auditUserId - Existing user id used for audit fields.
  * @param householdId - Household id to seed.
+ * @param event - Optional H3 request event for runtime config.
  */
 export async function seedInitialDomainData(
 	auditUserId: number,

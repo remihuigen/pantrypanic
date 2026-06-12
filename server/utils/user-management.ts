@@ -1,7 +1,11 @@
 import type { userSchema } from '#shared/utils/schemas/domain'
 import type { H3Event } from 'h3'
 
-import { ensureDefaultHousehold, ensureHouseholdMembership } from '#server/utils/domains/households'
+import {
+	deleteAccount,
+	ensureDefaultHousehold,
+	ensureHouseholdMembership
+} from '#server/utils/domains/households'
 import { seedInitialDomainData } from '#server/utils/domains/seed'
 import { userEmailSchema } from '#shared/utils/schemas/domain'
 import { and, asc, eq, ne } from 'drizzle-orm'
@@ -222,20 +226,14 @@ export async function updateUser(userId: number, input: z.infer<typeof updateUse
 }
 
 /**
- * Deletes an existing user by id.
+ * Deletes an existing user by id through the account deletion flow.
  *
+ * @param event - H3 request event.
  * @param userId - User id to delete.
- * @throws HTTP 404 when the user does not exist.
+ * @returns Deleted user summary.
  */
-export async function deleteUser(userId: number) {
-	const [user] = await db.delete(schema.users).where(eq(schema.users.id, userId)).returning()
-	if (!user) {
-		throw createError({
-			statusCode: 404,
-			statusMessage: 'Not Found',
-			message: 'User not found'
-		})
-	}
+export async function deleteUser(event: H3Event, userId: number) {
+	return deleteAccount(event, userId)
 }
 
 /**

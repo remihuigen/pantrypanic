@@ -609,10 +609,36 @@ describe('household utilities', () => {
 			)
 			.mockReturnValueOnce(createSelectBuilder([{ role: 'member' }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([{ count: 1 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
 		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder([]) as never)
+		vi.mocked(db.update).mockReturnValue(createUpdateBuilder([]) as never)
+		mocks.getUserSession.mockResolvedValueOnce({ user: { id: 1 }, loggedInAt: 123 })
 
 		await expect(deleteAccount({} as never, 1)).resolves.toEqual({ deletedUserId: 1 })
-		expect(db.delete).toHaveBeenCalledTimes(12)
+		expect(db.delete).toHaveBeenCalledTimes(14)
+		expect(mocks.clearUserSession).toHaveBeenCalledWith({})
+	})
+
+	it('deletes orphaned accounts after clearing stale user references', async () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableHouseholdCreation: false,
+			enableMultiTenancy: true,
+			enablePublicRegistration: false,
+			public: {
+				enableHouseholdCreation: false,
+				enableMultiTenancy: true
+			}
+		}))
+		vi.mocked(db.select)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ id: 2 }]) as never)
+		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder([]) as never)
+		vi.mocked(db.update).mockReturnValue(createUpdateBuilder([]) as never)
+		mocks.getUserSession.mockResolvedValueOnce({ user: { id: 1 }, loggedInAt: 123 })
+
+		await expect(deleteAccount({} as never, 1)).resolves.toEqual({ deletedUserId: 1 })
+		expect(db.delete).toHaveBeenCalledTimes(3)
+		expect(db.update).toHaveBeenCalledTimes(16)
 		expect(mocks.clearUserSession).toHaveBeenCalledWith({})
 	})
 

@@ -24,6 +24,8 @@ import {
 } from './test-db'
 
 const mocks = vi.hoisted(() => ({
+	clearUserSession: vi.fn(),
+	getUserSession: vi.fn(),
 	hashPassword: vi.fn(async (password: string) => `hashed:${password}`),
 	seedInitialDomainData: vi.fn()
 }))
@@ -38,10 +40,15 @@ describe('user management utilities', () => {
 		vi.mocked(db.insert).mockReset()
 		vi.mocked(db.update).mockReset()
 		vi.mocked(db.delete).mockReset()
+		mocks.clearUserSession.mockReset()
+		mocks.getUserSession.mockReset()
 		mocks.hashPassword.mockClear()
 		mocks.seedInitialDomainData.mockClear()
+		vi.stubGlobal('clearUserSession', mocks.clearUserSession)
+		vi.stubGlobal('getUserSession', mocks.getUserSession)
 		vi.stubGlobal('hashPassword', mocks.hashPassword)
 		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableMultiTenancy: false,
 			pantry: {
 				defaultUserListLimit: 50,
 				maxUserListLimit: 100
@@ -216,18 +223,17 @@ describe('user management utilities', () => {
 		})
 	})
 
-	it('deletes users and reports missing rows', async () => {
-		vi.mocked(db.delete).mockReturnValueOnce(
-			createDeleteBuilder([createUserRow({ id: 1 })]) as never
-		)
+	it('deletes users through the shared account deletion flow', async () => {
+		vi.mocked(db.select)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder([]) as never)
+		vi.mocked(db.update).mockReturnValue(createUpdateBuilder([]) as never)
+		mocks.getUserSession.mockResolvedValueOnce({ user: { id: 1 }, loggedInAt: 123 })
 
-		await expect(deleteUser(1)).resolves.toBeUndefined()
-
-		vi.mocked(db.delete).mockReturnValueOnce(createDeleteBuilder([]) as never)
-		await expect(deleteUser(2)).rejects.toMatchObject({
-			statusCode: 404,
-			message: 'User not found'
-		})
+		await expect(deleteUser({} as never, 1)).resolves.toEqual({ deletedUserId: 1 })
+		expect(db.delete).toHaveBeenCalledTimes(3)
+		expect(mocks.clearUserSession).toHaveBeenCalledWith({})
 	})
 
 	it('finds users for authentication and updates password hashes', async () => {

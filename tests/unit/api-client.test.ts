@@ -52,10 +52,56 @@ describe('api-client', () => {
 		})
 	})
 
+	it('throws normalized app errors from unsuccessful API envelopes', async () => {
+		fetchMock.mockResolvedValue({
+			success: false,
+			error: {
+				code: 'FORBIDDEN',
+				message: 'Geen toegang.'
+			}
+		})
+
+		await expect(apiFetch('/api/lists')).rejects.toEqual({
+			code: 'FORBIDDEN',
+			message: 'Geen toegang.'
+		})
+	})
+
+	it('returns existing app errors unchanged', () => {
+		const error = { code: 'CONFLICT', message: 'Bestaat al.' }
+
+		expect(normalizeAppError(error)).toBe(error)
+	})
+
+	it('normalizes nested API envelopes', () => {
+		expect(
+			normalizeAppError({
+				error: {
+					success: false,
+					error: {
+						code: 'NOT_FOUND',
+						message: 'Niet gevonden.'
+					}
+				}
+			})
+		).toEqual({
+			code: 'NOT_FOUND',
+			message: 'Niet gevonden.',
+			details: undefined
+		})
+	})
+
 	it('normalizes plain errors into INTERNAL_ERROR', () => {
 		const error = normalizeAppError(new Error('Kapot'))
 
 		expect(error.code).toBe('INTERNAL_ERROR')
 		expect(error.message).toBe('Kapot')
+	})
+
+	it('normalizes non-error values into a generic INTERNAL_ERROR', () => {
+		expect(normalizeAppError('kapot')).toEqual({
+			code: 'INTERNAL_ERROR',
+			message: 'Er is iets misgegaan.'
+		})
 	})
 })
