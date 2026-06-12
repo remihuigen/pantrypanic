@@ -1,13 +1,17 @@
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import { useIcon } from '~/composables/useIcon'
+import { useRecipeUsage } from '~/composables/useRecipeUsage'
 import { orchestrateRefresh } from '~/composables/useStoreRefresh'
 import * as apiClient from '~/utils/api-client'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { computed, shallowRef } from 'vue'
 
 const mocks = vi.hoisted(() => ({
 	create: vi.fn()
 }))
+
+type RecipeUsageCountsByUser = Record<string, Record<string, number>>
 
 vi.mock('~/components/overlays/Confirmation.vue', () => ({
 	default: {}
@@ -23,6 +27,10 @@ describe('small composables', () => {
 		}))
 		vi.stubGlobal('useUpload', () => vi.fn())
 		vi.spyOn(apiClient, 'normalizeAppError').mockImplementation((error) => error as never)
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
 	})
 
 	it('resolves configured icon names by key', () => {
@@ -102,6 +110,42 @@ describe('small composables', () => {
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/recipes?status=active')
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/recipes/recipe-1')
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(3, '/api/meal-planner')
+	})
+
+	it('tracks recipe usage counts per user in local storage', () => {
+		const profile = shallowRef<{ id: number } | null>({ id: 1 })
+		const storage = shallowRef<RecipeUsageCountsByUser>({
+			1: { 'recipe-known': 2 },
+			anonymous: { 'recipe-public': 1 }
+		})
+		vi.stubGlobal('computed', computed)
+		vi.stubGlobal('useSettingsStore', () => ({
+			get profile() {
+				return profile.value
+			}
+		}))
+		vi.stubGlobal('useLocalStorage', vi.fn(() => storage))
+
+		const usage = useRecipeUsage()
+
+		expect(usage.getUsageCount('recipe-known')).toBe(2)
+		expect(usage.getUsageCount('missing')).toBe(0)
+
+		usage.incrementUsage('recipe-known')
+		usage.incrementUsage('recipe-new')
+
+		expect(storage.value[1]).toEqual({
+			'recipe-known': 3,
+			'recipe-new': 1
+		})
+
+		profile.value = null
+
+		expect(usage.getUsageCount('recipe-public')).toBe(1)
+
+		usage.incrementUsage('recipe-public')
+
+		expect(storage.value.anonymous).toEqual({ 'recipe-public': 2 })
 	})
 })
 

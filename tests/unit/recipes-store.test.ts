@@ -89,6 +89,17 @@ describe('useRecipesStore', () => {
 		expect(store.recipeItemsById.stale).toBeUndefined()
 	})
 
+	it('stores normalized fetch recipe errors and clears loading state', async () => {
+		const store = useRecipesStore()
+		const error = { code: 'NOT_FOUND', message: 'Recept niet gevonden.' }
+		vi.spyOn(apiClient, 'apiFetch').mockRejectedValueOnce(error)
+
+		await expect(store.fetchRecipe('recipe-missing')).rejects.toEqual(error)
+
+		expect(store.error).toEqual(error)
+		expect(store.isLoading).toBe(false)
+	})
+
 	it('creates a recipe, stores its items, and prepends it to active recipes', async () => {
 		const store = useRecipesStore()
 		store.activeRecipeIds = ['existing']
@@ -111,13 +122,27 @@ describe('useRecipesStore', () => {
 		expect(store.isSaving).toBe(false)
 	})
 
+	it('stores normalized create recipe errors and clears saving state', async () => {
+		const store = useRecipesStore()
+		const error = { code: 'VALIDATION', message: 'Naam is verplicht.' }
+		vi.spyOn(apiClient, 'apiFetch').mockRejectedValueOnce(error)
+
+		await expect(store.createRecipe({ name: '', items: [] })).rejects.toEqual(error)
+
+		expect(store.error).toEqual(error)
+		expect(store.isSaving).toBe(false)
+		expect(store.activeRecipeIds).toEqual([])
+	})
+
 	it('updates a recipe optimistically and applies the server updatedAt value', async () => {
 		const store = useRecipesStore()
 		store.recipesById['recipe-1'] = createRecipeSummary({
 			id: 'recipe-1',
 			name: 'Oud',
 			description: 'oud',
-			servings: 2
+			servings: 2,
+			sourceUrl: 'https://example.com/oud',
+			notes: 'oude notitie'
 		})
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
 			recipe: { id: 'recipe-1', updatedAt: 9 }
@@ -126,15 +151,19 @@ describe('useRecipesStore', () => {
 		await store.updateRecipe('recipe-1', {
 			name: 'Nieuw',
 			description: null,
-			servings: 4
+			servings: 4,
+			sourceUrl: null,
+			notes: 'nieuwe notitie'
 		})
 
 		expect(store.recipesById['recipe-1']).toMatchObject({
 			name: 'Nieuw',
 			servings: 4,
+			notes: 'nieuwe notitie',
 			updatedAt: 9
 		})
 		expect(store.recipesById['recipe-1']?.description).toBeUndefined()
+		expect(store.recipesById['recipe-1']?.sourceUrl).toBeUndefined()
 		expect(store.isSaving).toBe(false)
 	})
 
@@ -373,6 +402,24 @@ describe('useRecipesStore', () => {
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/recipes?status=active')
 	})
 
+	it('refreshes only the active recipe when one is selected', async () => {
+		const store = useRecipesStore()
+		const apiFetch = vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			recipe: createRecipeDetail({ id: 'recipe-1', items: [] })
+		})
+
+		await store.refreshActiveRecipeNow()
+
+		expect(apiFetch).not.toHaveBeenCalled()
+
+		store.setActiveRecipe('recipe-1')
+
+		await store.refreshActiveRecipeNow()
+
+		expect(apiFetch).toHaveBeenCalledWith('/api/recipes/recipe-1')
+		expect(store.recipesById['recipe-1']?.id).toBe('recipe-1')
+	})
+
 	it('does not duplicate active ids when creating an already-known recipe', async () => {
 		const store = useRecipesStore()
 		store.activeRecipeIds = ['recipe-1']
@@ -494,6 +541,8 @@ function createRecipeSummaryShape() {
 		name: 'Pasta',
 		description: undefined as string | undefined,
 		servings: undefined as number | undefined,
+		sourceUrl: undefined as string | undefined,
+		notes: undefined as string | undefined,
 		status: 'active' as const,
 		updatedAt: 1
 	}
@@ -516,6 +565,8 @@ function createRecipeDetailShape() {
 		name: 'Pasta',
 		description: undefined as string | undefined,
 		servings: undefined as number | undefined,
+		sourceUrl: undefined as string | undefined,
+		notes: undefined as string | undefined,
 		status: 'active' as const,
 		items: [] as ReturnType<typeof createRecipeItem>[]
 	}

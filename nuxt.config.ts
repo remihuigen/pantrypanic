@@ -64,9 +64,7 @@ export default defineNuxtConfig({
 			blob: {
 				driver: 'cloudflare-r2',
 				bucketName: process.env.CLOUDFLARE_R2_BUCKET,
-				binding: 'BLOB',
-				// @ts-expect-error this prop exists!
-				jurisdiction: 'eu'
+				binding: 'BLOB'
 			}
 		},
 
