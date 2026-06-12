@@ -10,6 +10,9 @@ function readNumberEnv(name: string, fallback: number) {
 	return Number.isFinite(parsed) ? parsed : fallback
 }
 
+const enableMultiTenancy = process.env.ENABLE_MULTI_TENANCY === 'true'
+const enableRegistration = enableMultiTenancy && process.env.ENABLE_REGISTRATION === 'true'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 	modules: [
@@ -78,8 +81,8 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		adminApiKey: process.env.ADMIN_API_KEY ?? '',
-		enableMultiTenancy: process.env.ENABLE_MULTI_TENANCY === 'true',
-		enableRegistration: process.env.ENABLE_REGISTRATION === 'true',
+		enableMultiTenancy,
+		enableRegistration,
 		session: {
 			password: process.env.NUXT_SESSION_PASSWORD ?? '',
 			maxAge: 60 * 60 * 24 * 30
@@ -97,8 +100,8 @@ export default defineNuxtConfig({
 
 		public: {
 			refreshInterval: readNumberEnv('NUXT_PUBLIC_REFRESH_INTERVAL', 5000),
-			enableMultiTenancy: process.env.ENABLE_MULTI_TENANCY === 'true',
-			enableRegistration: process.env.ENABLE_REGISTRATION === 'true',
+			enableMultiTenancy,
+			enableRegistration,
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."
