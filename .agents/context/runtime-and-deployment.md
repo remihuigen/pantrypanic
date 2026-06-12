@@ -21,9 +21,9 @@ There is no Docus/content layer in the current checkout.
 
 The product app UI is namespaced under `/app`:
 
-- `app/pages/app/**` contains product routes such as `/app/lists`, `/app/lists/:id`,
-  `/app/recipes`, `/app/recipes/:id`, `/app/meal-planner`, `/app/settings`,
-  `/app/settings/household`, `/app/settings/item-valut`, and `/app/settings/stats`.
+- `app/pages/app/**` contains product routes such as `/app/lists`, `/app/lists/:id`, `/app/recipes`,
+  `/app/recipes/:id`, `/app/meal-planner`, `/app/settings`, `/app/settings/household`,
+  `/app/settings/item-vault`, and `/app/settings/stats`.
 - `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**`, so product app
   routes render through Nuxt's normal SSR path.
 - `/` and `/app` redirect to `/app/lists`.
@@ -151,8 +151,8 @@ Implemented route families:
 - `/api/recipe-items` for recipe-item update and hard-delete
 - `/api/meal-planner` for singleton seven-day planner reads, day updates, placeholder ingredients,
   clear, and copy-to-list
-- `/api/households` for memberships, active household switching, members, household settings,
-  invite links, and reset-access links
+- `/api/households` for memberships, active household switching, members, household settings, invite
+  links, and reset-access links
 - `/api/profile` for profile edits and avatar upload
 - `/api/settings` for canonical item maintenance, clear-data, and usage stats
 
@@ -164,11 +164,11 @@ New domain routes use the shared response envelope:
 Zod validates params, query strings, and bodies. Validation messages are Dutch. All household
 management actions are guarded by Nuxt Authorization abilities. Owner-gated server handlers should
 call `getHouseholdContext(event, { authorize: ability })` so household resolution, membership-role
-lookup, and server `authorize()` stay centralized in `server/utils/households.ts`.
-`householdOwner` members can invite users, generate reset links, remove members, promote members to
-owner, update household settings, clear household app data, and destroy households. Regular members
-keep access to the core domain flows. Users with no household membership get a friendly Dutch
-empty-state message in settings instead of a broken app state.
+lookup, and server `authorize()` stay centralized in `server/utils/households.ts`. `householdOwner`
+members can invite users, generate reset links, remove members, promote members to owner, update
+household settings, clear household app data, and destroy households. Regular members keep access to
+the core domain flows. Users with no household membership get a friendly Dutch empty-state message
+in settings instead of a broken app state.
 
 ## Admin User Seed
 

@@ -69,6 +69,13 @@ export default defineNuxtConfig({
 
 	css: ['~/assets/css/main.css'],
 
+	components: [
+		{
+			path: '~/components',
+			pathPrefix: false
+		}
+	],
+
 	runtimeConfig: {
 		adminApiKey: process.env.ADMIN_API_KEY ?? '',
 		enableMultiTenancy: process.env.ENABLE_MULTI_TENANCY === 'true',

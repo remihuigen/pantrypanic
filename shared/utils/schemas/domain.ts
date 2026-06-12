@@ -350,6 +350,18 @@ export const currentUserSchema = z.strictObject({
 	displayName: z.string()
 })
 
+export const userEmailSchema = z.email('Ongeldig e-mailadres.').trim().toLowerCase()
+
+export const passwordSchema = z
+	.string()
+	.min(8, 'Wachtwoord moet minimaal 8 tekens bevatten.')
+	.max(1024, 'Wachtwoord mag maximaal 1024 tekens bevatten.')
+export const userSchema = z.strictObject({
+	name: z.string().trim().min(1).max(120, 'Naam mag maximaal 120 tekens bevatten.'),
+	email: userEmailSchema,
+	password: passwordSchema
+})
+
 export type ListStatus = z.infer<typeof listStatusSchema>
 export type ListItemStatus = z.infer<typeof listItemStatusSchema>
 export type RecipeStatus = z.infer<typeof recipeStatusSchema>

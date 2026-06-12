@@ -1,5 +1,5 @@
 import { defineApiHandler } from '#server/utils/api-core'
-import { destroyCurrentHousehold, getHouseholdContext } from '#server/utils/households'
+import { destroyCurrentHousehold, getHouseholdContext } from '#server/utils/domains/households'
 import { destroyHousehold } from '#shared/utils/abilities'
 
 export default defineApiHandler(async (event) => {

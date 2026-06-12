@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const settingsStore = useSettingsStore()
 const toast = useToast()
+const { getIcon } = useIcon()
 const confirm = useConfirmDialog()
 const query = ref('')
 const editingId = ref<string | null>(null)
@@ -61,19 +62,25 @@ async function deleteItem(itemId: string) {
 </script>
 
 <template>
-	<UCard>
-		<template #header>
-			<div class="flex items-center justify-between gap-3">
-				<h2 class="text-base font-semibold">Alle items</h2>
-				<UInput v-model="query" icon="i-lucide-search" placeholder="Zoeken" class="max-w-64" />
-			</div>
-		</template>
-
-		<div class="space-y-3">
-			<div
+	<div class="space-y-4">
+		<UPageCard
+			:title="`Itemkluis (${settingsStore.items.length})`"
+			description="Hier vind je alle items die je ooit hebt aangemaakt."
+			variant="naked"
+			orientation="horizontal"
+		>
+			<UInput
+				v-model="query"
+				:icon="getIcon('search')"
+				placeholder="Zoeken"
+				class="max-w-120"
+			/>
+		</UPageCard>
+		<UPageCard variant="subtle" :ui="{ body: 'space-y-3 grid' }">
+			<UPageCard
 				v-for="item in settingsStore.items"
 				:key="item.id"
-				class="border-default rounded-md border p-3"
+				class="border-default rounded-md border"
 			>
 				<div v-if="editingId === item.id" class="grid gap-2">
 					<UInput v-model="draft.name" />
@@ -84,7 +91,9 @@ async function deleteItem(itemId: string) {
 					<UTextarea v-model="draft.notes" placeholder="Notities" />
 					<div class="flex gap-2">
 						<UButton icon="i-lucide-save" @click="saveItem(item.id)">Opslaan</UButton>
-						<UButton color="neutral" variant="ghost" @click="editingId = null">Annuleren</UButton>
+						<UButton color="neutral" variant="ghost" @click="editingId = null"
+							>Annuleren</UButton
+						>
 					</div>
 				</div>
 
@@ -95,22 +104,41 @@ async function deleteItem(itemId: string) {
 							<p class="text-muted text-xs">{{ item.usageCount }} verwijzingen</p>
 						</div>
 						<div class="flex gap-1">
-							<UButton icon="i-lucide-pencil" variant="ghost" @click="startEdit(item)" />
-							<UButton icon="i-lucide-trash-2" color="error" variant="ghost" @click="deleteItem(item.id)" />
+							<UButton
+								icon="i-lucide-pencil"
+								variant="ghost"
+								@click="startEdit(item)"
+							/>
+							<UButton
+								icon="i-lucide-trash-2"
+								color="error"
+								variant="ghost"
+								@click="deleteItem(item.id)"
+							/>
 						</div>
 					</div>
 					<div class="flex gap-2">
-						<USelect
+						<USelectMenu
 							v-model="mergeTargets[item.id]"
-							:items="settingsStore.items.filter((candidate) => candidate.id !== item.id).map((candidate) => ({ label: candidate.name, value: candidate.id }))"
+							value-key="value"
+							:items="
+								settingsStore.items
+									.filter((candidate) => candidate.id !== item.id)
+									.map((candidate) => ({
+										label: candidate.name,
+										value: candidate.id
+									}))
+							"
 							placeholder="Samenvoegen met"
 						/>
-						<UButton icon="i-lucide-git-merge" color="neutral" @click="mergeItem(item.id)">
-							Samenvoegen
-						</UButton>
+						<UButton
+							icon="i-lucide-git-merge"
+							color="neutral"
+							@click="mergeItem(item.id)"
+						/>
 					</div>
 				</div>
-			</div>
-		</div>
-	</UCard>
+			</UPageCard>
+		</UPageCard>
+	</div>
 </template>

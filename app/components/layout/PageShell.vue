@@ -1,7 +1,7 @@
 <script lang="ts" setup></script>
 
 <template>
-	<section class="space-y-4 py-6">
+	<section class="relative space-y-4 py-6">
 		<slot name="header" />
 		<ClientOnly>
 			<slot />

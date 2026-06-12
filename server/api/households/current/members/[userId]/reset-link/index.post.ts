@@ -3,7 +3,7 @@ import {
 	createAccessLink,
 	getHouseholdContext,
 	listHouseholdMembers
-} from '#server/utils/households'
+} from '#server/utils/domains/households'
 import { userIdParamsSchema } from '#server/utils/settings'
 import { manageHousehold } from '#shared/utils/abilities'
 import { createError, getRequestURL } from 'h3'

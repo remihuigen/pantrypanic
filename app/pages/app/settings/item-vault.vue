@@ -26,8 +26,8 @@ onMounted(async () => {
 	<PageShell>
 		<template #header>
 			<PageHeader>Itemkluis</PageHeader>
-			<SettingsNavigation />
 		</template>
+		<SettingsNavigation class="sticky top-0" />
 
 		<UAlert
 			v-if="!settingsStore.activeHouseholdId"
@@ -37,6 +37,6 @@ onMounted(async () => {
 			description="Vraag een gezinslid om je opnieuw uit te nodigen voor hun huishouden."
 		/>
 
-		<SettingsItemsSection v-else />
+		<SettingsItemsSection v-else class="pt-4" />
 	</PageShell>
 </template>

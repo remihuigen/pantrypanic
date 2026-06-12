@@ -28,8 +28,8 @@ onMounted(async () => {
 	<PageShell>
 		<template #header>
 			<PageHeader>Huishouden</PageHeader>
-			<SettingsNavigation />
 		</template>
+		<SettingsNavigation class="sticky top-0" />
 
 		<UAlert
 			v-if="!settingsStore.activeHouseholdId"
@@ -39,7 +39,7 @@ onMounted(async () => {
 			description="Vraag een gezinslid om je opnieuw uit te nodigen voor hun huishouden."
 		/>
 
-		<div v-else class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
+		<div v-else class="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
 			<SettingsHouseholdSection />
 			<SettingsAppSection :show-theme="false" />
 		</div>

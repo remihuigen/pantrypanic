@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
 	createUser,
-	createUserBodySchema,
 	createUserListQuerySchema,
 	deleteUser,
 	findUserForAuthentication,
@@ -16,6 +15,7 @@ import {
 	updateUserBodySchema,
 	updateUserPasswordHash
 } from '../../server/utils/user-management'
+import { userSchema } from '../../shared/utils/schemas/domain'
 import {
 	createDeleteBuilder,
 	createInsertBuilder,
@@ -108,7 +108,7 @@ describe('user management utilities', () => {
 
 	it('validates create and update user bodies', () => {
 		expect(
-			createUserBodySchema.parse({
+			userSchema.parse({
 				name: ' Admin ',
 				email: 'ADMIN@EXAMPLE.COM',
 				password: 'secret'

@@ -1,9 +1,17 @@
 <script setup lang="ts">
+import { passwordSchema, userSchema } from '#shared/utils/schemas/domain'
+import { z } from 'zod'
+
 const settingsStore = useSettingsStore()
 const toast = useToast()
 const acceptedAvatarTypes = 'image/jpeg,image/png,image/webp,image/gif,image/avif'
 
-const state = reactive({
+const profileSchema = userSchema.omit({ password: true }).extend({
+	password: z.union([passwordSchema.optional(), z.literal('')]),
+	passwordConfirm: z.union([passwordSchema.optional(), z.literal('')])
+})
+
+const state = reactive<z.infer<typeof profileSchema>>({
 	name: '',
 	email: '',
 	password: '',
@@ -88,17 +96,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 </script>
 
 <template>
-	<UCard>
-		<template #header>
-			<h2 class="text-base font-semibold">Profiel</h2>
-		</template>
-
-		<div class="space-y-4">
-			<UFormField
-				label="Avatar"
-				name="avatar"
-				description="JPEG, PNG, WebP, GIF of AVIF."
-			>
+	<div class="space-y-4">
+		<UPageCard
+			title="Profiel"
+			description="Beheer je profiel- en accountgegevens."
+			variant="naked"
+		/>
+		<UPageCard variant="subtle" :ui="{ body: 'space-y-4' }">
+			<UFormField label="Avatar" name="avatar" description="JPEG, PNG, WebP, GIF of AVIF.">
 				<UFileUpload
 					v-slot="{ open, removeFile }"
 					v-model="selectedAvatar"
@@ -123,7 +128,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 						/>
 					</div>
 
-					<p v-if="selectedAvatar" class="mt-1.5 text-xs text-muted">
+					<p v-if="selectedAvatar" class="text-muted mt-1.5 text-xs">
 						{{ selectedAvatar.name }}
 
 						<UButton
@@ -139,7 +144,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 				</UFileUpload>
 			</UFormField>
 
-			<UForm :state="state" class="grid gap-3" @submit="saveProfile">
+			<UForm :state="state" :schema="profileSchema" class="grid gap-3" @submit="saveProfile">
 				<UFormField label="Naam" name="name">
 					<UInput v-model="state.name" />
 				</UFormField>
@@ -160,10 +165,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 						autocomplete="new-password"
 					/>
 				</UFormField>
-				<UButton type="submit" icon="i-lucide-save" :loading="settingsStore.isSaving">
-					Opslaan
-				</UButton>
+				<div>
+					<UButton type="submit" icon="i-lucide-save" :loading="settingsStore.isSaving">
+						Opslaan
+					</UButton>
+				</div>
 			</UForm>
-		</div>
-	</UCard>
+		</UPageCard>
+	</div>
 </template>

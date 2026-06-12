@@ -1,30 +1,18 @@
 <script setup lang="ts">
-const route = useRoute()
+import type { NavigationMenuItem } from '@nuxt/ui'
 
 const links = [
-	{ label: 'Algemeen', icon: 'i-lucide-settings', to: '/app/settings' },
-	{ label: 'Huishouden', icon: 'i-lucide-users', to: '/app/settings/household' },
-	{ label: 'Itemkluis', icon: 'i-lucide-archive', to: '/app/settings/item-valut' },
-	{ label: 'Statistieken', icon: 'i-lucide-chart-column', to: '/app/settings/stats' }
-]
-
-function isActive(path: string) {
-	return path === '/app/settings' ? route.path === path : route.path.startsWith(path)
-}
+	[
+		{ label: 'Algemeen', icon: 'i-lucide-settings', to: '/app/settings' },
+		{ label: 'Huishouden', icon: 'i-lucide-users', to: '/app/settings/household' },
+		{ label: 'Itemkluis', icon: 'i-lucide-archive', to: '/app/settings/item-vault' },
+		{ label: 'Statistieken', icon: 'i-lucide-chart-column', to: '/app/settings/stats' }
+	]
+] satisfies NavigationMenuItem[][]
 </script>
 
 <template>
-	<div class="flex gap-2 overflow-x-auto pb-1">
-		<UButton
-			v-for="link in links"
-			:key="link.to"
-			:to="link.to"
-			:icon="link.icon"
-			:color="isActive(link.to) ? 'primary' : 'neutral'"
-			:variant="isActive(link.to) ? 'solid' : 'ghost'"
-			size="sm"
-		>
-			{{ link.label }}
-		</UButton>
-	</div>
+	<Fluid class="border-default flex overflow-x-auto border-b pb-1 pl-2">
+		<UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
+	</Fluid>
 </template>

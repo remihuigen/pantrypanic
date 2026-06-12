@@ -1,13 +1,30 @@
 <script setup lang="ts">
+import { useClipboard } from '@vueuse/core'
 import { destroyHousehold, manageHousehold } from '#shared/utils/abilities'
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
+const { getIcon } = useIcon()
 
 const householdOptions = computed(() =>
 	settingsStore.households.map((household) => ({ label: household.name, value: household.id }))
 )
+
+const inviteLink = ref('')
+const resetLink = ref('')
+const { copy: copyInvite } = useClipboard({ source: inviteLink })
+const { copy: copyReset } = useClipboard({ source: resetLink })
+
+function handleCopyInvite() {
+	copyInvite()
+	toast.add({ title: 'Uitnodigingslink gekopieerd.', color: 'success', icon: 'i-lucide-check' })
+}
+
+function handleCopyReset() {
+	copyReset()
+	toast.add({ title: 'Toegangslink gekopieerd.', color: 'success', icon: 'i-lucide-check' })
+}
 
 async function switchHousehold(householdId: string) {
 	try {
@@ -24,8 +41,10 @@ async function switchHousehold(householdId: string) {
 
 async function createInvite() {
 	try {
-		const invite = await settingsStore.createInvite()
-		await navigator.clipboard?.writeText(invite.url).catch(() => undefined)
+		const { url } = await settingsStore.createInvite()
+		inviteLink.value = url
+		copyInvite()
+		// await navigator.clipboard?.writeText(url).catch(() => undefined)
 		toast.add({ title: 'Uitnodigingslink gemaakt.', color: 'success', icon: 'i-lucide-link' })
 	} catch (error) {
 		toast.add({
@@ -38,8 +57,10 @@ async function createInvite() {
 
 async function createResetLink(userId: number) {
 	try {
-		const resetLink = await settingsStore.createResetLink(userId)
-		await navigator.clipboard?.writeText(resetLink.url).catch(() => undefined)
+		const { url } = await settingsStore.createResetLink(userId)
+		resetLink.value = url
+		copyReset()
+		// await navigator.clipboard?.writeText(url).catch(() => undefined)
 		toast.add({ title: 'Toegangslink gemaakt.', color: 'success', icon: 'i-lucide-key-round' })
 	} catch (error) {
 		toast.add({
@@ -87,7 +108,8 @@ async function assignOwner(userId: number) {
 async function destroyCurrentHousehold() {
 	const ok = await confirm({
 		title: 'Huishouden verwijderen?',
-		description: 'Alle lijsten, items, recepten, plannerdata en lidmaatschappen worden verwijderd. Gebruikersaccounts blijven bestaan.',
+		description:
+			'Alle lijsten, items, recepten, plannerdata en lidmaatschappen worden verwijderd. Gebruikersaccounts blijven bestaan.',
 		color: 'error'
 	})
 
@@ -113,17 +135,41 @@ function getErrorMessage(error: unknown, fallback: string) {
 </script>
 
 <template>
-	<UCard>
-		<template #header>
-			<div class="flex items-center justify-between gap-3">
-				<h2 class="text-base font-semibold">Jouw gezin</h2>
-				<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
-					<UButton icon="i-lucide-link" size="sm" @click="createInvite">Uitnodigen</UButton>
-				</Can>
-			</div>
-		</template>
+	<div class="space-y-4">
+		<UPageCard
+			title="Jouw gezin"
+			description="Beheer je huishouden en de bijbehorende leden."
+			variant="naked"
+			orientation="horizontal"
+		>
+			<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
+				<UButton
+					icon="i-lucide-link"
+					size="sm"
+					class="w-fit lg:ms-auto"
+					@click="createInvite"
+					>Uitnodigen</UButton
+				>
+			</Can>
+		</UPageCard>
+		<UPageCard variant="subtle" :ui="{ body: 'space-y-4' }">
+			<UFormField
+				v-if="settingsStore.inviteUrl"
+				label="Uitnodigingslink"
+				description="Deel deze link met met een familielid"
+			>
+				<UInput :model-value="settingsStore.inviteUrl" readonly disabled class="opacity-60">
+					<UButton
+						color="neutral"
+						variant="subtle"
+						:icon="getIcon('copy')"
+						class="absolute top-1/2 right-1 -translate-y-1/2"
+						size="xs"
+						@click="handleCopyInvite"
+					/>
+				</UInput>
+			</UFormField>
 
-		<div class="space-y-4">
 			<UFormField v-if="settingsStore.enableMultiTenancy" label="Huishouden">
 				<USelect
 					:model-value="settingsStore.activeHouseholdId ?? undefined"
@@ -132,71 +178,92 @@ function getErrorMessage(error: unknown, fallback: string) {
 				/>
 			</UFormField>
 
-			<UInput v-if="settingsStore.inviteUrl" :model-value="settingsStore.inviteUrl" readonly />
-			<UInput v-if="settingsStore.resetUrl" :model-value="settingsStore.resetUrl" readonly />
-
 			<div class="divide-default divide-y">
-				<div
-					v-for="member in settingsStore.members"
-					:key="member.id"
-					class="flex items-center justify-between gap-3 py-3"
-				>
-					<div class="flex min-w-0 items-center gap-3">
-						<UAvatar
-							:src="member.avatarPathname ? `/images/${member.avatarPathname}` : undefined"
-							:alt="member.name"
-						/>
-						<div class="min-w-0">
-							<p class="truncate text-sm font-medium">{{ member.name }}</p>
-							<p class="text-muted truncate text-xs">{{ member.email }}</p>
+				<div v-for="member in settingsStore.members" :key="member.id" class="space-y-3">
+					<div class="flex items-center justify-between gap-3 py-3">
+						<div class="flex min-w-0 grow items-center justify-between gap-3">
+							<UUser
+								:avatar="{
+									src: member.avatarPathname
+										? `/images/${member.avatarPathname}`
+										: undefined
+								}"
+								:name="member.name"
+								:description="member.email"
+							/>
+							<UBadge
+								v-if="member.role === 'householdOwner'"
+								color="secondary"
+								variant="subtle"
+								size="sm"
+							>
+								Eigenaar
+							</UBadge>
 						</div>
-						<UBadge v-if="member.role === 'householdOwner'" color="primary" variant="subtle">
-							Eigenaar
-						</UBadge>
+						<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
+							<div class="flex gap-1">
+								<UButton
+									v-if="member.role !== 'householdOwner'"
+									icon="i-lucide-crown"
+									color="neutral"
+									variant="ghost"
+									@click="assignOwner(member.id)"
+								/>
+								<UButton
+									icon="i-lucide-key-round"
+									color="neutral"
+									variant="ghost"
+									@click="createResetLink(member.id)"
+								/>
+								<UButton
+									icon="i-lucide-trash-2"
+									color="error"
+									variant="ghost"
+									@click="removeMember(member.id)"
+								/>
+							</div>
+						</Can>
 					</div>
-					<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
-						<div class="flex gap-1">
+					<FormField
+						v-if="settingsStore.resetUrl"
+						label="Toegangslink"
+						description="Deel deze link met met het familielid dat je opnieuw toegang wilt geven"
+					>
+						<UInput
+							:model-value="settingsStore.resetUrl"
+							readonly
+							disabled
+							class="opacity-60"
+						>
 							<UButton
-								v-if="member.role !== 'householdOwner'"
-								icon="i-lucide-crown"
 								color="neutral"
-								variant="ghost"
-								@click="assignOwner(member.id)"
+								variant="subtle"
+								:icon="getIcon('copy')"
+								class="absolute top-1/2 right-1 -translate-y-1/2"
+								size="xs"
+								@click="handleCopyReset"
 							/>
-							<UButton
-								icon="i-lucide-key-round"
-								color="neutral"
-								variant="ghost"
-								@click="createResetLink(member.id)"
-							/>
-							<UButton
-								icon="i-lucide-trash-2"
-								color="error"
-								variant="ghost"
-								@click="removeMember(member.id)"
-							/>
-						</div>
-					</Can>
+						</UInput>
+					</FormField>
 				</div>
 			</div>
 
 			<Can :ability="destroyHousehold" :args="[settingsStore.currentMemberRole]">
-				<div class="border-error/30 mt-4 rounded-md border p-3">
-					<p class="text-sm font-medium">Huishouden verwijderen</p>
-					<p class="text-muted mt-1 text-sm">
-						Alle huishouddata wordt verwijderd. Gebruikersaccounts blijven bestaan zonder
-						huishouden.
-					</p>
-					<UButton
-						class="mt-3"
-						color="error"
-						icon="i-lucide-trash-2"
-						@click="destroyCurrentHousehold"
-					>
-						Huishouden verwijderen
-					</UButton>
-				</div>
+				<UAlert
+					title="Huishouden verwijderen"
+					description="Alle gegevens van dit huishouden worden verwijderd."
+					variant="subtle"
+					color="error"
+					:actions="[
+						{
+							label: 'Huishouden verwijderen',
+							icon: getIcon('trash'),
+							onClick: destroyCurrentHousehold,
+							color: 'error'
+						}
+					]"
+				/>
 			</Can>
-		</div>
-	</UCard>
+		</UPageCard>
+	</div>
 </template>

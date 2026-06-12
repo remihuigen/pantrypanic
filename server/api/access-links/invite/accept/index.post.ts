@@ -1,10 +1,7 @@
 import { defineApiHandler, parseApiBody, throwApiError } from '#server/utils/api-core'
-import {
-	consumeAccessLink,
-	ensureHouseholdMembership
-} from '#server/utils/households'
-import { createUser, findUserForAuthentication } from '#server/utils/user-management'
+import { consumeAccessLink, ensureHouseholdMembership } from '#server/utils/domains/households'
 import { inviteAcceptBodySchema } from '#server/utils/settings'
+import { createUser, findUserForAuthentication } from '#server/utils/user-management'
 
 export default defineApiHandler(async (event) => {
 	const body = await parseApiBody(event, inviteAcceptBodySchema)

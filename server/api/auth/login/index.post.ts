@@ -1,9 +1,9 @@
+import { resolveInitialHouseholdId } from '#server/utils/domains/households'
 import {
 	findUserForAuthentication,
 	serializeUser,
 	updateUserPasswordHash
 } from '#server/utils/user-management'
-import { resolveInitialHouseholdId } from '#server/utils/households'
 import { createError, defineEventHandler, readValidatedBody } from 'h3'
 import { z } from 'zod'
 

@@ -1,5 +1,5 @@
 import { defineApiHandler, parseApiQuery } from '#server/utils/api-core'
-import { getHouseholdContext } from '#server/utils/households'
+import { getHouseholdContext } from '#server/utils/domains/households'
 import { itemListQuerySchema, listAllItems } from '#server/utils/settings'
 
 export default defineApiHandler(async (event) => {

@@ -1,6 +1,6 @@
 import type { ButtonProps } from '@nuxt/ui'
 
-import Confirmation from '~/components/Confirmation.vue'
+import Confirmation from '~/components/overlays/Confirmation.vue'
 
 export interface ConfirmDialogProps {
 	title: string

@@ -24,14 +24,14 @@ onMounted(async () => {
 	<PageShell>
 		<template #header>
 			<PageHeader>Instellingen</PageHeader>
-			<SettingsNavigation />
 		</template>
+		<SettingsNavigation class="sticky top-0" />
 
-		<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
+		<div class="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
 			<div class="space-y-4">
 				<SettingsProfileSection />
 			</div>
-			<div class="space-y-4">
+			<div class="space-y-12">
 				<SettingsAppSection :show-refresh="false" />
 				<SettingsDataSection />
 			</div>

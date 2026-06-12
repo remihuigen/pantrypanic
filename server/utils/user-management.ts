@@ -1,15 +1,14 @@
 import type { H3Event } from 'h3'
 
-import { ensureDefaultHousehold, ensureHouseholdMembership } from '#server/utils/households'
+import { ensureDefaultHousehold, ensureHouseholdMembership } from '#server/utils/domains/households'
 import { seedInitialDomainData } from '#server/utils/domains/seed'
+import { userEmailSchema, userSchema } from '#shared/utils/schemas/domain'
 import { and, asc, eq, ne } from 'drizzle-orm'
 import { createError } from 'h3'
 import { db, schema } from 'hub:db'
 import { z } from 'zod'
 
 const userIdSchema = z.coerce.number().int().positive()
-
-const userEmailSchema = z.email().trim().toLowerCase()
 
 /**
  * Creates the user-list query schema with runtime-configured pagination defaults.
@@ -31,12 +30,6 @@ export function createUserListQuerySchema(event?: H3Event) {
 		email: z.preprocess(firstQueryValue, userEmailSchema.optional())
 	})
 }
-
-export const createUserBodySchema = z.strictObject({
-	name: z.string().trim().min(1).max(120),
-	email: userEmailSchema,
-	password: z.string().min(1).max(1024)
-})
 
 export const updateUserBodySchema = z
 	.strictObject({
@@ -161,7 +154,7 @@ export async function getUserById(userId: number) {
  * @throws HTTP 409 when the email is already in use.
  */
 export async function createUser(
-	input: z.infer<typeof createUserBodySchema>,
+	input: z.infer<typeof userSchema>,
 	options: { seedDefaultHousehold?: boolean } = {}
 ) {
 	await assertEmailAvailable(input.email)

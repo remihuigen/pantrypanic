@@ -1,5 +1,5 @@
 import { defineApiHandler } from '#server/utils/api-core'
-import { createAccessLink, getHouseholdContext } from '#server/utils/households'
+import { createAccessLink, getHouseholdContext } from '#server/utils/domains/households'
 import { manageHousehold } from '#shared/utils/abilities'
 import { getRequestURL } from 'h3'
 

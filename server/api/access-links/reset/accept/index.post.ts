@@ -1,5 +1,5 @@
 import { defineApiHandler, parseApiBody, throwApiError } from '#server/utils/api-core'
-import { consumeAccessLink } from '#server/utils/households'
+import { consumeAccessLink } from '#server/utils/domains/households'
 import { accessTokenBodySchema } from '#server/utils/settings'
 import { eq } from 'drizzle-orm'
 import { db, schema } from 'hub:db'

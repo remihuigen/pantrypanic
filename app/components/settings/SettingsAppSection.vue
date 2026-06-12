@@ -34,38 +34,26 @@ async function saveSettings() {
 </script>
 
 <template>
-	<UCard>
-		<template #header>
-			<h2 class="text-base font-semibold">App</h2>
-		</template>
-
+	<UPageCard variant="subtle" title="App" description="Werk je appvoorkeuren bij.">
 		<div class="space-y-4">
-			<UFormField v-if="props.showTheme" label="Thema">
-				<UButtonGroup>
-					<UButton
-						:color="colorMode.preference === 'light' ? 'primary' : 'neutral'"
-						icon="i-lucide-sun"
-						@click="colorMode.preference = 'light'"
-					>
-						Licht
-					</UButton>
-					<UButton
-						:color="colorMode.preference === 'dark' ? 'primary' : 'neutral'"
-						icon="i-lucide-moon"
-						@click="colorMode.preference = 'dark'"
-					>
-						Donker
-					</UButton>
-				</UButtonGroup>
+			<UFormField
+				v-if="props.showTheme"
+				label="Thema"
+				description="Gebruik lichte of donkere modus"
+				class="flex items-center justify-between gap-2 not-last:pb-4"
+			>
+				<UColorModeSwitch />
 			</UFormField>
-
 			<Can
 				v-if="props.showRefresh"
 				:ability="manageHousehold"
 				:args="[settingsStore.currentMemberRole]"
 			>
 				<div class="space-y-4">
-					<UFormField label="Verversinterval">
+					<UFormField
+						label="Verversen"
+						description="Wanneer de applicatie synced met de cloud"
+					>
 						<UInputNumber v-model="refreshIntervalSeconds" :min="1" :max="300" />
 					</UFormField>
 
@@ -73,5 +61,5 @@ async function saveSettings() {
 				</div>
 			</Can>
 		</div>
-	</UCard>
+	</UPageCard>
 </template>

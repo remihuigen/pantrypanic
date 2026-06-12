@@ -32,3 +32,13 @@ rows for the default data required for the app)
 
 ENABLE_PUBLIC_REGISTRATION allows people to create accounts and their first households (i.e. account
 registration without invitation)
+
+- [ ] After avatar upload, the page needs a refresh for the avatar to display. That should be
+      immediately updated in UI...
+- [ ] settings navigation is not sticky
+- [ ] If an avatar is uploaded, the profile forms clears as well (we dont want this. Avatar should
+      be fully seperated from the profile form)
+- [ ] in the leaveHousehold flow, we need a front end check for household owner, and prompt to
+      assign a new owner if none are left. Currently, there is no UI or logic fro that front end
+- [ ] Settings components and pages have repetetive UI elements (navigation, pageshell, cards). We
+      can organize this better with a settings layout, and maybe a settings shell?
