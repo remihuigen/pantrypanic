@@ -10,9 +10,11 @@
 - [x] upon submitting a list item, there is a slight wobble in y value of something. It annoys me
 - [x] the settings menu should have a 'clear all data' button
 - [ ] We should have a view of all items, so we can delete them or correct typos
-- [ ] Items have notes, categories, uunit fields. These are not need at the item level, we only need
+- [ ] Items have notes and categories fields. These are not need at the item level, we only need
       this info at the listItem level (for now). We need to drop these fields in the db, in anyt
       releated API route and from the item vault
+- [ ] When a unit is assigned (eg "stuks") to a list item, that value needs to be set for the
+      related items as well - so it will act as the default unit for all items of that type
 - [ ] We have to account for application state where users are no longer part of any household. I
       addition to not having a household this can also be combined with registration being disabled
       (so they are also not able to create a new household). This should be handled properly in
@@ -23,15 +25,15 @@
 - [ ] Lets split ENABLE_REGISTRATION into two flags: ENABLE_HOUSEHOLD_CREATION
       ENABLE_PUBLIC_REGISTRATION
 
-ENABLE_HOUSEHOLD_CREATION will allow users that already have an account, to create an new household.
-This can be their first household, or additional households. Please implement this feature in the
-front end as well (as part of the household select input, add "+ nieuw huishouden maken")
+      ENABLE_HOUSEHOLD_CREATION will allow users that already have an account, to create an new household.
+      This can be their first household, or additional households. Please implement this feature in the
+      front end as well (as part of the household select input, add "+ nieuw huishouden maken")
 
-Not sure if the backend logic is present yet for this feature (i.e. POST to households, all create
-rows for the default data required for the app)
+      Not sure if the backend logic is present yet for this feature (i.e. POST to households, all create
+      rows for the default data required for the app)
 
-ENABLE_PUBLIC_REGISTRATION allows people to create accounts and their first households (i.e. account
-registration without invitation)
+      ENABLE_PUBLIC_REGISTRATION allows people to create accounts and their first households (i.e. account
+      registration without invitation). Dont implement this in the app logic just yet
 
 - [ ] After avatar upload, the page needs a refresh for the avatar to display. That should be
       immediately updated in UI...
@@ -42,3 +44,9 @@ registration without invitation)
       assign a new owner if none are left. Currently, there is no UI or logic fro that front end
 - [ ] Settings components and pages have repetetive UI elements (navigation, pageshell, cards). We
       can organize this better with a settings layout, and maybe a settings shell?
+- [ ] Item delete from item vault is not possible if there are still references to this item from
+      list items. That is bad UX, becasue that is always the case. So much better would be: when an
+      item is deleted, delete associated list items. If any of these list items have an 'checked' or
+      'unchecked' status, add a ui confirmation prompt: "Dit item wordt nog gebruikt in één van je
+      lijstjes. Weet je zeker dat je het wilt verwijderen?". If status is archived, just delete is
+      without prompt
