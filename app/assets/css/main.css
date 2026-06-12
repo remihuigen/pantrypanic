@@ -2,7 +2,7 @@
 @import '@nuxt/ui';
 
 @theme static {
-	--font-sans: 'Public Sans', sans-serif;
+	--font-sans: 'Instrument Sans', sans-serif;
 
 	--color-pomegranate-50: #fef4f2;
 	--color-pomegranate-100: #fee6e2;
@@ -27,4 +27,15 @@
 	--color-black-pearl-800: #264d66;
 	--color-black-pearl-900: #244256;
 	--color-black-pearl-950: #12202b;
+
+	--animate-shimmer: shimmer 8s ease-in-out infinite alternate;
+
+	@keyframes shimmer {
+		0% {
+			background-position: 0% center;
+		}
+		100% {
+			background-position: 200% center;
+		}
+	}
 }

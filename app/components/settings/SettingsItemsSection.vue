@@ -135,6 +135,13 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 					</div>
 				</div>
 			</UPageCard>
+
+			<UEmpty
+				v-if="!settingsStore.items.length"
+				title="Er zijn nog geen items aangemaakt"
+				variant="naked"
+				icon="lucide:list-check"
+			/>
 		</UPageCard>
 	</div>
 </template>

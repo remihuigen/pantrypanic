@@ -224,6 +224,13 @@ describe('user management utilities', () => {
 	})
 
 	it('deletes users through the shared account deletion flow', async () => {
+		vi.stubGlobal('useRuntimeConfig', () => ({
+			enableMultiTenancy: true,
+			pantry: {
+				defaultUserListLimit: 50,
+				maxUserListLimit: 100
+			}
+		}))
 		vi.mocked(db.select)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)

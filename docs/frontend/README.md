@@ -27,7 +27,7 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - Current app routes include `/app/lists`, `/app/lists/:id`, `/app/recipes`, `/app/recipes/:id`,
   `/app/meal-planner`, `/app/settings`, `/app/settings/household`, `/app/settings/item-vault`, and
   `/app/settings/stats`.
-- `/` and `/app` redirect to `/app/lists`.
+- `/` serves the public landing page. `/app` redirects to `/app/lists`.
 - `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**` so product app pages
   render through Nuxt's normal SSR path.
 - `/login` and `/logout` remain outside the `/app` namespace and keep normal server rendering so

@@ -26,7 +26,7 @@ The product app UI is namespaced under `/app`:
   `/app/settings/item-vault`, and `/app/settings/stats`.
 - `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**`, so product app
   routes render through Nuxt's normal SSR path.
-- `/` and `/app` redirect to `/app/lists`.
+- `/` serves the public landing page. `/app` redirects to `/app/lists`.
 - `app/pages/(auth)/login.vue` contains the email/password sign-in form at `/login`.
 - `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
 - Auth and future public/marketing pages remain outside `/app`; add explicit prerender route rules
@@ -180,8 +180,8 @@ owner, update household settings, clear household app data, and destroy househol
 keep access to the core domain flows. Users with no household membership get a friendly Dutch
 empty-state message from the global app layout instead of a broken app state. That state offers
 account deletion and, when `ENABLE_HOUSEHOLD_CREATION=true`, creating a new household. In
-single-household mode, household destruction and deleting the last household-owner account are
-rejected server-side.
+single-household mode, household destruction, deleting the last household-owner account, and
+deleting the only remaining account before membership hydration are rejected server-side.
 
 ## Admin User Seed
 

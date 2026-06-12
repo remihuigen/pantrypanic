@@ -45,7 +45,25 @@ export default defineAppConfig({
 		alert: {
 			slots: {
 				title: 'font-bold'
-			}
+			},
+			compoundVariants: [
+				{
+					variant: 'subtle',
+					color: 'warning',
+					class: {
+						title: 'text-warning-600 dark:text-warning-300',
+						description: 'text-warning-600 dark:text-warning-300'
+					}
+				},
+				{
+					variant: 'subtle',
+					color: 'error',
+					class: {
+						title: 'text-error-600 dark:text-error-400',
+						description: 'text-error-600 dark:text-error-400'
+					}
+				}
+			]
 		}
 	}
 })

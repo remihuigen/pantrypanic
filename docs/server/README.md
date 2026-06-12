@@ -39,7 +39,8 @@ links, remove members, promote members to owner, update household settings, clea
 data, and destroy the household. Removing or leaving a household is rejected when it would leave
 other members without an owner. If the last member leaves or deletes their account, the household
 and all associated domain data are destroyed. In single-household mode, destroying the default
-household or deleting the last household-owner account is rejected.
+household, deleting the last household-owner account, or deleting the only remaining account before
+membership hydration is rejected.
 
 | Method   | Route                                                 | Purpose                                     |
 | -------- | ----------------------------------------------------- | ------------------------------------------- |

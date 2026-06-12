@@ -28,11 +28,15 @@ export default defineNuxtConfig({
 		'pinia-plugin-persistedstate/nuxt',
 		'@vueuse/nuxt',
 		'@vite-pwa/nuxt',
-		'nuxt-authorization'
+		'nuxt-authorization',
+		'motion-v/nuxt'
 	],
 
 	$production: {
 		nitro: {
+			prerender: {
+				routes: ['/']
+			},
 			preset: 'cloudflare_module',
 			cloudflare: {
 				wrangler: {
@@ -60,7 +64,9 @@ export default defineNuxtConfig({
 			blob: {
 				driver: 'cloudflare-r2',
 				bucketName: process.env.CLOUDFLARE_R2_BUCKET,
-				binding: 'BLOB'
+				binding: 'BLOB',
+				// @ts-expect-error
+				jurisdiction: 'eu'
 			}
 		},
 

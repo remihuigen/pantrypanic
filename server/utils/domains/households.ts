@@ -457,9 +457,19 @@ export async function destroyCurrentHousehold(event: H3Event, householdId: strin
  * @returns Deleted user summary.
  */
 export async function deleteAccount(event: H3Event, userId: number) {
+	const isMultiTenancyEnabled = getMultiTenancyEnabled(event)
 	const memberships = await listMembershipSummaries(userId)
 
-	if (!getMultiTenancyEnabled(event)) {
+	if (!isMultiTenancyEnabled) {
+		if (memberships.length === 0 && !(await getFallbackUserId(userId))) {
+			throwApiError({
+				code: 'CONFLICT',
+				statusCode: 409,
+				message:
+					'Je kunt je account niet verwijderen omdat dit de laatste toegang tot de app zou verwijderen.'
+			})
+		}
+
 		for (const membership of memberships) {
 			const memberCount = await countHouseholdMembers(membership.householdId)
 			const ownerCount = await countHouseholdOwners(membership.householdId)
