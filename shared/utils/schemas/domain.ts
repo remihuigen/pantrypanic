@@ -42,16 +42,25 @@ export const nullableTextSchema = z
 	.nullable()
 	.optional()
 
-export const optionalAmountSchema = z
-	.number({ error: 'Aantal moet een getal zijn.' })
-	.positive({ error: 'Aantal moet groter zijn dan 0.' })
-	.optional()
+const emptyAmountValueSchema = (value: unknown) =>
+	value === null || value === '' ? undefined : value
 
-export const nullableAmountSchema = z
-	.number({ error: 'Aantal moet een getal zijn.' })
-	.positive({ error: 'Aantal moet groter zijn dan 0.' })
-	.nullable()
-	.optional()
+export const optionalAmountSchema = z.preprocess(
+	emptyAmountValueSchema,
+	z
+		.number({ error: 'Aantal moet een getal zijn.' })
+		.positive({ error: 'Aantal moet groter zijn dan 0.' })
+		.optional()
+)
+
+export const nullableAmountSchema = z.preprocess(
+	(value) => (value === '' ? null : value),
+	z
+		.number({ error: 'Aantal moet een getal zijn.' })
+		.positive({ error: 'Aantal moet groter zijn dan 0.' })
+		.nullable()
+		.optional()
+)
 
 export const orderedIdsSchema = z.strictObject({
 	orderedIds: z

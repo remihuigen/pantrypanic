@@ -17,6 +17,7 @@ const state = reactive<z.infer<typeof profileSchema>>({
 	password: '',
 	passwordConfirm: ''
 })
+const initialProfileFormValue = shallowRef(normalizeProfileFormValue(state))
 const syncedProfileId = shallowRef<number | null>(null)
 const selectedAvatar = shallowRef<File | null>(null)
 const selectedAvatarUrl = useObjectUrl(selectedAvatar)
@@ -29,6 +30,12 @@ const avatarSrc = computed(() => {
 
 	return `${imageUrl(settingsStore.profile.avatarPathname)}?v=${avatarVersion.value}`
 })
+const currentProfileFormValue = computed(() => normalizeProfileFormValue(state))
+const { isDirty: isProfileDirty, resetInitialValue: resetInitialProfileValue } = useFormState(
+	initialProfileFormValue,
+	currentProfileFormValue
+)
+const canSaveProfile = computed(() => isProfileDirty.value && !settingsStore.isSaving)
 
 watch(
 	() => settingsStore.profile,
@@ -47,6 +54,10 @@ watch(selectedAvatar, async (file) => {
 })
 
 async function saveProfile() {
+	if (!canSaveProfile.value) {
+		return
+	}
+
 	if (state.password && state.password !== state.passwordConfirm) {
 		toast.add({
 			title: 'Wachtwoorden komen niet overeen.',
@@ -97,6 +108,16 @@ function syncProfileForm(profile: { id: number; name: string; email: string }) {
 	state.email = profile.email
 	state.password = ''
 	state.passwordConfirm = ''
+	initialProfileFormValue.value = normalizeProfileFormValue(state)
+	resetInitialProfileValue(initialProfileFormValue)
+}
+
+function normalizeProfileFormValue(value: z.infer<typeof profileSchema>) {
+	return {
+		name: value.name.trim(),
+		email: value.email.trim(),
+		password: value.password || ''
+	}
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -183,7 +204,12 @@ function imageUrl(pathname: string) {
 					/>
 				</UFormField>
 				<div>
-					<UButton type="submit" icon="i-lucide-save" :loading="settingsStore.isSaving">
+					<UButton
+						type="submit"
+						icon="i-lucide-save"
+						:loading="settingsStore.isSaving"
+						:disabled="!canSaveProfile"
+					>
 						Opslaan
 					</UButton>
 				</div>

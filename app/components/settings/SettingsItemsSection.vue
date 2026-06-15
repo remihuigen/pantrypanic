@@ -10,6 +10,12 @@ const draft = reactive({
 	name: '',
 	defaultUnit: ''
 })
+const initialDraft = shallowRef(normalizeDraft(draft))
+const currentDraft = computed(() => normalizeDraft(draft))
+const { isDirty: isDraftDirty, resetInitialValue: resetInitialDraft } = useFormState(
+	initialDraft,
+	currentDraft
+)
 
 watchDebounced(
 	query,
@@ -23,9 +29,13 @@ function startEdit(item: (typeof settingsStore.items)[number]) {
 	editingId.value = item.id
 	draft.name = item.name
 	draft.defaultUnit = item.defaultUnit ?? ''
+	initialDraft.value = normalizeDraft(draft)
+	resetInitialDraft(initialDraft)
 }
 
 async function saveItem(itemId: string) {
+	if (!isDraftDirty.value) return
+
 	await settingsStore.updateItem(itemId, {
 		name: draft.name,
 		defaultUnit: draft.defaultUnit || null
@@ -57,6 +67,13 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 	await settingsStore.deleteItem(item.id)
 	toast.add({ title: 'Item verwijderd.', color: 'success', icon: 'i-lucide-check' })
 }
+
+function normalizeDraft(value: { name: string; defaultUnit: string }) {
+	return {
+		name: value.name.trim(),
+		defaultUnit: value.defaultUnit.trim() || null
+	}
+}
 </script>
 
 <template>
@@ -86,7 +103,13 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 						<UInput v-model="draft.defaultUnit" placeholder="Eenheid" />
 					</FieldRow>
 					<div class="flex gap-2">
-						<UButton icon="i-lucide-save" @click="saveItem(item.id)">Opslaan</UButton>
+						<UButton
+							icon="i-lucide-save"
+							:disabled="!isDraftDirty"
+							@click="saveItem(item.id)"
+						>
+							Opslaan
+						</UButton>
 						<UButton color="neutral" variant="ghost" @click="editingId = null"
 							>Annuleren</UButton
 						>

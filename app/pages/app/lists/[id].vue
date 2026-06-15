@@ -180,10 +180,19 @@ async function handleClearChecked() {
 	}
 }
 
+function blurActiveElement() {
+	if (!import.meta.client || !(document.activeElement instanceof HTMLElement)) {
+		return
+	}
+
+	document.activeElement.blur()
+}
+
 useGesture(
 	{
 		onDragEnd: ({ swipe: [swipeX] }) => {
 			if (swipeX > 0) {
+				blurActiveElement()
 				void navigateTo('/app/lists')
 			}
 		}
@@ -213,13 +222,13 @@ watch(
 		<PageShell>
 			<template #header>
 				<PageHeader :badge="items.length">
-					<span class="inline-flex min-w-0 items-center gap-2">
+					<span class="inline-flex min-w-0 items-start gap-2">
 						<UIcon
 							v-if="listIcon"
 							:name="listIcon"
-							class="text-muted size-5 shrink-0"
+							class="text-muted relative top-1 size-5 shrink-0"
 						/>
-						<span class="truncate">{{ pageTitle }}</span>
+						<span class="min-w-0 break-words">{{ pageTitle }}</span>
 					</span>
 					<template #tools>
 						<ListActionMenu :list-id="id" :can-delete="canDelete" />

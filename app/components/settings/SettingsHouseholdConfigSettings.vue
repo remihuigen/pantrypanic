@@ -15,16 +15,23 @@ const settingsStore = useSettingsStore()
 const toast = useToast()
 
 const refreshIntervalSeconds = ref(5)
+const initialRefreshIntervalSeconds = shallowRef(refreshIntervalSeconds.value)
+const { isDirty: isRefreshIntervalDirty, resetInitialValue: resetInitialRefreshInterval } =
+	useFormState(initialRefreshIntervalSeconds, refreshIntervalSeconds)
 
 watch(
 	() => settingsStore.householdSettings?.refreshIntervalMs,
 	(value) => {
 		refreshIntervalSeconds.value = Math.round((value ?? 5000) / 1000)
+		initialRefreshIntervalSeconds.value = refreshIntervalSeconds.value
+		resetInitialRefreshInterval(initialRefreshIntervalSeconds)
 	},
 	{ immediate: true }
 )
 
 async function saveSettings() {
+	if (!isRefreshIntervalDirty.value) return
+
 	await settingsStore.updateSettings({
 		refreshIntervalMs: refreshIntervalSeconds.value * 1000
 	})
@@ -48,7 +55,13 @@ async function saveSettings() {
 						<UInputNumber v-model="refreshIntervalSeconds" :min="1" :max="300" />
 					</UFormField>
 
-					<UButton icon="i-lucide-save" @click="saveSettings">Opslaan</UButton>
+					<UButton
+						icon="i-lucide-save"
+						:disabled="!isRefreshIntervalDirty"
+						@click="saveSettings"
+					>
+						Opslaan
+					</UButton>
 				</div>
 			</div>
 		</UPageCard>

@@ -16,6 +16,7 @@ const {
 	nameOptions,
 	isDeleting,
 	isSubmitting,
+	focusRevision,
 	listOptions,
 	hasLists,
 	canSubmit,
@@ -40,6 +41,7 @@ const minimalSnapPoint = '380px'
 const expandedSnapPoint = '520px'
 const itemDrawerSnapPoints: Array<string | number> = [minimalSnapPoint, expandedSnapPoint]
 const itemDrawerActiveSnapPoint = ref<string | number | null>(null)
+const nameInput = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('nameInput')
 const isOpeningToMinimal = ref(false)
 const isItemDrawerExpanded = computed(() => itemDrawerActiveSnapPoint.value === expandedSnapPoint)
 const areItemOptionsVisible = ref(false)
@@ -265,6 +267,22 @@ watch(
 	}
 )
 
+watch(
+	() => focusRevision.value,
+	async () => {
+		if (
+			!import.meta.client ||
+			!editItemDrawer.isOpen.value ||
+			editItemDrawer.mode.value !== 'create'
+		) {
+			return
+		}
+
+		await nextTick()
+		nameInput.value?.inputRef?.focus()
+	}
+)
+
 watch(isItemDrawerExpanded, (isExpanded) => {
 	syncItemOptionsView(isExpanded)
 })
@@ -333,6 +351,8 @@ onBeforeUnmount(() => {
 
 				<UFormField name="name" size="xl" required>
 					<UInputMenu
+						:key="focusRevision"
+						ref="nameInput"
 						v-model="formState.name"
 						v-model:search-term="nameSearchTerm"
 						:items="nameOptions"
@@ -381,7 +401,7 @@ onBeforeUnmount(() => {
 									<UInputNumber
 										v-model="formState.amount"
 										:step="0.5"
-										:min="0"
+										:min="0.5"
 										placeholder="Aantal"
 										:disabled="isSubmitting"
 									/>

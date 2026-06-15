@@ -1,5 +1,6 @@
 import type { OccurrenceInput, UpdateListItemInput } from '#shared/utils/schemas/domain'
 
+import { useFormState } from '~/composables/useFormState'
 import { useListsStore } from '~/stores/lists'
 import { computed, onScopeDispose, reactive, readonly, ref, watch } from 'vue'
 
@@ -45,7 +46,7 @@ type UseEditItemDrawerFormOptions = {
 export type EditItemDrawerFormInput = {
 	listId: string
 	name: string
-	amount?: number
+	amount?: number | null
 	unit?: string
 	note?: string
 }
@@ -54,6 +55,14 @@ export type EditItemDrawerSubmitData = EditItemDrawerFormInput
 
 type EditItemDrawerSubmitPayload = {
 	data: EditItemDrawerSubmitData
+}
+
+type NormalizedItemFormValue = {
+	listId: string
+	name: string
+	amount: number | null
+	unit: string | null
+	note: string | null
 }
 
 /**
@@ -69,6 +78,7 @@ export function useEditItemDrawer() {
 		() => null
 	)
 	const listItemId = useState<string | null>('edit-item-drawer:list-item-id', () => null)
+	const openRevision = useState<number>('edit-item-drawer:open-revision', () => 0)
 
 	/**
 	 * Opens the drawer and records an optional preferred list selection.
@@ -80,6 +90,7 @@ export function useEditItemDrawer() {
 		mode.value = options.mode ?? 'create'
 		preferredListId.value = options.listId ?? null
 		listItemId.value = options.listItemId ?? null
+		openRevision.value += 1
 		isOpen.value = true
 	}
 
@@ -97,6 +108,7 @@ export function useEditItemDrawer() {
 		mode,
 		preferredListId,
 		listItemId,
+		openRevision,
 		open,
 		close
 	}
@@ -122,6 +134,8 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	const isDeleting = ref(false)
 	const isSubmitting = ref(false)
 	const populatedContextKey = ref<string | null>(null)
+	const focusRevision = ref(0)
+	const initialFormValue = ref<NormalizedItemFormValue>(normalizeItemFormValue(formState))
 
 	let nameSearchDebounceHandle: ReturnType<typeof setTimeout> | undefined
 	let nameSearchRequestId = 0
@@ -138,6 +152,8 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	const selectedListItem = computed(() =>
 		drawer.listItemId.value ? listsStore.listItemsById[drawer.listItemId.value] : undefined
 	)
+	const currentFormValue = computed(() => normalizeItemFormValue(formState))
+	const { isDirty, resetInitialValue } = useFormState(initialFormValue, currentFormValue)
 
 	const canSubmit = computed(
 		() =>
@@ -145,20 +161,21 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 				formState.listId &&
 				formState.name.trim().length > 0 &&
 				hasLists.value &&
-				(drawer.mode.value === 'create' || drawer.listItemId.value)
+				(drawer.mode.value === 'create' || (drawer.listItemId.value && isDirty.value))
 			) && !isSubmitting.value
 	)
 
 	watch(
 		() =>
 			drawer.isOpen.value
-				? `${drawer.mode.value}:${drawer.listItemId.value ?? drawer.preferredListId.value ?? ''}`
+				? `${drawer.openRevision.value}:${drawer.mode.value}:${drawer.listItemId.value ?? drawer.preferredListId.value ?? ''}`
 				: null,
 		async (contextKey) => {
 			if (!contextKey) {
 				populatedContextKey.value = null
 				cancelNameOptionsRefresh()
 				nameOptions.value = []
+				resetForm({ listId: '' })
 				return
 			}
 
@@ -173,7 +190,10 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 				if (drawer.mode.value === 'edit') {
 					await initializeEditSelection()
 				} else {
+					resetForm()
 					await initializeListSelection()
+					initialFormValue.value = normalizeItemFormValue(formState)
+					resetInitialValue(initialFormValue)
 					await refreshNameOptions('')
 				}
 			} finally {
@@ -211,6 +231,13 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		}
 	)
 
+	watch(
+		() => [formState.name, nameOptions.value] as const,
+		([name]) => {
+			applySelectedItemDefaultUnit(name)
+		}
+	)
+
 	onScopeDispose(() => {
 		cancelNameSearchDebounce()
 	})
@@ -228,6 +255,9 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		})
 		nameSearchTerm.value = ''
 		nameOptions.value = []
+		initialFormValue.value = normalizeItemFormValue(formState)
+		resetInitialValue(initialFormValue)
+		focusRevision.value += 1
 	}
 
 	/**
@@ -308,7 +338,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	async function createNewListItem(data: EditItemDrawerSubmitData) {
 		const input: OccurrenceInput = {
 			name: data.name,
-			amount: data.amount,
+			amount: data.amount ?? undefined,
 			unit: normalizeOptionalText(data.unit),
 			note: normalizeOptionalText(data.note)
 		}
@@ -414,6 +444,35 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 
 		nameSearchTerm.value = ''
 		nameOptions.value = []
+		initialFormValue.value = normalizeItemFormValue(formState)
+		resetInitialValue(initialFormValue)
+	}
+
+	/**
+	 * Applies a canonical item's default unit when a create-mode name option is selected.
+	 *
+	 * @param name - Current item name.
+	 * @returns Nothing.
+	 */
+	function applySelectedItemDefaultUnit(name: string) {
+		if (drawer.mode.value !== 'create' || formState.unit?.trim()) {
+			return
+		}
+
+		const normalizedName = name.trim().toLocaleLowerCase('nl-NL')
+
+		if (!normalizedName) {
+			return
+		}
+
+		const selectedOption = nameOptions.value.find(
+			(option) => option.value.trim().toLocaleLowerCase('nl-NL') === normalizedName
+		)
+		const defaultUnit = selectedOption?.defaultUnit?.trim()
+
+		if (defaultUnit) {
+			formState.unit = defaultUnit
+		}
 	}
 
 	/**
@@ -446,9 +505,11 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		isLoadingNameOptions: readonly(isLoadingNameOptions),
 		isDeleting: readonly(isDeleting),
 		isSubmitting: readonly(isSubmitting),
+		focusRevision: readonly(focusRevision),
 		listOptions,
 		hasLists,
 		canSubmit,
+		isDirty,
 		resetForm,
 		refreshNameOptions,
 		submitForm,
@@ -471,6 +532,16 @@ function createDefaultFormState(): EditItemDrawerFormInput {
 		amount: undefined,
 		unit: '',
 		note: ''
+	}
+}
+
+function normalizeItemFormValue(value: EditItemDrawerFormInput): NormalizedItemFormValue {
+	return {
+		listId: value.listId,
+		name: value.name.trim(),
+		amount: value.amount ?? null,
+		unit: normalizeNullableText(value.unit),
+		note: normalizeNullableText(value.note)
 	}
 }
 

@@ -130,6 +130,10 @@ describe('pantry api domain helpers', () => {
 			amount: 1,
 			unit: 'l'
 		})
+		expect(createOccurrenceBodySchema.parse({ name: 'Milk', amount: null })).toEqual({
+			name: 'Milk',
+			amount: undefined
+		})
 		expect(
 			updateListItemBodySchema.parse({
 				listId: 'list-2',
