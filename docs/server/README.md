@@ -150,17 +150,22 @@ Validation and runtime failures return:
 | `POST`  | `/api/lists/:listId/clear`                                 | Archive visible list items.                                           |
 | `POST`  | `/api/lists/:listId/clear-checked`                         | Archive checked list items.                                           |
 | `POST`  | `/api/lists/:listId/items`                                 | Add a manual item occurrence to a list.                               |
-| `POST`  | `/api/lists/:listId/items/reorder`                         | Reorder visible list items.                                           |
-| `PATCH` | `/api/list-items/:listItemId`                              | Update list assignment, item name, and occurrence metadata.           |
+| `POST`  | `/api/lists/:listId/items/reorder`                         | Reorder visible list items, optionally grouped by category.           |
+| `PATCH` | `/api/list-items/:listItemId`                              | Update list/category assignment, item name, and occurrence metadata.  |
 | `POST`  | `/api/list-items/:listItemId/check`                        | Mark a list item checked.                                             |
 | `POST`  | `/api/list-items/:listItemId/uncheck`                      | Mark a list item unchecked.                                           |
 | `POST`  | `/api/list-items/:listItemId/delete`                       | Soft-delete a list item.                                              |
 | `GET`   | `/api/items/search`                                        | Search canonical items by normalized name.                            |
 | `GET`   | `/api/items/suggestions`                                   | Return frequently used archived items.                                |
 | `GET`   | `/api/settings/items`                                      | List canonical items for settings maintenance.                        |
-| `PATCH` | `/api/settings/items/:itemId`                              | Edit canonical item name/default unit.                                |
+| `PATCH` | `/api/settings/items/:itemId`                              | Edit canonical item name, default unit, or default category.          |
 | `DELETE`| `/api/settings/items/:itemId`                              | Delete a canonical item and associated references.                    |
 | `POST`  | `/api/settings/items/:itemId/merge`                        | Merge one canonical item into another.                                |
+| `GET`   | `/api/settings/categories`                                 | List household item categories with usage counts.                     |
+| `POST`  | `/api/settings/categories`                                 | Create a household item category.                                     |
+| `PATCH` | `/api/settings/categories/:categoryId`                     | Rename a household item category.                                     |
+| `DELETE`| `/api/settings/categories/:categoryId`                     | Delete a category and clear item/list-item references.                |
+| `POST`  | `/api/settings/categories/:categoryId/merge`               | Merge one category into another.                                      |
 | `POST`  | `/api/settings/clear-data`                                 | Hard-delete household app data and reseed defaults.                   |
 | `GET`   | `/api/settings/stats`                                      | Return household usage stats.                                         |
 | `GET`   | `/api/recipes`                                             | List recipes by status and optional query.                            |
@@ -183,10 +188,12 @@ Validation and runtime failures return:
 | `PATCH` | `/api/meal-planner/day-items/:mealPlannerDayItemId`        | Update placeholder-day ingredient metadata.                           |
 | `POST`  | `/api/meal-planner/day-items/:mealPlannerDayItemId/delete` | Hard-delete a placeholder-day ingredient.                             |
 
-Domain write routes update audit fields. List-item PATCH accepts `listId`, `name`, `amount`,
-`unit`, and `note`; moving to another list appends the item at the target list's next visible
-position. Lists, recipes, and list items use status-based soft deletion. Recipe items and
-meal-planner placeholder ingredients are hard-deleted because they are volatile child/draft data.
+Domain write routes update audit fields. List-item PATCH accepts `listId`, `name`, `categoryId`,
+`amount`, `unit`, and `note`; moving to another list appends the item at the target list's next
+visible position. Grouped list-item reorder accepts category groups and updates list-item
+categories without changing canonical item categories. Lists, recipes, and list items use
+status-based soft deletion. Recipe items and meal-planner placeholder ingredients are hard-deleted
+because they are volatile child/draft data.
 
 ## Admin User Seed
 

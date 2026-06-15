@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { EditItemDrawerSubmitData } from '~/composables/useEditItemDrawer'
-import type { z } from 'zod'
 
 import { createOccurrenceBodySchema, domainIdSchema } from '#shared/utils/schemas/domain'
 import { useEditItemDrawer, useEditItemDrawerForm } from '~/composables/useEditItemDrawer'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { z } from 'zod'
 
 const editItemDrawer = useEditItemDrawer()
 const editItemDrawerFormId = 'edit-item-drawer-form'
@@ -18,8 +18,10 @@ const {
 	isSubmitting,
 	focusRevision,
 	listOptions,
+	categoryOptions,
 	hasLists,
 	canSubmit,
+	createCategory,
 	submitForm,
 	deleteExistingListItem,
 	closeAndReset
@@ -37,8 +39,8 @@ const submitLabel = computed(() => (editItemDrawer.mode.value === 'edit' ? 'Opsl
 const submitIcon = computed(() =>
 	editItemDrawer.mode.value === 'edit' ? 'i-lucide-save' : getIcon('plus')
 )
-const minimalSnapPoint = '380px'
-const expandedSnapPoint = '520px'
+const minimalSnapPoint = '460px'
+const expandedSnapPoint = '600px'
 const itemDrawerSnapPoints: Array<string | number> = [minimalSnapPoint, expandedSnapPoint]
 const itemDrawerActiveSnapPoint = ref<string | number | null>(null)
 const nameInput = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('nameInput')
@@ -47,6 +49,9 @@ const isItemDrawerExpanded = computed(() => itemDrawerActiveSnapPoint.value === 
 const areItemOptionsVisible = ref(false)
 const isMoreOptionsButtonVisible = ref(true)
 const keyboardOffsetBottom = ref(0)
+const isCategoryModalOpen = ref(false)
+const categoryDraft = ref('')
+const isCreatingCategory = ref(false)
 const drawerUi = computed(() => ({
 	content: [
 		'edit-item-drawer-content',
@@ -59,13 +64,32 @@ let openingAnimationTimeout: ReturnType<typeof setTimeout> | undefined
 let optionsVisibilityTimeout: ReturnType<typeof setTimeout> | undefined
 
 const editItemDrawerFormSchema = createOccurrenceBodySchema.extend({
-	listId: domainIdSchema
+	listId: domainIdSchema,
+	categoryId: z.union([domainIdSchema, z.literal('')]).optional()
 })
 
 type EditItemDrawerFormSchema = z.output<typeof editItemDrawerFormSchema>
 
 function handleSubmit(payload: FormSubmitEvent<EditItemDrawerFormSchema>) {
 	return submitForm({ data: payload.data as EditItemDrawerSubmitData })
+}
+
+async function handleCreateCategory() {
+	const name = categoryDraft.value.trim()
+
+	if (!name || isCreatingCategory.value) {
+		return
+	}
+
+	isCreatingCategory.value = true
+
+	try {
+		await createCategory({ name })
+		categoryDraft.value = ''
+		isCategoryModalOpen.value = false
+	} finally {
+		isCreatingCategory.value = false
+	}
 }
 
 function expandItemDrawer() {
@@ -376,6 +400,35 @@ onBeforeUnmount(() => {
 						:ui="{ leadingIcon: 'size-4' }"
 					/>
 				</UFormField>
+				<UFormField name="categoryId">
+					<div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+						<USelectMenu
+							v-model="formState.categoryId"
+							:items="categoryOptions"
+							value-key="value"
+							label-key="label"
+							placeholder="Categorie"
+							icon="i-lucide-tags"
+							:disabled="isSubmitting"
+							size="xl"
+							clearable
+							:autofocus="false"
+							:ui="{ leadingIcon: 'size-4' }"
+						/>
+						<UButton
+							type="button"
+							color="neutral"
+							variant="soft"
+							size="xl"
+							icon="i-lucide-plus"
+							:disabled="isSubmitting"
+							class="grid aspect-square place-items-center"
+							aria-label="Categorie toevoegen"
+							:ui="{ leadingIcon: 'size-4' }"
+							@click="isCategoryModalOpen = true"
+						/>
+					</div>
+				</UFormField>
 
 				<Transition name="edit-item-drawer-more-options">
 					<UButton
@@ -466,6 +519,39 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 	</UDrawer>
+
+	<UModal v-model:open="isCategoryModalOpen" title="Categorie toevoegen">
+		<template #body>
+			<form class="grid gap-3" @submit.prevent="handleCreateCategory">
+				<UInput
+					v-model="categoryDraft"
+					placeholder="Bijvoorbeeld Groente"
+					:disabled="isCreatingCategory"
+					size="xl"
+				/>
+			</form>
+		</template>
+		<template #footer>
+			<div class="flex w-full justify-end gap-2">
+				<UButton
+					color="neutral"
+					variant="ghost"
+					:disabled="isCreatingCategory"
+					@click="isCategoryModalOpen = false"
+				>
+					Annuleren
+				</UButton>
+				<UButton
+					icon="i-lucide-plus"
+					:loading="isCreatingCategory"
+					:disabled="!categoryDraft.trim()"
+					@click="handleCreateCategory"
+				>
+					Toevoegen
+				</UButton>
+			</div>
+		</template>
+	</UModal>
 </template>
 
 <style scoped>

@@ -43,6 +43,8 @@ describe('useSettingsStore', () => {
 					return { settings: householdSettings({ refreshIntervalMs: 15000 }) }
 				case '/api/settings/items':
 					return { items: [settingsItem()] }
+				case '/api/settings/categories':
+					return { categories: [settingsCategory()] }
 				case '/api/settings/stats':
 					return { stats: stats() }
 				default:
@@ -58,6 +60,7 @@ describe('useSettingsStore', () => {
 		expect(store.enableMultiTenancy).toBe(true)
 		expect(store.members).toHaveLength(1)
 		expect(store.items).toHaveLength(1)
+		expect(store.categories).toHaveLength(1)
 		expect(store.stats?.totals.listItems).toBe(12)
 		expect(store.isLoading).toBe(false)
 		expect(mocks.setStoreRefreshInterval).toHaveBeenCalledWith(15000)
@@ -78,6 +81,7 @@ describe('useSettingsStore', () => {
 		const store = useSettingsStore()
 		store.members = [member()]
 		store.items = [settingsItem()]
+		store.categories = [settingsCategory()]
 		store.stats = stats()
 		vi.spyOn(apiClient, 'apiFetch').mockImplementation(async (url) => {
 			switch (url) {
@@ -100,6 +104,7 @@ describe('useSettingsStore', () => {
 		expect(store.activeHouseholdId).toBeNull()
 		expect(store.members).toEqual([])
 		expect(store.items).toEqual([])
+		expect(store.categories).toEqual([])
 		expect(store.stats).toBeNull()
 	})
 
@@ -110,7 +115,11 @@ describe('useSettingsStore', () => {
 		})
 
 		await expect(
-			store.updateProfile({ name: 'Nieuw', email: 'nieuw@example.com', password: 'secret123' })
+			store.updateProfile({
+				name: 'Nieuw',
+				email: 'nieuw@example.com',
+				password: 'secret123'
+			})
 		).resolves.toMatchObject({ name: 'Nieuw' })
 
 		expect(apiClient.apiFetch).toHaveBeenCalledWith('/api/profile', {
@@ -185,6 +194,8 @@ describe('useSettingsStore', () => {
 					return { settings: householdSettings() }
 				case '/api/settings/items':
 					return { items: [] }
+				case '/api/settings/categories':
+					return { categories: [] }
 				case '/api/settings/stats':
 					return { stats: stats() }
 				default:
@@ -229,7 +240,10 @@ describe('useSettingsStore', () => {
 		const store = useSettingsStore()
 		store.profile = profile({ id: 1 })
 		store.activeHouseholdId = 'home'
-		store.households = [household({ id: 'home', role: 'member' }), household({ id: 'other', role: 'member' })]
+		store.households = [
+			household({ id: 'home', role: 'member' }),
+			household({ id: 'other', role: 'member' })
+		]
 		store.members = [member({ id: 1, role: 'member' }), member({ id: 2, role: 'member' })]
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
 			userId: 2,
@@ -396,6 +410,7 @@ describe('useSettingsStore', () => {
 		vi.spyOn(apiClient, 'apiFetch')
 			.mockResolvedValueOnce({})
 			.mockResolvedValueOnce({ items: [] })
+			.mockResolvedValueOnce({ categories: [] })
 			.mockResolvedValueOnce({ stats: stats({ listItems: 0 }) })
 
 		await store.clearData()
@@ -404,6 +419,7 @@ describe('useSettingsStore', () => {
 			method: 'POST'
 		})
 		expect(store.items).toEqual([])
+		expect(store.categories).toEqual([])
 		expect(store.stats?.totals.listItems).toBe(0)
 	})
 })
@@ -463,7 +479,9 @@ function member(
 	}
 }
 
-function householdSettings(overrides: Partial<{ refreshIntervalMs: number; updatedAt: number }> = {}) {
+function householdSettings(
+	overrides: Partial<{ refreshIntervalMs: number; updatedAt: number }> = {}
+) {
 	return {
 		refreshIntervalMs: 5000,
 		updatedAt: 1,
@@ -493,15 +511,37 @@ function settingsItem(
 	}
 }
 
-function stats(overrides: Partial<{ lists: number; items: number; recipes: number; listItems: number }> = {}) {
+function stats(
+	overrides: Partial<{ lists: number; items: number; recipes: number; listItems: number }> = {}
+) {
 	return {
 		totals: {
 			lists: 2,
 			items: 3,
+			categories: 1,
 			recipes: 4,
 			listItems: overrides.listItems ?? 12
 		},
 		mostUsedItems: [{ itemId: 'milk', name: 'Milk', count: 3 }],
 		favoriteRecipesByDay: [{ dayOfWeek: 1, recipeId: 'pasta', name: 'Pasta' }]
+	}
+}
+
+function settingsCategory(
+	overrides: Partial<{
+		id: string
+		name: string
+		usageCount: number
+		itemUsageCount: number
+		listItemUsageCount: number
+	}> = {}
+) {
+	return {
+		id: 'produce',
+		name: 'Groente',
+		usageCount: 0,
+		itemUsageCount: 0,
+		listItemUsageCount: 0,
+		...overrides
 	}
 }

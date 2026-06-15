@@ -13,16 +13,17 @@ const totals = computed(() => settingsStore.stats?.totals)
 			orientation="horizontal"
 		/>
 		<UPageCard variant="subtle" :ui="{ body: 'space-y-4' }">
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 				<div
 					v-for="entry in [
 						['Lijsten', totals?.lists ?? 0],
 						['Lijstitems', totals?.listItems ?? 0],
 						['Items', totals?.items ?? 0],
+						['Categorieën', totals?.categories ?? 0],
 						['Recepten', totals?.recipes ?? 0]
 					]"
 					:key="entry[0]"
-					class="rounded-md bg-white p-3 dark:bg-gray-800"
+					class="rounded-md bg-white p-3 dark:bg-neutral-800"
 				>
 					<p class="text-muted text-xs">{{ entry[0] }}</p>
 					<p class="text-lg font-semibold">{{ entry[1] }}</p>

@@ -11,6 +11,7 @@ type CreateItemInput = {
 	householdId?: string
 	name: string
 	defaultUnit?: string | null
+	categoryId?: string | null
 	auditUserId: number
 }
 
@@ -74,6 +75,7 @@ export async function findOrCreateItem(input: CreateItemInput) {
 				name: input.name.trim(),
 				normalizedName,
 				defaultUnit: input.defaultUnit ?? null,
+				categoryId: input.categoryId ?? null,
 				createdAt: now,
 				updatedAt: now,
 				createdByUserId: input.auditUserId,
@@ -91,6 +93,32 @@ export async function findOrCreateItem(input: CreateItemInput) {
 
 		throw error
 	}
+}
+
+/**
+ * Stores a list-item category as the canonical default category when one is assigned.
+ *
+ * @param item - Related canonical item row.
+ * @param categoryId - Assigned list-item category.
+ * @param auditUserId - Acting user id.
+ */
+export async function applyAssignedCategoryToItem(
+	item: ItemRow,
+	categoryId: string | null | undefined,
+	auditUserId: number
+) {
+	if (!categoryId || item.categoryId === categoryId) {
+		return
+	}
+
+	await db
+		.update(schema.items)
+		.set({
+			categoryId,
+			updatedAt: Date.now(),
+			updatedByUserId: auditUserId
+		})
+		.where(and(eq(schema.items.id, item.id), eq(schema.items.householdId, item.householdId)))
 }
 
 /**
@@ -134,8 +162,12 @@ export async function searchItems(householdId: string | ItemSearchQuery, query?:
 	const normalized = normalizeItemName(resolvedQuery.q)
 	const pattern = `%${normalized}%`
 	const rows = await db
-		.select()
+		.select({
+			item: schema.items,
+			category: schema.itemCategories
+		})
 		.from(schema.items)
+		.leftJoin(schema.itemCategories, eq(schema.itemCategories.id, schema.items.categoryId))
 		.where(
 			and(
 				eq(schema.items.householdId, resolvedHouseholdId),
@@ -148,7 +180,7 @@ export async function searchItems(householdId: string | ItemSearchQuery, query?:
 		.orderBy(asc(schema.items.name))
 		.limit(resolvedQuery.limit)
 
-	return { items: rows.map(serializeItem) }
+	return { items: rows.map((row) => serializeItem(row.item, row.category)) }
 }
 
 /**
@@ -167,10 +199,12 @@ export async function suggestItems(
 	const rows = await db
 		.select({
 			listItem: schema.listItems,
-			item: schema.items
+			item: schema.items,
+			category: schema.itemCategories
 		})
 		.from(schema.listItems)
 		.innerJoin(schema.items, eq(schema.items.id, schema.listItems.itemId))
+		.leftJoin(schema.itemCategories, eq(schema.itemCategories.id, schema.items.categoryId))
 		.where(
 			and(
 				eq(schema.listItems.householdId, resolvedHouseholdId),
@@ -181,7 +215,15 @@ export async function suggestItems(
 			)
 		)
 
-	const byItem = new Map<string, { item: ItemRow; usageCount: number; lastUsedAt?: number }>()
+	const byItem = new Map<
+		string,
+		{
+			item: ItemRow
+			category?: typeof schema.itemCategories.$inferSelect | null
+			usageCount: number
+			lastUsedAt?: number
+		}
+	>()
 
 	for (const row of rows) {
 		const existing = byItem.get(row.item.id)
@@ -190,6 +232,7 @@ export async function suggestItems(
 		if (!existing) {
 			byItem.set(row.item.id, {
 				item: row.item,
+				category: row.category,
 				usageCount: 1,
 				lastUsedAt: archivedAt
 			})
@@ -209,7 +252,7 @@ export async function suggestItems(
 			)
 			.slice(0, resolvedQuery.limit)
 			.map((entry) => ({
-				...serializeItem(entry.item),
+				...serializeItem(entry.item, entry.category),
 				usageCount: entry.usageCount,
 				lastUsedAt: entry.lastUsedAt
 			}))

@@ -16,6 +16,8 @@ Existing tables:
 Domain tables added for Pantry Panic:
 
 - `lists`
+- `item_categories`
+- `list_category_positions`
 - `items`
 - `recipes`
 - `recipe_items`
@@ -61,14 +63,23 @@ settings such as refresh interval. `access_links` stores hashed one-time invite 
 tokens.
 
 `items` stores canonical grocery items. The household + `normalized_name` unique index supports
-reuse and autocomplete within a household.
+reuse and autocomplete within a household. `items.category_id` stores the canonical default
+category used when creating future list-item occurrences from that item.
+
+`item_categories` stores household-scoped grocery categories. Category names are unique per
+household by normalized name.
+
+`list_category_positions` stores list-specific category ordering. Dragging items between category
+groups updates the list-item category and this list-level category order; it does not change the
+canonical item category.
 
 `recipes` stores reusable recipe templates.
 
 `recipe_items` stores ordered recipe ingredients.
 
 `list_items` stores concrete item occurrences on a shopping list. Duplicates are allowed and
-history is preserved through statuses rather than hard deletion.
+history is preserved through statuses rather than hard deletion. `list_items.category_id` is the
+occurrence category used for grouped shopping-list views.
 
 `meal_planner_days` stores one seven-day meal planner per household.
 
@@ -94,6 +105,7 @@ Low-level helpers live in `server/utils/`:
 
 - `createDomainId()` creates UUID v7 ids through the `uuid` package.
 - `normalizeItemName()` trims, lowercases, and collapses whitespace.
+- `normalizeCategoryName()` trims, lowercases, and collapses whitespace for category uniqueness.
 - `findItemByNormalizedName()` fetches canonical items by normalized name.
 - `findOrCreateItem()` implements canonical item reuse.
 - Settings canonical-item deletion hard-deletes associated list, recipe-item, and meal-planner-day

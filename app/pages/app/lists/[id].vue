@@ -57,7 +57,7 @@ async function refreshList(options: { notifyOnError?: boolean } = {}) {
 	isLoadingList.value = true
 
 	try {
-		await store.fetchList(currentListId)
+		await Promise.all([store.fetchList(currentListId), store.fetchCategories()])
 
 		if (requestId !== listLoadRequestId) {
 			return
@@ -90,6 +90,23 @@ async function refreshList(options: { notifyOnError?: boolean } = {}) {
 async function handleItemReorder(orderedIds: string[]) {
 	try {
 		await store.reorderListItems(id.value, orderedIds)
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Volgorde kon niet worden opgeslagen.'),
+			color: 'error',
+			duration: 8000,
+			icon: 'i-lucide-circle-alert'
+		})
+
+		await refreshList()
+	}
+}
+
+async function handleCategorizedItemReorder(
+	groups: Array<{ categoryId: string | null; orderedIds: string[] }>
+) {
+	try {
+		await store.reorderCategorizedListItems(id.value, groups)
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Volgorde kon niet worden opgeslagen.'),
@@ -252,6 +269,7 @@ watch(
 				@clear="handleClearList"
 				@clear-checked="handleClearChecked"
 				@edit="openEditItemDrawer"
+				@reorder-categorized="handleCategorizedItemReorder"
 				@reorder="handleItemReorder"
 				@toggle-checked="handleToggleChecked"
 			/>

@@ -16,6 +16,8 @@ type NameOption = {
 	label: string
 	value: string
 	defaultUnit?: string
+	categoryId?: string
+	categoryName?: string
 }
 
 type EditItemDrawerToast = {
@@ -27,7 +29,10 @@ type EditItemDrawerListsStore = Pick<
 	| 'activeListId'
 	| 'activeLists'
 	| 'addListItem'
+	| 'categories'
+	| 'createCategory'
 	| 'deleteListItem'
+	| 'fetchCategories'
 	| 'fetchLists'
 	| 'fetchSuggestions'
 	| 'listItemsById'
@@ -46,6 +51,7 @@ type UseEditItemDrawerFormOptions = {
 export type EditItemDrawerFormInput = {
 	listId: string
 	name: string
+	categoryId?: string
 	amount?: number | null
 	unit?: string
 	note?: string
@@ -60,6 +66,7 @@ type EditItemDrawerSubmitPayload = {
 type NormalizedItemFormValue = {
 	listId: string
 	name: string
+	categoryId: string | null
 	amount: number | null
 	unit: string | null
 	note: string | null
@@ -147,6 +154,12 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 			value: list.id
 		}))
 	)
+	const categoryOptions = computed(() =>
+		listsStore.categories.map((category) => ({
+			label: category.name,
+			value: category.id
+		}))
+	)
 
 	const hasLists = computed(() => listOptions.value.length > 0)
 	const selectedListItem = computed(() =>
@@ -192,6 +205,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 				} else {
 					resetForm()
 					await initializeListSelection()
+					await listsStore.fetchCategories().catch(() => undefined)
 					initialFormValue.value = normalizeItemFormValue(formState)
 					resetInitialValue(initialFormValue)
 					await refreshNameOptions('')
@@ -234,7 +248,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	watch(
 		() => [formState.name, nameOptions.value] as const,
 		([name]) => {
-			applySelectedItemDefaultUnit(name)
+			applySelectedItemDefaults(name)
 		}
 	)
 
@@ -336,8 +350,10 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	 * @returns A promise that resolves after the item has been created.
 	 */
 	async function createNewListItem(data: EditItemDrawerSubmitData) {
+		const categoryId = normalizeOptionalText(data.categoryId)
 		const input: OccurrenceInput = {
 			name: data.name,
+			...(categoryId === undefined ? {} : { categoryId }),
 			amount: data.amount ?? undefined,
 			unit: normalizeOptionalText(data.unit),
 			note: normalizeOptionalText(data.note)
@@ -360,6 +376,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		const input: UpdateListItemInput = {
 			listId: data.listId,
 			name: data.name,
+			categoryId: normalizeNullableText(data.categoryId),
 			amount: data.amount ?? null,
 			unit: normalizeNullableText(data.unit),
 			note: normalizeNullableText(data.note)
@@ -437,6 +454,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		Object.assign(formState, {
 			listId: listItem?.listId ?? '',
 			name: listItem?.name ?? '',
+			categoryId: listItem?.categoryId ?? '',
 			amount: listItem?.amount,
 			unit: listItem?.unit ?? '',
 			note: listItem?.note ?? ''
@@ -454,8 +472,8 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	 * @param name - Current item name.
 	 * @returns Nothing.
 	 */
-	function applySelectedItemDefaultUnit(name: string) {
-		if (drawer.mode.value !== 'create' || formState.unit?.trim()) {
+	function applySelectedItemDefaults(name: string) {
+		if (drawer.mode.value !== 'create') {
 			return
 		}
 
@@ -469,10 +487,21 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 			(option) => option.value.trim().toLocaleLowerCase('nl-NL') === normalizedName
 		)
 		const defaultUnit = selectedOption?.defaultUnit?.trim()
+		const defaultCategoryId = selectedOption?.categoryId?.trim()
 
-		if (defaultUnit) {
+		if (defaultUnit && !formState.unit?.trim()) {
 			formState.unit = defaultUnit
 		}
+
+		if (defaultCategoryId && !formState.categoryId?.trim()) {
+			formState.categoryId = defaultCategoryId
+		}
+	}
+
+	async function createCategory(input: { name: string }) {
+		const category = await listsStore.createCategory(input)
+		formState.categoryId = category.id
+		return category
 	}
 
 	/**
@@ -507,11 +536,13 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		isSubmitting: readonly(isSubmitting),
 		focusRevision: readonly(focusRevision),
 		listOptions,
+		categoryOptions,
 		hasLists,
 		canSubmit,
 		isDirty,
 		resetForm,
 		refreshNameOptions,
+		createCategory,
 		submitForm,
 		createNewListItem,
 		updateExistingListItem,
@@ -529,6 +560,7 @@ function createDefaultFormState(): EditItemDrawerFormInput {
 	return {
 		listId: '',
 		name: '',
+		categoryId: '',
 		amount: undefined,
 		unit: '',
 		note: ''
@@ -539,6 +571,7 @@ function normalizeItemFormValue(value: EditItemDrawerFormInput): NormalizedItemF
 	return {
 		listId: value.listId,
 		name: value.name.trim(),
+		categoryId: normalizeNullableText(value.categoryId),
 		amount: value.amount ?? null,
 		unit: normalizeNullableText(value.unit),
 		note: normalizeNullableText(value.note)
@@ -551,7 +584,9 @@ function normalizeItemFormValue(value: EditItemDrawerFormInput): NormalizedItemF
  * @param items - Raw item names and optional default units from the item APIs.
  * @returns Deduplicated autocomplete options preserving first-seen display casing.
  */
-export function mapNameOptions(items: Array<{ name: string; defaultUnit?: string }>) {
+export function mapNameOptions(
+	items: Array<{ name: string; defaultUnit?: string; categoryId?: string; categoryName?: string }>
+) {
 	const seenNames = new Set<string>()
 
 	return items.reduce<NameOption[]>((result, item) => {
@@ -571,7 +606,9 @@ export function mapNameOptions(items: Array<{ name: string; defaultUnit?: string
 		result.push({
 			label: trimmedName,
 			value: trimmedName,
-			defaultUnit: item.defaultUnit
+			defaultUnit: item.defaultUnit,
+			...(item.categoryId === undefined ? {} : { categoryId: item.categoryId }),
+			...(item.categoryName === undefined ? {} : { categoryName: item.categoryName })
 		})
 
 		return result

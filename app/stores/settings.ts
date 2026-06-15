@@ -41,15 +41,27 @@ type SettingsItem = {
 	name: string
 	normalizedName: string
 	defaultUnit?: string
+	categoryId?: string
+	categoryName?: string
 	updatedAt: number
 	usageCount: number
 	activeListItemUsageCount: number
+}
+
+type SettingsCategory = {
+	id: string
+	name: string
+	updatedAt?: number
+	usageCount?: number
+	itemUsageCount?: number
+	listItemUsageCount?: number
 }
 
 type Stats = {
 	totals: {
 		lists: number
 		items: number
+		categories: number
 		recipes: number
 		listItems: number
 	}
@@ -71,6 +83,7 @@ export const useSettingsStore = defineStore('settings', () => {
 	const members = ref<Member[]>([])
 	const householdSettings = ref<HouseholdSettings | null>(null)
 	const items = ref<SettingsItem[]>([])
+	const categories = ref<SettingsCategory[]>([])
 	const stats = ref<Stats | null>(null)
 	const inviteUrl = ref<string | null>(null)
 	const resetUrl = ref<string | null>(null)
@@ -119,11 +132,18 @@ export const useSettingsStore = defineStore('settings', () => {
 				members.value = []
 				householdSettings.value = null
 				items.value = []
+				categories.value = []
 				stats.value = null
 				return
 			}
 
-			await Promise.all([fetchMembers(), fetchSettings(), fetchItems(), fetchStats()])
+			await Promise.all([
+				fetchMembers(),
+				fetchSettings(),
+				fetchItems(),
+				fetchCategories(),
+				fetchStats()
+			])
 		} catch (err) {
 			throw setError(err)
 		} finally {
@@ -291,8 +311,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
 	async function updateItem(
 		itemId: string,
-		input: Partial<Omit<SettingsItem, 'defaultUnit'>> & {
+		input: Partial<Omit<SettingsItem, 'defaultUnit' | 'categoryId'>> & {
 			defaultUnit?: string | null
+			categoryId?: string | null
 		}
 	) {
 		const data = await apiFetch<{ item: SettingsItem }>(`/api/settings/items/${itemId}`, {
@@ -326,9 +347,82 @@ export const useSettingsStore = defineStore('settings', () => {
 		return data
 	}
 
+	async function fetchCategories(q?: string) {
+		const params = new URLSearchParams()
+		if (q) params.set('q', q)
+		const data = await apiFetch<{ categories: SettingsCategory[] }>(
+			`/api/settings/categories${params.toString() ? `?${params.toString()}` : ''}`
+		)
+		categories.value = data.categories.map(normalizeSettingsCategory)
+		return categories.value
+	}
+
+	async function createCategory(input: { name: string }) {
+		const data = await apiFetch<{ category: SettingsCategory }>('/api/settings/categories', {
+			method: 'POST',
+			body: input
+		})
+		categories.value = [...categories.value, normalizeSettingsCategory(data.category)].sort(
+			(left, right) => left.name.localeCompare(right.name, 'nl-NL')
+		)
+		await fetchStats()
+		return data.category
+	}
+
+	async function updateCategory(categoryId: string, input: { name?: string }) {
+		const data = await apiFetch<{ category: SettingsCategory }>(
+			`/api/settings/categories/${categoryId}`,
+			{
+				method: 'PATCH',
+				body: input
+			}
+		)
+		categories.value = categories.value.map((category) =>
+			category.id === categoryId
+				? { ...category, ...normalizeSettingsCategory(data.category) }
+				: category
+		)
+		items.value = items.value.map((item) =>
+			item.categoryId === categoryId ? { ...item, categoryName: data.category.name } : item
+		)
+		return data.category
+	}
+
+	async function mergeCategory(categoryId: string, targetCategoryId: string) {
+		await apiFetch(`/api/settings/categories/${categoryId}/merge`, {
+			method: 'POST',
+			body: { targetCategoryId }
+		})
+		const targetName = categories.value.find(
+			(category) => category.id === targetCategoryId
+		)?.name
+		categories.value = categories.value.filter((category) => category.id !== categoryId)
+		items.value = items.value.map((item) =>
+			item.categoryId === categoryId
+				? { ...item, categoryId: targetCategoryId, categoryName: targetName }
+				: item
+		)
+		await fetchStats()
+	}
+
+	async function deleteCategory(categoryId: string) {
+		const data = await apiFetch<{ deletedCategoryId: string }>(
+			`/api/settings/categories/${categoryId}`,
+			{ method: 'DELETE' }
+		)
+		categories.value = categories.value.filter((category) => category.id !== categoryId)
+		items.value = items.value.map((item) =>
+			item.categoryId === categoryId
+				? { ...item, categoryId: undefined, categoryName: undefined }
+				: item
+		)
+		await fetchStats()
+		return data
+	}
+
 	async function clearData() {
 		await apiFetch('/api/settings/clear-data', { method: 'POST' })
-		await Promise.all([fetchItems(), fetchStats()])
+		await Promise.all([fetchItems(), fetchCategories(), fetchStats()])
 	}
 
 	async function leaveHousehold() {
@@ -343,6 +437,7 @@ export const useSettingsStore = defineStore('settings', () => {
 		members.value = []
 		householdSettings.value = null
 		items.value = []
+		categories.value = []
 		stats.value = null
 		return data
 	}
@@ -358,6 +453,7 @@ export const useSettingsStore = defineStore('settings', () => {
 		members.value = []
 		householdSettings.value = null
 		items.value = []
+		categories.value = []
 		stats.value = null
 		return data
 	}
@@ -370,6 +466,7 @@ export const useSettingsStore = defineStore('settings', () => {
 		members.value = []
 		householdSettings.value = null
 		items.value = []
+		categories.value = []
 		stats.value = null
 		return data
 	}
@@ -396,6 +493,7 @@ export const useSettingsStore = defineStore('settings', () => {
 		members,
 		householdSettings,
 		items,
+		categories,
 		stats,
 		inviteUrl,
 		resetUrl,
@@ -420,6 +518,11 @@ export const useSettingsStore = defineStore('settings', () => {
 		updateItem,
 		mergeItem,
 		deleteItem,
+		fetchCategories,
+		createCategory,
+		updateCategory,
+		mergeCategory,
+		deleteCategory,
 		clearData,
 		leaveHousehold,
 		destroyHousehold,
@@ -467,4 +570,15 @@ function isAvatarUploadResponse(value: unknown): value is AvatarUploadResponse {
 		'avatarPathname' in value &&
 		typeof value.avatarPathname === 'string'
 	)
+}
+
+function normalizeSettingsCategory(category: SettingsCategory): Required<SettingsCategory> {
+	return {
+		id: category.id,
+		name: category.name,
+		updatedAt: category.updatedAt ?? 0,
+		usageCount: category.usageCount ?? 0,
+		itemUsageCount: category.itemUsageCount ?? 0,
+		listItemUsageCount: category.listItemUsageCount ?? 0
+	}
 }

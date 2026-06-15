@@ -416,6 +416,42 @@ describe('useListsStore', () => {
 		expect(store.listItemsById['li-1']?.position).toBe(1)
 	})
 
+	it('reorders list items across categories optimistically', async () => {
+		const store = useListsStore()
+		store.categoriesById.produce = { id: 'produce', name: 'Groente' }
+		store.categoryIds = ['produce']
+		store.listItemsById['li-1'] = createListItem({ id: 'li-1', listId: 'list-1', position: 0 })
+		store.listItemsById['li-2'] = createListItem({ id: 'li-2', listId: 'list-1', position: 1 })
+		store.listItemIdsByListId['list-1'] = ['li-1', 'li-2']
+		const groups = [
+			{ categoryId: 'produce', orderedIds: ['li-2'] },
+			{ categoryId: null, orderedIds: ['li-1'] }
+		]
+		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
+			items: [
+				{ id: 'li-2', categoryId: 'produce', position: 0 },
+				{ id: 'li-1', categoryId: undefined, position: 1 }
+			]
+		})
+
+		await store.reorderCategorizedListItems('list-1', groups)
+
+		expect(apiClient.apiFetch).toHaveBeenCalledWith('/api/lists/list-1/items/reorder', {
+			method: 'POST',
+			body: { groups }
+		})
+		expect(store.listItemIdsByListId['list-1']).toEqual(['li-2', 'li-1'])
+		expect(store.listItemsById['li-2']).toMatchObject({
+			categoryId: 'produce',
+			categoryName: 'Groente',
+			position: 0
+		})
+		expect(store.listItemsById['li-1']).toMatchObject({
+			categoryId: undefined,
+			position: 1
+		})
+	})
+
 	it('rolls back list item order on reorder failure', async () => {
 		const store = useListsStore()
 		store.listItemsById['li-1'] = createListItem({ id: 'li-1', listId: 'list-1', position: 0 })
@@ -742,6 +778,9 @@ function createListItemShape() {
 		status: 'unchecked' as const,
 		position: 0,
 		sourceType: 'manual' as const,
+		categoryId: undefined as string | undefined,
+		categoryName: undefined as string | undefined,
+		categoryPosition: undefined as number | undefined,
 		amount: undefined as number | undefined,
 		unit: undefined as string | undefined,
 		note: undefined as string | undefined,

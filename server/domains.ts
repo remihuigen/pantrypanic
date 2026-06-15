@@ -9,8 +9,12 @@ export {
 	createListBodySchema,
 	updateListBodySchema,
 	reorderBodySchema,
+	categorizedReorderBodySchema,
+	createCategoryBodySchema,
 	createOccurrenceBodySchema,
+	mergeCategoryBodySchema,
 	updateListItemBodySchema,
+	updateCategoryBodySchema,
 	updateOccurrenceBodySchema,
 	createItemSearchQuerySchema,
 	createItemSuggestionsQuerySchema,
@@ -28,6 +32,16 @@ export {
 	searchItems,
 	suggestItems
 } from './utils/domains/items'
+
+export {
+	createItemCategory,
+	deleteItemCategory,
+	findCategoryOrThrow,
+	listItemCategories,
+	mergeItemCategory,
+	normalizeCategoryName,
+	updateItemCategory
+} from './utils/domains/categories'
 
 export {
 	mealPlannerDayNumbers,
@@ -48,6 +62,7 @@ export {
 	clearShoppingList,
 	clearCheckedListItems,
 	addListItem,
+	reorderCategorizedListItems,
 	reorderListItems,
 	updateListItem,
 	checkListItem,

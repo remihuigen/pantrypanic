@@ -150,8 +150,9 @@ Implemented route families:
 
 - `GET /api/me`
 - `/api/lists` for list CRUD, reorder, archive, soft-delete, clear, checked-item clear, list-item
-  create, and list-item reorder
-- `/api/list-items` for list-item list/name/metadata update, check, uncheck, and soft-delete
+  create, and flat or category-grouped list-item reorder
+- `/api/list-items` for list-item list/category/name/metadata update, check, uncheck, and
+  soft-delete
 - `/api/items` for canonical item search and historical suggestions
 - `/api/recipes` for recipe CRUD, archive, soft-delete, ingredients, reorder, and copy-to-list
 - `/api/recipe-items` for recipe-item update and hard-delete
@@ -160,7 +161,7 @@ Implemented route families:
 - `/api/households` for memberships, household creation, active household switching, members,
   household settings, invite links, and reset-access links
 - `/api/profile` for profile edits and avatar upload
-- `/api/settings` for canonical item maintenance, clear-data, and usage stats
+- `/api/settings` for canonical item/category maintenance, clear-data, and usage stats
 
 Frontend interval refresh is centralized in `app/composables/useStoreRefresh.ts`. The client
 plugin starts one scheduler after session and household membership context are available. The

@@ -19,6 +19,8 @@ Current tables:
 - `household_settings`
 - `access_links`
 - `lists`
+- `item_categories`
+- `list_category_positions`
 - `items`
 - `recipes`
 - `recipe_items`
@@ -30,6 +32,12 @@ Domain table ids are text UUID v7 ids created with the `uuid` package.
 
 Domain database column names use snake_case while TypeScript schema properties use camelCase.
 
+Canonical items and list-item occurrences can both reference `item_categories`. `items.category_id`
+is the canonical default category used when future list items are created from that item.
+`list_items.category_id` is the occurrence category used by shopping-list grouping. Dragging items
+between category groups updates the list-item category, not the canonical item category.
+`list_category_positions` stores per-list category ordering.
+
 Current migration files live under `server/db/migrations/sqlite/`.
 
 ## Current Database Usage
@@ -39,6 +47,8 @@ Current migration files live under `server/db/migrations/sqlite/`.
 - Domain id helper logic lives in `server/utils/api-helpers.ts`.
 - Pantry item normalization, canonical item reuse, seed logic, and domain query/mutation logic are
   split across `server/utils/domains/*` with a route-facing re-export in `server/domains.ts`.
+- Category normalization and category CRUD/merge/delete logic live in
+  `server/utils/domains/categories.ts`.
 - Route envelope and API-boundary helpers live in `server/utils/api-core.ts`.
 - Build-time admin seeding uses `scripts/seed-admin-user.mjs` to call the configured HTTP instance
   at `NUXT_PUBLIC_SITE_URL` with `x-api-token: ADMIN_API_KEY`.
@@ -89,6 +99,7 @@ The database layer is currently exercised through authenticated API routes for:
 
 - shopping lists and list items
 - canonical item search and suggestions
+- item-category maintenance and grouped list-item ordering
 - recipes and recipe items
 - one seven-day meal planner per household
 - household settings, members, access links, profile, canonical-item maintenance, clear-data, and

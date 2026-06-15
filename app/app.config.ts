@@ -40,13 +40,17 @@ export default defineAppConfig({
 		},
 		selectMenu: {
 			slots: {
-				base: 'w-full'
+				base: 'w-full',
+				itemTrailingIcon: 'size-4!',
+				item: 'items-center!'
 			},
 			compoundVariants: controlPaddingBySize
 		},
 		select: {
 			slots: {
-				base: 'w-full'
+				base: 'w-full',
+				itemTrailingIcon: 'size-4!',
+				item: 'items-center!'
 			},
 			compoundVariants: controlPaddingBySize
 		},

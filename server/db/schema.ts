@@ -133,6 +133,51 @@ export const lists = sqliteTable(
 	]
 )
 
+export const itemCategories = sqliteTable(
+	'item_categories',
+	{
+		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
+		name: text('name').notNull(),
+		normalizedName: text('normalized_name').notNull(),
+		...auditColumns
+	},
+	(table) => [
+		uniqueIndex('item_categories_household_normalized_name_idx').on(
+			table.householdId,
+			table.normalizedName
+		),
+		index('item_categories_name_idx').on(table.name),
+		index('item_categories_household_id_idx').on(table.householdId)
+	]
+)
+
+export const listCategoryPositions = sqliteTable(
+	'list_category_positions',
+	{
+		id: text('id').primaryKey(),
+		householdId: text('household_id')
+			.notNull()
+			.references(() => households.id),
+		listId: text('list_id')
+			.notNull()
+			.references(() => lists.id),
+		categoryId: text('category_id')
+			.notNull()
+			.references(() => itemCategories.id),
+		position: integer('position').notNull(),
+		...auditColumns
+	},
+	(table) => [
+		uniqueIndex('list_category_positions_list_category_idx').on(table.listId, table.categoryId),
+		index('list_category_positions_list_position_idx').on(table.listId, table.position),
+		index('list_category_positions_category_id_idx').on(table.categoryId),
+		index('list_category_positions_household_id_idx').on(table.householdId)
+	]
+)
+
 export const items = sqliteTable(
 	'items',
 	{
@@ -143,6 +188,7 @@ export const items = sqliteTable(
 		name: text('name').notNull(),
 		normalizedName: text('normalized_name').notNull(),
 		defaultUnit: text('default_unit'),
+		categoryId: text('category_id').references(() => itemCategories.id),
 		...auditColumns
 	},
 	(table) => [
@@ -150,6 +196,7 @@ export const items = sqliteTable(
 			table.householdId,
 			table.normalizedName
 		),
+		index('items_category_id_idx').on(table.categoryId),
 		index('items_name_idx').on(table.name)
 	]
 )
@@ -272,6 +319,7 @@ export const listItems = sqliteTable(
 			.references(() => items.id),
 		status: text('status', { enum: listItemStatusValues }).notNull(),
 		position: integer('position').notNull(),
+		categoryId: text('category_id').references(() => itemCategories.id),
 		amount: real('amount'),
 		unit: text('unit'),
 		note: text('note'),
@@ -296,6 +344,7 @@ export const listItems = sqliteTable(
 		),
 		index('list_items_household_id_idx').on(table.householdId),
 		index('list_items_item_id_idx').on(table.itemId),
+		index('list_items_category_id_idx').on(table.categoryId),
 		index('list_items_status_idx').on(table.status),
 		index('list_items_archived_at_idx').on(table.archivedAt),
 		index('list_items_source_recipe_id_idx').on(table.sourceRecipeId),
@@ -315,7 +364,8 @@ export const listsRelations = relations(lists, ({ many, one }) => ({
 		references: [users.id],
 		relationName: 'listsUpdatedByUser'
 	}),
-	listItems: many(listItems)
+	listItems: many(listItems),
+	categoryPositions: many(listCategoryPositions)
 }))
 
 export const itemsRelations = relations(items, ({ many, one }) => ({
@@ -329,9 +379,50 @@ export const itemsRelations = relations(items, ({ many, one }) => ({
 		references: [users.id],
 		relationName: 'itemsUpdatedByUser'
 	}),
+	category: one(itemCategories, {
+		fields: [items.categoryId],
+		references: [itemCategories.id]
+	}),
 	listItems: many(listItems),
 	recipeItems: many(recipeItems),
 	mealPlannerDayItems: many(mealPlannerDayItems)
+}))
+
+export const itemCategoriesRelations = relations(itemCategories, ({ many, one }) => ({
+	createdByUser: one(users, {
+		fields: [itemCategories.createdByUserId],
+		references: [users.id],
+		relationName: 'itemCategoriesCreatedByUser'
+	}),
+	updatedByUser: one(users, {
+		fields: [itemCategories.updatedByUserId],
+		references: [users.id],
+		relationName: 'itemCategoriesUpdatedByUser'
+	}),
+	items: many(items),
+	listItems: many(listItems),
+	listPositions: many(listCategoryPositions)
+}))
+
+export const listCategoryPositionsRelations = relations(listCategoryPositions, ({ one }) => ({
+	list: one(lists, {
+		fields: [listCategoryPositions.listId],
+		references: [lists.id]
+	}),
+	category: one(itemCategories, {
+		fields: [listCategoryPositions.categoryId],
+		references: [itemCategories.id]
+	}),
+	createdByUser: one(users, {
+		fields: [listCategoryPositions.createdByUserId],
+		references: [users.id],
+		relationName: 'listCategoryPositionsCreatedByUser'
+	}),
+	updatedByUser: one(users, {
+		fields: [listCategoryPositions.updatedByUserId],
+		references: [users.id],
+		relationName: 'listCategoryPositionsUpdatedByUser'
+	})
 }))
 
 export const recipesRelations = relations(recipes, ({ many, one }) => ({
@@ -379,6 +470,10 @@ export const listItemsRelations = relations(listItems, ({ one }) => ({
 	item: one(items, {
 		fields: [listItems.itemId],
 		references: [items.id]
+	}),
+	category: one(itemCategories, {
+		fields: [listItems.categoryId],
+		references: [itemCategories.id]
 	}),
 	sourceRecipe: one(recipes, {
 		fields: [listItems.sourceRecipeId],
