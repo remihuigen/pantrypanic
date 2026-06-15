@@ -47,7 +47,15 @@ export default defineNuxtConfig({
 							head_sampling_rate: 1,
 							invocation_logs: true
 						}
-					}
+					},
+					// Temporary workaround until https://github.com/nuxt-hub/core/issues/908 is fixed
+					r2_buckets: [
+						{
+							binding: 'BLOB',
+							bucket_name: process.env.CLOUDFLARE_R2_BUCKET,
+							jurisdiction: 'eu'
+						}
+					]
 				}
 			}
 		},
