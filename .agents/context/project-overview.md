@@ -53,6 +53,8 @@ Not implemented yet:
 - `app/`: Nuxt frontend; product pages live under `app/pages/app/**` and map to `/app/**`.
 - `app/stores/`: Pinia domain stores for lists, recipes, and meal planner.
 - `app/utils/api-client.ts`: shared frontend API wrapper with normalized app errors.
+- `app/composables/useFormState.ts`: reusable normalized dirty-state helper for edit forms that
+  should not call APIs when payloads have not changed.
 - `app/composables/useStoreRefresh.ts`: route-aware refresh scheduler and reusable polling
   lifecycle helper.
 - `shared/utils/schemas/domain.ts`: shared Zod schemas and inferred domain types reused by backend

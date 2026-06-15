@@ -204,6 +204,9 @@ describe('useEditListDrawer', () => {
 		drawer.open()
 		await nextTick()
 
+		form.formState.name = 'Nieuwe naam'
+		form.formState.icon = ' lucide:list '
+
 		await form.submitForm({
 			data: {
 				name: 'Nieuwe naam',
@@ -222,6 +225,37 @@ describe('useEditListDrawer', () => {
 			name: '',
 			icon: undefined
 		})
+	})
+
+	it('does not submit unchanged edit form data', async () => {
+		const store = createStore({
+			listsById: {
+				'list-1': {
+					id: 'list-1',
+					name: 'Weekend',
+					icon: 'lucide:book'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store, {
+			listId: ref('list-1'),
+			mode: ref<'create' | 'edit'>('edit')
+		})
+
+		drawer.open()
+		await nextTick()
+
+		expect(form.canSubmit.value).toBe(false)
+
+		await form.submitForm({
+			data: {
+				name: 'Weekend',
+				icon: 'lucide:book'
+			}
+		})
+
+		expect(store.updateList).not.toHaveBeenCalled()
+		expect(drawer.isOpen.value).toBe(true)
 	})
 
 	it('keeps the opened edit target when shared drawer state changes before submit', async () => {
@@ -292,6 +326,9 @@ describe('useEditListDrawer', () => {
 			name: 'Weekend',
 			icon: 'lucide:book'
 		})
+
+		form.formState.name = 'Weekend gewijzigd'
+		form.formState.icon = 'lucide:list'
 
 		await form.submitForm({
 			data: {

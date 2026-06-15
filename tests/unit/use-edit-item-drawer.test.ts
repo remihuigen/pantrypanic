@@ -21,6 +21,8 @@ type TestListItem = {
 	id: string
 	listId: string
 	name: string
+	categoryId?: string
+	categoryName?: string
 	amount?: number
 	unit?: string
 	note?: string
@@ -30,7 +32,10 @@ type TestStore = {
 	activeListId: string | null
 	activeLists: TestList[]
 	addListItem: ReturnType<typeof vi.fn>
+	categories: Array<{ id: string; name: string }>
+	createCategory: ReturnType<typeof vi.fn>
 	deleteListItem: ReturnType<typeof vi.fn>
+	fetchCategories: ReturnType<typeof vi.fn>
 	fetchLists: ReturnType<typeof vi.fn>
 	fetchSuggestions: ReturnType<typeof vi.fn>
 	listItemsById: Record<string, TestListItem>
@@ -136,6 +141,11 @@ describe('useEditItemDrawer', () => {
 		expect(form.nameOptions.value).toEqual([
 			{ label: 'Melk', value: 'Melk', defaultUnit: 'liter' }
 		])
+
+		form.formState.name = 'Melk'
+		await nextTick()
+
+		expect(form.formState.unit).toBe('liter')
 	})
 
 	it('debounces name search while the drawer is open', async () => {
@@ -295,6 +305,41 @@ describe('useEditItemDrawer', () => {
 		expect(store.fetchSuggestions).not.toHaveBeenCalled()
 	})
 
+	it('clears edit values before opening create mode after a passive drawer close', async () => {
+		const store = createStore({
+			activeListId: 'list-1',
+			activeLists: [...activeLists],
+			listItemsById: {
+				'li-1': {
+					id: 'li-1',
+					listId: 'list-2',
+					name: 'Tomaten',
+					amount: 3,
+					unit: 'stuks',
+					note: 'rijp'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+		await flushFormUpdates()
+
+		drawer.close()
+		await flushFormUpdates()
+
+		drawer.open({ mode: 'create' })
+		await flushFormUpdates()
+
+		expect(form.formState).toMatchObject({
+			listId: 'list-1',
+			name: '',
+			amount: undefined,
+			unit: '',
+			note: ''
+		})
+	})
+
 	it('keeps local edit values when the store refreshes while editing', async () => {
 		const store = createStore({
 			activeLists: [...activeLists],
@@ -344,6 +389,14 @@ describe('useEditItemDrawer', () => {
 		drawer.open({ listItemId: 'li-1', mode: 'edit' })
 		await flushFormUpdates()
 
+		Object.assign(form.formState, {
+			listId: 'list-2',
+			name: 'Halfvolle melk',
+			amount: undefined,
+			unit: ' liter ',
+			note: '   '
+		})
+
 		await form.submitForm({
 			data: {
 				listId: 'list-2',
@@ -357,6 +410,7 @@ describe('useEditItemDrawer', () => {
 		expect(store.updateListItem).toHaveBeenCalledWith('li-1', {
 			listId: 'list-2',
 			name: 'Halfvolle melk',
+			categoryId: null,
 			amount: null,
 			unit: 'liter',
 			note: null
@@ -370,6 +424,41 @@ describe('useEditItemDrawer', () => {
 			unit: '',
 			note: ''
 		})
+	})
+
+	it('does not submit unchanged edit form data', async () => {
+		const store = createStore({
+			activeLists: [...activeLists],
+			listItemsById: {
+				'li-1': {
+					id: 'li-1',
+					listId: 'list-1',
+					name: 'Melk',
+					amount: 1,
+					unit: 'pak',
+					note: 'koel'
+				}
+			}
+		})
+		const { drawer, form } = createFormHarness(store)
+
+		drawer.open({ listItemId: 'li-1', mode: 'edit' })
+		await flushFormUpdates()
+
+		expect(form.canSubmit.value).toBe(false)
+
+		await form.submitForm({
+			data: {
+				listId: 'list-1',
+				name: 'Melk',
+				amount: 1,
+				unit: 'pak',
+				note: 'koel'
+			}
+		})
+
+		expect(store.updateListItem).not.toHaveBeenCalled()
+		expect(drawer.isOpen.value).toBe(true)
 	})
 
 	it('shows a toast and keeps edit form data when update fails', async () => {
@@ -470,7 +559,13 @@ function createStore(overrides: Partial<TestStore> = {}) {
 		activeListId: null,
 		activeLists: [] as TestList[],
 		addListItem: vi.fn(async () => undefined),
+		categories: [] as Array<{ id: string; name: string }>,
+		createCategory: vi.fn(async (input: { name: string }) => ({
+			id: 'category-created',
+			name: input.name
+		})),
 		deleteListItem: vi.fn(async () => undefined),
+		fetchCategories: vi.fn(async () => []),
 		fetchLists: vi.fn(async () => []),
 		fetchSuggestions: vi.fn(async () => []),
 		listItemsById: {},

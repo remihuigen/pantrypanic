@@ -1,6 +1,7 @@
 import type { CreateListInput, UpdateListInput } from '#shared/utils/schemas/domain'
 import type { MaybeRefOrGetter } from 'vue'
 
+import { useFormState } from '~/composables/useFormState'
 import { useListsStore } from '~/stores/lists'
 import { computed, reactive, readonly, ref, toValue, watch } from 'vue'
 
@@ -42,6 +43,11 @@ type EditListDrawerSubmitPayload = {
 type EditListDrawerSubmitContext = {
 	mode: EditListDrawerMode
 	listId: string | null
+}
+
+type NormalizedListFormValue = {
+	name: string
+	icon: string | null
 }
 
 /**
@@ -102,6 +108,7 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 	const isSubmitting = ref(false)
 	const populatedContextKey = ref<string | null>(null)
 	const submitContext = ref<EditListDrawerSubmitContext | null>(null)
+	const initialFormValue = ref<NormalizedListFormValue>(normalizeListFormValue(formState))
 
 	const mode = computed(() =>
 		options.mode === undefined ? drawer.mode.value : toValue(options.mode)
@@ -116,12 +123,14 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 				listId: selectedListId.value
 			}
 	)
+	const currentFormValue = computed(() => normalizeListFormValue(formState))
+	const { isDirty, resetInitialValue } = useFormState(initialFormValue, currentFormValue)
 
 	const canSubmit = computed(
 		() =>
 			formState.name.trim().length > 0 &&
 			(activeSubmitContext.value.mode === 'create' ||
-				Boolean(activeSubmitContext.value.listId)) &&
+				(Boolean(activeSubmitContext.value.listId) && isDirty.value)) &&
 			!isSubmitting.value
 	)
 
@@ -158,6 +167,8 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 	 */
 	function resetForm() {
 		Object.assign(formState, createDefaultFormState())
+		initialFormValue.value = normalizeListFormValue(formState)
+		resetInitialValue(initialFormValue)
 	}
 
 	/**
@@ -187,6 +198,8 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 			name: list?.name ?? '',
 			icon: list?.icon
 		})
+		initialFormValue.value = normalizeListFormValue(formState)
+		resetInitialValue(initialFormValue)
 	}
 
 	/**
@@ -278,6 +291,7 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 		formState,
 		isSubmitting: readonly(isSubmitting),
 		canSubmit,
+		isDirty,
 		resetForm,
 		populateFormForMode,
 		submitForm,
@@ -294,6 +308,13 @@ function createDefaultFormState(): EditListDrawerFormInput {
 	return {
 		name: '',
 		icon: undefined
+	}
+}
+
+function normalizeListFormValue(value: EditListDrawerFormInput): NormalizedListFormValue {
+	return {
+		name: value.name.trim(),
+		icon: normalizeOptionalIconText(value.icon)
 	}
 }
 

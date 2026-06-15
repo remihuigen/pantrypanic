@@ -42,20 +42,40 @@ export const nullableTextSchema = z
 	.nullable()
 	.optional()
 
-export const optionalAmountSchema = z
-	.number({ error: 'Aantal moet een getal zijn.' })
-	.positive({ error: 'Aantal moet groter zijn dan 0.' })
-	.optional()
+const emptyAmountValueSchema = (value: unknown) =>
+	value === null || value === '' ? undefined : value
 
-export const nullableAmountSchema = z
-	.number({ error: 'Aantal moet een getal zijn.' })
-	.positive({ error: 'Aantal moet groter zijn dan 0.' })
-	.nullable()
-	.optional()
+export const optionalAmountSchema = z.preprocess(
+	emptyAmountValueSchema,
+	z
+		.number({ error: 'Aantal moet een getal zijn.' })
+		.positive({ error: 'Aantal moet groter zijn dan 0.' })
+		.optional()
+)
+
+export const nullableAmountSchema = z.preprocess(
+	(value) => (value === '' ? null : value),
+	z
+		.number({ error: 'Aantal moet een getal zijn.' })
+		.positive({ error: 'Aantal moet groter zijn dan 0.' })
+		.nullable()
+		.optional()
+)
 
 export const orderedIdsSchema = z.strictObject({
 	orderedIds: z
 		.array(domainIdSchema, { error: 'Volgorde is verplicht.' })
+		.min(1, { error: 'Volgorde is verplicht.' })
+})
+
+export const categorizedOrderedIdsSchema = z.strictObject({
+	groups: z
+		.array(
+			z.strictObject({
+				categoryId: domainIdSchema.nullable(),
+				orderedIds: z.array(domainIdSchema, { error: 'Volgorde is verplicht.' })
+			})
+		)
 		.min(1, { error: 'Volgorde is verplicht.' })
 })
 
@@ -70,6 +90,12 @@ const listIconSchema = z
 	.trim()
 	.min(1, { error: 'Icoon is verplicht.' })
 	.max(120, { error: 'Icoon mag maximaal 120 tekens bevatten.' })
+
+const categoryNameSchema = z
+	.string({ error: 'Categorienaam is verplicht.' })
+	.trim()
+	.min(1, { error: 'Categorienaam is verplicht.' })
+	.max(120, { error: 'Categorienaam mag maximaal 120 tekens bevatten.' })
 
 const unitSchema = z
 	.string({ error: 'Eenheid moet tekst zijn.' })
@@ -131,9 +157,11 @@ export const updateListBodySchema = z
 	})
 
 export const reorderBodySchema = orderedIdsSchema
+export const categorizedReorderBodySchema = categorizedOrderedIdsSchema
 
 export const createOccurrenceBodySchema = z.strictObject({
 	name: nameSchema,
+	categoryId: domainIdSchema.optional(),
 	amount: optionalAmountSchema,
 	unit: unitSchema,
 	note: noteSchema
@@ -155,6 +183,7 @@ export const updateListItemBodySchema = z
 	.strictObject({
 		listId: domainIdSchema.optional(),
 		name: nameSchema.optional(),
+		categoryId: domainIdSchema.nullable().optional(),
 		amount: nullableAmountSchema,
 		unit: nullableUnitSchema,
 		note: nullableNoteSchema
@@ -163,11 +192,28 @@ export const updateListItemBodySchema = z
 		(value) =>
 			value.listId !== undefined ||
 			value.name !== undefined ||
+			value.categoryId !== undefined ||
 			value.amount !== undefined ||
 			value.unit !== undefined ||
 			value.note !== undefined,
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
+
+export const createCategoryBodySchema = z.strictObject({
+	name: categoryNameSchema
+})
+
+export const updateCategoryBodySchema = z
+	.strictObject({
+		name: categoryNameSchema.optional()
+	})
+	.refine((value) => value.name !== undefined, {
+		error: 'Minimaal een veld is verplicht.'
+	})
+
+export const mergeCategoryBodySchema = z.strictObject({
+	targetCategoryId: domainIdSchema
+})
 
 const recipeIngredientSchema = createOccurrenceBodySchema.extend({
 	position: z
@@ -260,7 +306,18 @@ export const shoppingListSchema = z.strictObject({
 export const canonicalItemSchema = z.strictObject({
 	id: domainIdSchema,
 	name: z.string(),
-	defaultUnit: z.string().optional()
+	defaultUnit: z.string().optional(),
+	categoryId: domainIdSchema.optional(),
+	categoryName: z.string().optional()
+})
+
+export const itemCategorySchema = z.strictObject({
+	id: domainIdSchema,
+	name: z.string(),
+	updatedAt: timestampSchema.optional(),
+	usageCount: z.number().int().optional(),
+	itemUsageCount: z.number().int().optional(),
+	listItemUsageCount: z.number().int().optional()
 })
 
 export const itemSuggestionSchema = canonicalItemSchema.extend({
@@ -273,6 +330,9 @@ export const listItemSchema = z.strictObject({
 	listId: domainIdSchema,
 	itemId: domainIdSchema,
 	name: z.string(),
+	categoryId: domainIdSchema.optional(),
+	categoryName: z.string().optional(),
+	categoryPosition: z.number().int().optional(),
 	amount: z.number().optional(),
 	unit: z.string().optional(),
 	note: z.string().optional(),
@@ -369,6 +429,7 @@ export type MealPlannerDayType = z.infer<typeof mealPlannerDayTypeSchema>
 
 export type ShoppingList = z.infer<typeof shoppingListSchema>
 export type CanonicalItem = z.infer<typeof canonicalItemSchema>
+export type ItemCategory = z.infer<typeof itemCategorySchema>
 export type ItemSuggestion = z.infer<typeof itemSuggestionSchema>
 export type ListItem = z.infer<typeof listItemSchema>
 export type RecipeSummary = z.infer<typeof recipeSummarySchema>
@@ -383,6 +444,8 @@ export type UpdateListInput = z.infer<typeof updateListBodySchema>
 export type OccurrenceInput = z.infer<typeof createOccurrenceBodySchema>
 export type UpdateOccurrenceInput = z.infer<typeof updateOccurrenceBodySchema>
 export type UpdateListItemInput = z.infer<typeof updateListItemBodySchema>
+export type CreateCategoryInput = z.infer<typeof createCategoryBodySchema>
+export type UpdateCategoryInput = z.infer<typeof updateCategoryBodySchema>
 export type CreateRecipeInput = z.infer<typeof createRecipeBodySchema>
 export type UpdateRecipeInput = z.infer<typeof updateRecipeBodySchema>
 export type MealPlannerDayInput = z.infer<typeof mealPlannerDayBodySchema>

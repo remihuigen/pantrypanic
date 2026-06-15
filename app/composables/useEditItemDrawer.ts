@@ -1,5 +1,6 @@
 import type { OccurrenceInput, UpdateListItemInput } from '#shared/utils/schemas/domain'
 
+import { useFormState } from '~/composables/useFormState'
 import { useListsStore } from '~/stores/lists'
 import { computed, onScopeDispose, reactive, readonly, ref, watch } from 'vue'
 
@@ -15,6 +16,8 @@ type NameOption = {
 	label: string
 	value: string
 	defaultUnit?: string
+	categoryId?: string
+	categoryName?: string
 }
 
 type EditItemDrawerToast = {
@@ -26,7 +29,10 @@ type EditItemDrawerListsStore = Pick<
 	| 'activeListId'
 	| 'activeLists'
 	| 'addListItem'
+	| 'categories'
+	| 'createCategory'
 	| 'deleteListItem'
+	| 'fetchCategories'
 	| 'fetchLists'
 	| 'fetchSuggestions'
 	| 'listItemsById'
@@ -45,7 +51,8 @@ type UseEditItemDrawerFormOptions = {
 export type EditItemDrawerFormInput = {
 	listId: string
 	name: string
-	amount?: number
+	categoryId?: string
+	amount?: number | null
 	unit?: string
 	note?: string
 }
@@ -54,6 +61,15 @@ export type EditItemDrawerSubmitData = EditItemDrawerFormInput
 
 type EditItemDrawerSubmitPayload = {
 	data: EditItemDrawerSubmitData
+}
+
+type NormalizedItemFormValue = {
+	listId: string
+	name: string
+	categoryId: string | null
+	amount: number | null
+	unit: string | null
+	note: string | null
 }
 
 /**
@@ -69,6 +85,7 @@ export function useEditItemDrawer() {
 		() => null
 	)
 	const listItemId = useState<string | null>('edit-item-drawer:list-item-id', () => null)
+	const openRevision = useState<number>('edit-item-drawer:open-revision', () => 0)
 
 	/**
 	 * Opens the drawer and records an optional preferred list selection.
@@ -80,6 +97,7 @@ export function useEditItemDrawer() {
 		mode.value = options.mode ?? 'create'
 		preferredListId.value = options.listId ?? null
 		listItemId.value = options.listItemId ?? null
+		openRevision.value += 1
 		isOpen.value = true
 	}
 
@@ -97,6 +115,7 @@ export function useEditItemDrawer() {
 		mode,
 		preferredListId,
 		listItemId,
+		openRevision,
 		open,
 		close
 	}
@@ -122,6 +141,8 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	const isDeleting = ref(false)
 	const isSubmitting = ref(false)
 	const populatedContextKey = ref<string | null>(null)
+	const focusRevision = ref(0)
+	const initialFormValue = ref<NormalizedItemFormValue>(normalizeItemFormValue(formState))
 
 	let nameSearchDebounceHandle: ReturnType<typeof setTimeout> | undefined
 	let nameSearchRequestId = 0
@@ -133,11 +154,19 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 			value: list.id
 		}))
 	)
+	const categoryOptions = computed(() =>
+		listsStore.categories.map((category) => ({
+			label: category.name,
+			value: category.id
+		}))
+	)
 
 	const hasLists = computed(() => listOptions.value.length > 0)
 	const selectedListItem = computed(() =>
 		drawer.listItemId.value ? listsStore.listItemsById[drawer.listItemId.value] : undefined
 	)
+	const currentFormValue = computed(() => normalizeItemFormValue(formState))
+	const { isDirty, resetInitialValue } = useFormState(initialFormValue, currentFormValue)
 
 	const canSubmit = computed(
 		() =>
@@ -145,20 +174,21 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 				formState.listId &&
 				formState.name.trim().length > 0 &&
 				hasLists.value &&
-				(drawer.mode.value === 'create' || drawer.listItemId.value)
+				(drawer.mode.value === 'create' || (drawer.listItemId.value && isDirty.value))
 			) && !isSubmitting.value
 	)
 
 	watch(
 		() =>
 			drawer.isOpen.value
-				? `${drawer.mode.value}:${drawer.listItemId.value ?? drawer.preferredListId.value ?? ''}`
+				? `${drawer.openRevision.value}:${drawer.mode.value}:${drawer.listItemId.value ?? drawer.preferredListId.value ?? ''}`
 				: null,
 		async (contextKey) => {
 			if (!contextKey) {
 				populatedContextKey.value = null
 				cancelNameOptionsRefresh()
 				nameOptions.value = []
+				resetForm({ listId: '' })
 				return
 			}
 
@@ -173,7 +203,11 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 				if (drawer.mode.value === 'edit') {
 					await initializeEditSelection()
 				} else {
+					resetForm()
 					await initializeListSelection()
+					await listsStore.fetchCategories().catch(() => undefined)
+					initialFormValue.value = normalizeItemFormValue(formState)
+					resetInitialValue(initialFormValue)
 					await refreshNameOptions('')
 				}
 			} finally {
@@ -211,6 +245,13 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		}
 	)
 
+	watch(
+		() => [formState.name, nameOptions.value] as const,
+		([name]) => {
+			applySelectedItemDefaults(name)
+		}
+	)
+
 	onScopeDispose(() => {
 		cancelNameSearchDebounce()
 	})
@@ -228,6 +269,9 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		})
 		nameSearchTerm.value = ''
 		nameOptions.value = []
+		initialFormValue.value = normalizeItemFormValue(formState)
+		resetInitialValue(initialFormValue)
+		focusRevision.value += 1
 	}
 
 	/**
@@ -306,9 +350,11 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 	 * @returns A promise that resolves after the item has been created.
 	 */
 	async function createNewListItem(data: EditItemDrawerSubmitData) {
+		const categoryId = normalizeOptionalText(data.categoryId)
 		const input: OccurrenceInput = {
 			name: data.name,
-			amount: data.amount,
+			...(categoryId === undefined ? {} : { categoryId }),
+			amount: data.amount ?? undefined,
 			unit: normalizeOptionalText(data.unit),
 			note: normalizeOptionalText(data.note)
 		}
@@ -330,6 +376,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		const input: UpdateListItemInput = {
 			listId: data.listId,
 			name: data.name,
+			categoryId: normalizeNullableText(data.categoryId),
 			amount: data.amount ?? null,
 			unit: normalizeNullableText(data.unit),
 			note: normalizeNullableText(data.note)
@@ -407,6 +454,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		Object.assign(formState, {
 			listId: listItem?.listId ?? '',
 			name: listItem?.name ?? '',
+			categoryId: listItem?.categoryId ?? '',
 			amount: listItem?.amount,
 			unit: listItem?.unit ?? '',
 			note: listItem?.note ?? ''
@@ -414,6 +462,46 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 
 		nameSearchTerm.value = ''
 		nameOptions.value = []
+		initialFormValue.value = normalizeItemFormValue(formState)
+		resetInitialValue(initialFormValue)
+	}
+
+	/**
+	 * Applies a canonical item's default unit when a create-mode name option is selected.
+	 *
+	 * @param name - Current item name.
+	 * @returns Nothing.
+	 */
+	function applySelectedItemDefaults(name: string) {
+		if (drawer.mode.value !== 'create') {
+			return
+		}
+
+		const normalizedName = name.trim().toLocaleLowerCase('nl-NL')
+
+		if (!normalizedName) {
+			return
+		}
+
+		const selectedOption = nameOptions.value.find(
+			(option) => option.value.trim().toLocaleLowerCase('nl-NL') === normalizedName
+		)
+		const defaultUnit = selectedOption?.defaultUnit?.trim()
+		const defaultCategoryId = selectedOption?.categoryId?.trim()
+
+		if (defaultUnit && !formState.unit?.trim()) {
+			formState.unit = defaultUnit
+		}
+
+		if (defaultCategoryId && !formState.categoryId?.trim()) {
+			formState.categoryId = defaultCategoryId
+		}
+	}
+
+	async function createCategory(input: { name: string }) {
+		const category = await listsStore.createCategory(input)
+		formState.categoryId = category.id
+		return category
 	}
 
 	/**
@@ -446,11 +534,15 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 		isLoadingNameOptions: readonly(isLoadingNameOptions),
 		isDeleting: readonly(isDeleting),
 		isSubmitting: readonly(isSubmitting),
+		focusRevision: readonly(focusRevision),
 		listOptions,
+		categoryOptions,
 		hasLists,
 		canSubmit,
+		isDirty,
 		resetForm,
 		refreshNameOptions,
+		createCategory,
 		submitForm,
 		createNewListItem,
 		updateExistingListItem,
@@ -468,9 +560,21 @@ function createDefaultFormState(): EditItemDrawerFormInput {
 	return {
 		listId: '',
 		name: '',
+		categoryId: '',
 		amount: undefined,
 		unit: '',
 		note: ''
+	}
+}
+
+function normalizeItemFormValue(value: EditItemDrawerFormInput): NormalizedItemFormValue {
+	return {
+		listId: value.listId,
+		name: value.name.trim(),
+		categoryId: normalizeNullableText(value.categoryId),
+		amount: value.amount ?? null,
+		unit: normalizeNullableText(value.unit),
+		note: normalizeNullableText(value.note)
 	}
 }
 
@@ -480,7 +584,9 @@ function createDefaultFormState(): EditItemDrawerFormInput {
  * @param items - Raw item names and optional default units from the item APIs.
  * @returns Deduplicated autocomplete options preserving first-seen display casing.
  */
-export function mapNameOptions(items: Array<{ name: string; defaultUnit?: string }>) {
+export function mapNameOptions(
+	items: Array<{ name: string; defaultUnit?: string; categoryId?: string; categoryName?: string }>
+) {
 	const seenNames = new Set<string>()
 
 	return items.reduce<NameOption[]>((result, item) => {
@@ -500,7 +606,9 @@ export function mapNameOptions(items: Array<{ name: string; defaultUnit?: string
 		result.push({
 			label: trimmedName,
 			value: trimmedName,
-			defaultUnit: item.defaultUnit
+			defaultUnit: item.defaultUnit,
+			...(item.categoryId === undefined ? {} : { categoryId: item.categoryId }),
+			...(item.categoryName === undefined ? {} : { categoryName: item.categoryName })
 		})
 
 		return result

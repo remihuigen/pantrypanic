@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { EditListDrawerSubmitData } from '~/composables/useEditListDrawer'
+import type { z } from 'zod'
 
 import { createListBodySchema } from '#shared/utils/schemas/domain'
 import { useEditListDrawer, useEditListDrawerForm } from '~/composables/useEditListDrawer'
 import { ref, watch } from 'vue'
-import { z } from 'zod'
 
 const editListDrawer = useEditListDrawer()
 const editListDrawerFormId = 'edit-list-drawer-form'
@@ -22,33 +22,12 @@ const drawerDescription = computed(() =>
 		? 'Pas de naam en het icoon van deze lijst aan.'
 		: 'Maak een nieuwe boodschappenlijst.'
 )
-const submitLabel = computed(() =>
-	editListDrawer.mode.value === 'edit' ? 'Opslaan' : 'Toevoegen'
-)
+const submitLabel = computed(() => (editListDrawer.mode.value === 'edit' ? 'Opslaan' : 'Toevoegen'))
 const submitIcon = computed(() =>
 	editListDrawer.mode.value === 'edit' ? 'i-lucide-save' : getIcon('plus')
 )
 
-const editListFormSchema = z.preprocess(normalizeIconValueForSchema, createListBodySchema)
-
 type EditListFormSchema = z.output<typeof createListBodySchema>
-
-function normalizeIconValueForSchema(value: unknown) {
-	if (!value || typeof value !== 'object' || !('icon' in value)) {
-		return value
-	}
-
-	const nextValue = value as { icon?: unknown }
-
-	if (typeof nextValue.icon !== 'string' || nextValue.icon.trim().length > 0) {
-		return value
-	}
-
-	return {
-		...nextValue,
-		icon: undefined
-	}
-}
 
 function handleSubmit(payload: FormSubmitEvent<EditListFormSchema>) {
 	return submitForm({ data: payload.data as EditListDrawerSubmitData })
@@ -101,10 +80,10 @@ watch(
 		<template #body>
 			<UForm
 				:id="editListDrawerFormId"
-				:schema="editListFormSchema"
+				:schema="createListBodySchema"
 				:state="formState"
 				class="grid space-y-4"
-				:validate-on="['blur']"
+				:validate-on="[]"
 				@submit="handleSubmit"
 			>
 				<UFormField name="name" size="xl" required>

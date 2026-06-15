@@ -27,7 +27,9 @@ const selectedRecipeItemId = shallowRef<string | null>(null)
 const isAddingToList = shallowRef(false)
 let recipeLoadRequestId = 0
 const selectedRecipeItem = computed(() =>
-	selectedRecipeItemId.value ? (recipesStore.recipeItemsById[selectedRecipeItemId.value] ?? null) : null
+	selectedRecipeItemId.value
+		? (recipesStore.recipeItemsById[selectedRecipeItemId.value] ?? null)
+		: null
 )
 
 const addToListMenuItems = computed(() => [
@@ -181,10 +183,19 @@ function getErrorMessage(error: unknown, fallback: string) {
 	return fallback
 }
 
+function blurActiveElement() {
+	if (!import.meta.client || !(document.activeElement instanceof HTMLElement)) {
+		return
+	}
+
+	document.activeElement.blur()
+}
+
 useGesture(
 	{
 		onDragEnd: ({ swipe: [swipeX] }) => {
 			if (swipeX > 0) {
+				blurActiveElement()
 				void navigateTo('/app/recipes')
 			}
 		}
@@ -223,7 +234,7 @@ onUnmounted(() => {
 		<PageShell>
 			<template #header>
 				<PageHeader>
-					<span class="truncate">{{ pageTitle }}</span>
+					<span class="break-words">{{ pageTitle }}</span>
 					<template #tools>
 						<UButton
 							color="primary"
@@ -245,7 +256,9 @@ onUnmounted(() => {
 								class="aspect-square"
 								aria-label="Recept op lijst zetten"
 								:loading="isAddingToList"
-								:disabled="listsStore.activeLists.length === 0 || items.length === 0"
+								:disabled="
+									listsStore.activeLists.length === 0 || items.length === 0
+								"
 							/>
 						</UDropdownMenu>
 						<RecipeActionMenu

@@ -58,7 +58,7 @@ function normalizeOptionalText(value: string | undefined) {
 	<UCard variant="subtle" :ui="{ body: 'space-y-3' }">
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px_120px]">
 			<UInput v-model="draft.name" placeholder="Ingredient" autofocus />
-			<UInputNumber v-model="draft.amount" :min="0" placeholder="Aantal" />
+			<UInputNumber v-model="draft.amount" :min="0.5" :step="0.5" placeholder="Aantal" />
 			<UInput v-model="draft.unit" placeholder="Eenheid" />
 		</div>
 		<UTextarea v-model="draft.note" placeholder="Notitie" :rows="2" />

@@ -8,14 +8,10 @@ import {
 	getProfile,
 	listAllItems,
 	mergeCanonicalItem,
-	updateProfile,
-	updateCanonicalItem
+	updateCanonicalItem,
+	updateProfile
 } from '../../server/utils/settings'
-import {
-	createDeleteBuilder,
-	createSelectBuilder,
-	createUpdateBuilder
-} from './test-db'
+import { createDeleteBuilder, createSelectBuilder, createUpdateBuilder } from './test-db'
 
 const mocks = vi.hoisted(() => ({
 	seedInitialDomainData: vi.fn()
@@ -31,7 +27,10 @@ describe('settings utilities', () => {
 		vi.mocked(db.update).mockReset()
 		vi.mocked(db.delete).mockReset()
 		mocks.seedInitialDomainData.mockClear()
-		vi.stubGlobal('hashPassword', vi.fn(async () => 'hashed-password'))
+		vi.stubGlobal(
+			'hashPassword',
+			vi.fn(async () => 'hashed-password')
+		)
 	})
 
 	it('serializes user profiles and omits empty avatar paths', async () => {
@@ -143,14 +142,17 @@ describe('settings utilities', () => {
 
 		await expect(clearHouseholdData('household', 12)).resolves.toEqual({ ok: true })
 
-		expect(db.delete).toHaveBeenCalledTimes(7)
+		expect(db.delete).toHaveBeenCalledTimes(9)
 		expect(mocks.seedInitialDomainData).toHaveBeenCalledWith(12, 'household')
 	})
 
 	it('aggregates item usage across lists, recipes, and meal-planner rows', async () => {
 		vi.mocked(db.select)
 			.mockReturnValueOnce(
-				createSelectBuilder([itemRow({ id: 'milk' }), itemRow({ id: 'bread' })]) as never
+				createSelectBuilder([
+					{ item: itemRow({ id: 'milk' }), category: null },
+					{ item: itemRow({ id: 'bread' }), category: null }
+				]) as never
 			)
 			.mockReturnValueOnce(
 				createSelectBuilder([{ itemId: 'milk', status: 'checked', count: 2 }]) as never
@@ -170,10 +172,13 @@ describe('settings utilities', () => {
 		vi.mocked(db.select)
 			.mockReturnValueOnce(
 				createSelectBuilder([
-					itemRow({
-						id: 'milk',
-						defaultUnit: 'pak'
-					})
+					{
+						item: itemRow({
+							id: 'milk',
+							defaultUnit: 'pak'
+						}),
+						category: null
+					}
 				]) as never
 			)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
@@ -207,7 +212,9 @@ describe('settings utilities', () => {
 
 	it('updates canonical item metadata without duplicate lookup when the normalized name is unchanged', async () => {
 		let updateValues: unknown
-		vi.mocked(db.select).mockReturnValueOnce(createSelectBuilder([itemRow({ id: 'milk' })]) as never)
+		vi.mocked(db.select).mockReturnValueOnce(
+			createSelectBuilder([itemRow({ id: 'milk' })]) as never
+		)
 		vi.mocked(db.update).mockReturnValueOnce(
 			createCapturingUpdateBuilder(
 				[
@@ -225,12 +232,7 @@ describe('settings utilities', () => {
 		)
 
 		await expect(
-			updateCanonicalItem(
-				'household',
-				'milk',
-				{ name: 'Milk', defaultUnit: 'pak' },
-				7
-			)
+			updateCanonicalItem('household', 'milk', { name: 'Milk', defaultUnit: 'pak' }, 7)
 		).resolves.toMatchObject({
 			item: {
 				id: 'milk',
@@ -251,7 +253,9 @@ describe('settings utilities', () => {
 			.mockReturnValueOnce(createSelectBuilder([itemRow({ id: 'milk' })]) as never)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
 		vi.mocked(db.update).mockReturnValueOnce(
-			createUpdateBuilder([itemRow({ id: 'milk', name: 'Halfvolle melk', normalizedName: 'halfvolle melk' })]) as never
+			createUpdateBuilder([
+				itemRow({ id: 'milk', name: 'Halfvolle melk', normalizedName: 'halfvolle melk' })
+			]) as never
 		)
 
 		await expect(
@@ -268,7 +272,9 @@ describe('settings utilities', () => {
 	it('throws when a canonical item cannot be found', async () => {
 		vi.mocked(db.select).mockReturnValueOnce(createSelectBuilder([]) as never)
 
-		await expect(updateCanonicalItem('household', 'missing', { name: 'Missing' }, 1)).rejects.toMatchObject({
+		await expect(
+			updateCanonicalItem('household', 'missing', { name: 'Missing' }, 1)
+		).rejects.toMatchObject({
 			statusCode: 404,
 			message: 'Item niet gevonden.'
 		})
@@ -276,7 +282,9 @@ describe('settings utilities', () => {
 	})
 
 	it('throws when canonical item updates return no row', async () => {
-		vi.mocked(db.select).mockReturnValueOnce(createSelectBuilder([itemRow({ id: 'milk' })]) as never)
+		vi.mocked(db.select).mockReturnValueOnce(
+			createSelectBuilder([itemRow({ id: 'milk' })]) as never
+		)
 		vi.mocked(db.update).mockReturnValueOnce(createUpdateBuilder([]) as never)
 
 		await expect(
@@ -348,8 +356,11 @@ describe('settings utilities', () => {
 
 	it('summarizes household usage stats with numeric fallbacks', async () => {
 		vi.mocked(db.select)
-			.mockReturnValueOnce(createSelectBuilder([{ lists: '2', items: '3', recipes: '4' }]) as never)
+			.mockReturnValueOnce(
+				createSelectBuilder([{ lists: '2', items: '3', recipes: '4' }]) as never
+			)
 			.mockReturnValueOnce(createSelectBuilder([{ count: '12' }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: '2' }]) as never)
 			.mockReturnValueOnce(
 				createSelectBuilder([{ itemId: 'milk', name: 'Milk', count: '5' }]) as never
 			)
@@ -362,6 +373,7 @@ describe('settings utilities', () => {
 				totals: {
 					lists: 2,
 					items: 3,
+					categories: 2,
 					recipes: 4,
 					listItems: 12
 				},
@@ -377,12 +389,14 @@ describe('settings utilities', () => {
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
 
 		await expect(getHouseholdStats('household')).resolves.toMatchObject({
 			stats: {
 				totals: {
 					lists: 0,
 					items: 0,
+					categories: 0,
 					recipes: 0,
 					listItems: 0
 				},

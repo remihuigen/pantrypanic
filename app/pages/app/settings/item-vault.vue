@@ -6,7 +6,7 @@ onMounted(async () => {
 	try {
 		await settingsStore.fetchHouseholds()
 		if (!settingsStore.activeHouseholdId) return
-		await settingsStore.fetchItems()
+		await Promise.all([settingsStore.fetchItems(), settingsStore.fetchCategories()])
 	} catch (error) {
 		toast.add({
 			title:

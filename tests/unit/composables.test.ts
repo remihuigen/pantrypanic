@@ -1,11 +1,12 @@
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
+import { useFormState } from '~/composables/useFormState'
 import { useIcon } from '~/composables/useIcon'
 import { useRecipeUsage } from '~/composables/useRecipeUsage'
 import { orchestrateRefresh } from '~/composables/useStoreRefresh'
 import * as apiClient from '~/utils/api-client'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, shallowRef } from 'vue'
+import { computed, reactive, shallowRef } from 'vue'
 
 const mocks = vi.hoisted(() => ({
 	create: vi.fn()
@@ -57,6 +58,27 @@ describe('small composables', () => {
 				props: { title: 'Verwijderen?', color: 'error' }
 			})
 		)
+	})
+
+	it('tracks dirty state by comparing normalized form values', () => {
+		const initial = shallowRef({ name: 'Milk', unit: 'liter' })
+		const current = reactive({ name: ' Milk ', unit: 'liter' })
+		const formState = useFormState(initial, current, {
+			normalize: (value) => ({
+				name: value.name.trim(),
+				unit: value.unit.trim() || null
+			})
+		})
+
+		expect(formState.isDirty.value).toBe(false)
+
+		current.unit = 'pak'
+
+		expect(formState.isDirty.value).toBe(true)
+
+		formState.resetInitialValue()
+
+		expect(formState.isDirty.value).toBe(false)
 	})
 
 	it('orchestrates list overview refresh for the lists route', async () => {

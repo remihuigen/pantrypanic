@@ -5,6 +5,8 @@ import { z } from 'zod'
 
 export {
 	addRecipeToListBodySchema,
+	categorizedReorderBodySchema,
+	createCategoryBodySchema,
 	createListBodySchema,
 	createOccurrenceBodySchema,
 	createRecipeBodySchema,
@@ -18,6 +20,8 @@ export {
 	recipeParamsSchema,
 	recipeQuerySchema,
 	reorderBodySchema,
+	mergeCategoryBodySchema,
+	updateCategoryBodySchema,
 	updateListBodySchema,
 	updateListItemBodySchema,
 	updateOccurrenceBodySchema,

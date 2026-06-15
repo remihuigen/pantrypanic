@@ -12,6 +12,7 @@ export type Audit = {
 
 export type ListRow = typeof schema.lists.$inferSelect
 export type ItemRow = typeof schema.items.$inferSelect
+export type ItemCategoryRow = typeof schema.itemCategories.$inferSelect
 export type RecipeRow = typeof schema.recipes.$inferSelect
 export type ListItemRow = typeof schema.listItems.$inferSelect
 export type RecipeItemRow = typeof schema.recipeItems.$inferSelect
@@ -40,13 +41,30 @@ export function serializeList(list: ListRow) {
  * Converts an item row to API response shape.
  *
  * @param item - Persisted item row.
+ * @param category - Optional category row assigned to the item.
  * @returns Public item payload.
  */
-export function serializeItem(item: ItemRow) {
+export function serializeItem(item: ItemRow, category?: ItemCategoryRow | null) {
 	return {
 		id: item.id,
 		name: item.name,
-		defaultUnit: optional(item.defaultUnit)
+		defaultUnit: optional(item.defaultUnit),
+		categoryId: optional(item.categoryId),
+		categoryName: optional(category?.name ?? null)
+	}
+}
+
+/**
+ * Converts a category row to API response shape.
+ *
+ * @param category - Persisted category row.
+ * @returns Public category payload.
+ */
+export function serializeItemCategory(category: ItemCategoryRow) {
+	return {
+		id: category.id,
+		name: category.name,
+		updatedAt: category.updatedAt
 	}
 }
 
@@ -55,14 +73,24 @@ export function serializeItem(item: ItemRow) {
  *
  * @param listItem - Persisted list-item row.
  * @param item - Persisted canonical item row.
+ * @param category - Optional category row assigned to the list item.
+ * @param categoryPosition - Optional list-specific category order.
  * @returns Public list-item payload.
  */
-export function serializeListItem(listItem: ListItemRow, item: ItemRow) {
+export function serializeListItem(
+	listItem: ListItemRow,
+	item: ItemRow,
+	category?: ItemCategoryRow | null,
+	categoryPosition?: number | null
+) {
 	return {
 		id: listItem.id,
 		listId: listItem.listId,
 		itemId: listItem.itemId,
 		name: item.name,
+		categoryId: optional(listItem.categoryId),
+		categoryName: optional(category?.name ?? null),
+		categoryPosition: optional(categoryPosition ?? null),
 		amount: optional(listItem.amount),
 		unit: optional(listItem.unit),
 		note: optional(listItem.note),
@@ -464,6 +492,7 @@ export async function appendListItemsFromRows(options: {
 		sourceType: schema.ListItemSourceType
 		sourceRecipeId: string | null
 		sourceMealPlannerDayId: string | null
+		categoryId?: string | null
 	}>
 }) {
 	const audit = createAudit(options.userId)
@@ -480,6 +509,7 @@ export async function appendListItemsFromRows(options: {
 				itemId: row.item.id,
 				status: 'unchecked',
 				position,
+				categoryId: row.categoryId ?? row.item.categoryId ?? null,
 				amount: row.amount,
 				unit: row.unit,
 				note: row.note,
@@ -503,6 +533,7 @@ export async function appendListItemsFromRows(options: {
 			listId: created.listId,
 			itemId: created.itemId,
 			name: row.item.name,
+			categoryId: optional(created.categoryId),
 			sourceType: created.sourceType
 		})
 	}

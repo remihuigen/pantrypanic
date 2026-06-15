@@ -8,8 +8,15 @@ const editingId = ref<string | null>(null)
 const mergeTargets = ref<Record<string, string>>({})
 const draft = reactive({
 	name: '',
-	defaultUnit: ''
+	defaultUnit: '',
+	categoryId: ''
 })
+const initialDraft = shallowRef(normalizeDraft(draft))
+const currentDraft = computed(() => normalizeDraft(draft))
+const { isDirty: isDraftDirty, resetInitialValue: resetInitialDraft } = useFormState(
+	initialDraft,
+	currentDraft
+)
 
 watchDebounced(
 	query,
@@ -23,12 +30,18 @@ function startEdit(item: (typeof settingsStore.items)[number]) {
 	editingId.value = item.id
 	draft.name = item.name
 	draft.defaultUnit = item.defaultUnit ?? ''
+	draft.categoryId = item.categoryId ?? ''
+	initialDraft.value = normalizeDraft(draft)
+	resetInitialDraft(initialDraft)
 }
 
 async function saveItem(itemId: string) {
+	if (!isDraftDirty.value) return
+
 	await settingsStore.updateItem(itemId, {
 		name: draft.name,
-		defaultUnit: draft.defaultUnit || null
+		defaultUnit: draft.defaultUnit || null,
+		categoryId: draft.categoryId || null
 	})
 	editingId.value = null
 	toast.add({ title: 'Item opgeslagen.', color: 'success', icon: 'i-lucide-check' })
@@ -57,6 +70,14 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 	await settingsStore.deleteItem(item.id)
 	toast.add({ title: 'Item verwijderd.', color: 'success', icon: 'i-lucide-check' })
 }
+
+function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: string }) {
+	return {
+		name: value.name.trim(),
+		defaultUnit: value.defaultUnit.trim() || null,
+		categoryId: value.categoryId || null
+	}
+}
 </script>
 
 <template>
@@ -84,9 +105,28 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 					<UInput v-model="draft.name" />
 					<FieldRow>
 						<UInput v-model="draft.defaultUnit" placeholder="Eenheid" />
+						<USelectMenu
+							v-model="draft.categoryId"
+							value-key="value"
+							:items="
+								settingsStore.categories.map((category) => ({
+									label: category.name,
+									value: category.id
+								}))
+							"
+							placeholder="Categorie"
+							clearable
+							:autofocus="false"
+						/>
 					</FieldRow>
 					<div class="flex gap-2">
-						<UButton icon="i-lucide-save" @click="saveItem(item.id)">Opslaan</UButton>
+						<UButton
+							icon="i-lucide-save"
+							:disabled="!isDraftDirty"
+							@click="saveItem(item.id)"
+						>
+							Opslaan
+						</UButton>
 						<UButton color="neutral" variant="ghost" @click="editingId = null"
 							>Annuleren</UButton
 						>
@@ -97,7 +137,10 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
 							<p class="truncate text-sm font-medium">{{ item.name }}</p>
-							<p class="text-muted text-xs">{{ item.usageCount }} verwijzingen</p>
+							<p class="text-muted text-xs">
+								{{ item.usageCount }} verwijzingen
+								<span v-if="item.categoryName"> - {{ item.categoryName }}</span>
+							</p>
 						</div>
 						<div class="flex gap-1">
 							<UButton

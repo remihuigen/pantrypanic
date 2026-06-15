@@ -130,6 +130,10 @@ describe('pantry api domain helpers', () => {
 			amount: 1,
 			unit: 'l'
 		})
+		expect(createOccurrenceBodySchema.parse({ name: 'Milk', amount: null })).toEqual({
+			name: 'Milk',
+			amount: undefined
+		})
 		expect(
 			updateListItemBodySchema.parse({
 				listId: 'list-2',
@@ -345,12 +349,12 @@ describe('pantry api domain helpers', () => {
 			)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-				.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
-				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-				.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
-				.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([itemRow()]) as never)
@@ -459,7 +463,9 @@ describe('pantry api domain helpers', () => {
 
 	it('handles item search and suggestions', async () => {
 		vi.mocked(db.select)
-			.mockReturnValueOnce(createSelectBuilder([itemRow({ name: 'Milk' })]) as never)
+			.mockReturnValueOnce(
+				createSelectBuilder([{ item: itemRow({ name: 'Milk' }), category: null }]) as never
+			)
 			.mockReturnValueOnce(
 				createSelectBuilder([
 					{
@@ -691,13 +697,17 @@ describe('pantry api domain helpers', () => {
 
 		vi.mocked(db.insert)
 			.mockReturnValueOnce(createInsertBuilder([listRow({ id: 'created-list' })]) as never)
-			.mockReturnValueOnce(createInsertBuilder([recipeRow({ id: 'created-recipe' })]) as never)
+			.mockReturnValueOnce(
+				createInsertBuilder([recipeRow({ id: 'created-recipe' })]) as never
+			)
 
 		vi.mocked(db.update)
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'list-1', position: 0 }]) as never)
 			.mockReturnValueOnce(createUpdateBuilder([]) as never)
 			.mockReturnValueOnce(createUpdateBuilder([listRow({ id: 'list-1' })]) as never)
-			.mockReturnValueOnce(createUpdateBuilder([recipeRow({ id: 'recipe-1', updatedAt: 9 })]) as never)
+			.mockReturnValueOnce(
+				createUpdateBuilder([recipeRow({ id: 'recipe-1', updatedAt: 9 })]) as never
+			)
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'ri-1', position: 0 }]) as never)
 			.mockReturnValueOnce(createUpdateBuilder([]) as never)
 			.mockReturnValueOnce(
@@ -742,11 +752,18 @@ describe('pantry api domain helpers', () => {
 		await expect(updateRecipe('household', 'recipe-1', {}, 1)).resolves.toEqual({
 			recipe: { id: 'recipe-1', updatedAt: 9 }
 		})
-		await expect(reorderRecipeItems('household', 'recipe-1', ['ri-1', 'missing'], 1)).resolves.toEqual({
+		await expect(
+			reorderRecipeItems('household', 'recipe-1', ['ri-1', 'missing'], 1)
+		).resolves.toEqual({
 			items: [{ id: 'ri-1', position: 0 }]
 		})
 		await expect(
-			updateMealPlannerDay('household', 1, { type: 'placeholder', placeholderName: 'Restjes' }, 1)
+			updateMealPlannerDay(
+				'household',
+				1,
+				{ type: 'placeholder', placeholderName: 'Restjes' },
+				1
+			)
 		).resolves.toMatchObject({
 			day: { id: 'day-1', placeholderName: 'Restjes' }
 		})

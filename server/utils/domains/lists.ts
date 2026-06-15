@@ -22,7 +22,8 @@ import {
 	serializeList,
 	serializeListItem
 } from './base'
-import { applyAssignedUnitToItem, findOrCreateItem } from './items'
+import { findCategoryOrThrow } from './categories'
+import { applyAssignedCategoryToItem, applyAssignedUnitToItem, findOrCreateItem } from './items'
 
 const DEFAULT_HOUSEHOLD_ID = 'household-1'
 
@@ -70,7 +71,9 @@ export async function createShoppingList(
 ) {
 	const resolvedHouseholdId = typeof householdId === 'string' ? householdId : DEFAULT_HOUSEHOLD_ID
 	const resolvedInput =
-		typeof householdId === 'string' ? (input as z.infer<typeof createListBodySchema>) : householdId
+		typeof householdId === 'string'
+			? (input as z.infer<typeof createListBodySchema>)
+			: householdId
 	const resolvedUserId = typeof householdId === 'string' ? Number(userId) : Number(input)
 	const audit = createAudit(resolvedUserId)
 	const position = await getNextListPosition(resolvedHouseholdId)
@@ -152,10 +155,20 @@ export async function getShoppingList(householdId: string, listId?: string) {
 	const rows = await db
 		.select({
 			listItem: schema.listItems,
-			item: schema.items
+			item: schema.items,
+			category: schema.itemCategories,
+			categoryPosition: schema.listCategoryPositions.position
 		})
 		.from(schema.listItems)
 		.innerJoin(schema.items, eq(schema.items.id, schema.listItems.itemId))
+		.leftJoin(schema.itemCategories, eq(schema.itemCategories.id, schema.listItems.categoryId))
+		.leftJoin(
+			schema.listCategoryPositions,
+			and(
+				eq(schema.listCategoryPositions.listId, schema.listItems.listId),
+				eq(schema.listCategoryPositions.categoryId, schema.listItems.categoryId)
+			)
+		)
 		.where(
 			and(
 				eq(schema.listItems.listId, resolvedListId),
@@ -163,12 +176,20 @@ export async function getShoppingList(householdId: string, listId?: string) {
 				inArray(schema.listItems.status, ['unchecked', 'checked'])
 			)
 		)
-		.orderBy(asc(schema.listItems.position), asc(schema.listItems.createdAt))
+		.orderBy(
+			asc(sql`case when ${schema.listItems.categoryId} is null then 1 else 0 end`),
+			asc(schema.listCategoryPositions.position),
+			asc(schema.itemCategories.name),
+			asc(schema.listItems.position),
+			asc(schema.listItems.createdAt)
+		)
 
 	return {
 		list: {
 			...serializeList(list),
-			items: rows.map((row) => serializeListItem(row.listItem, row.item))
+			items: rows.map((row) =>
+				serializeListItem(row.listItem, row.item, row.category, row.categoryPosition)
+			)
 		}
 	}
 }
@@ -362,14 +383,27 @@ export async function addListItem(
 ) {
 	await findListOrThrow(listId, householdId)
 	const audit = createAudit(userId)
+	const inputCategory = input.categoryId
+		? await findCategoryOrThrow(householdId, input.categoryId)
+		: undefined
 	const item = await findOrCreateItem({
 		householdId,
 		name: input.name,
 		defaultUnit: input.unit ?? null,
+		categoryId: inputCategory?.id ?? null,
 		auditUserId: userId
 	})
 	await applyAssignedUnitToItem(item, input.unit, userId)
+	await applyAssignedCategoryToItem(item, inputCategory?.id, userId)
 	const position = await getNextListItemPosition(listId, householdId)
+	const categoryId = inputCategory?.id ?? item.categoryId ?? null
+	const category =
+		inputCategory ?? (categoryId ? await findCategoryOrThrow(householdId, categoryId) : null)
+
+	if (categoryId) {
+		await ensureListCategoryPosition(householdId, listId, categoryId, userId)
+	}
+
 	const [listItem] = await db
 		.insert(schema.listItems)
 		.values({
@@ -379,6 +413,7 @@ export async function addListItem(
 			itemId: item.id,
 			status: 'unchecked',
 			position,
+			categoryId,
 			amount: input.amount ?? null,
 			unit: input.unit ?? null,
 			note: input.note ?? null,
@@ -395,7 +430,73 @@ export async function addListItem(
 		})
 		.returning()
 
-	return { listItem: serializeListItem(assertRow(listItem), item) }
+	return { listItem: serializeListItem(assertRow(listItem), item, category) }
+}
+
+/**
+ * Reorders visible list items and assigns them to category groups.
+ *
+ * @param householdId - Household id.
+ * @param listId - List id.
+ * @param groups - Ordered category groups with ordered list-item ids.
+ * @param userId - Audit user id.
+ * @returns Updated item positions and category ids.
+ */
+export async function reorderCategorizedListItems(
+	householdId: string,
+	listId: string,
+	groups: Array<{ categoryId: string | null; orderedIds: string[] }>,
+	userId: number
+) {
+	await findListOrThrow(listId, householdId)
+	const audit = createAudit(userId)
+	const updated = []
+	let position = 0
+
+	for (const [categoryPosition, group] of groups.entries()) {
+		if (group.categoryId) {
+			await findCategoryOrThrow(householdId, group.categoryId)
+			await ensureListCategoryPosition(
+				householdId,
+				listId,
+				group.categoryId,
+				userId,
+				categoryPosition
+			)
+		}
+
+		for (const id of group.orderedIds) {
+			const [row] = await db
+				.update(schema.listItems)
+				.set({
+					categoryId: group.categoryId,
+					position,
+					updatedAt: audit.now,
+					updatedByUserId: audit.userId
+				})
+				.where(
+					and(
+						eq(schema.listItems.id, id),
+						eq(schema.listItems.listId, listId),
+						eq(schema.listItems.householdId, householdId),
+						inArray(schema.listItems.status, ['unchecked', 'checked'])
+					)
+				)
+				.returning({
+					id: schema.listItems.id,
+					categoryId: schema.listItems.categoryId,
+					position: schema.listItems.position
+				})
+
+			position += 1
+
+			if (row) {
+				updated.push(row)
+			}
+		}
+	}
+
+	return { items: updated }
 }
 
 /**
@@ -467,6 +568,9 @@ export async function updateListItem(
 	const audit = createAudit(userId)
 	const nextListId = input.listId ?? existingListItem.listId
 	const isMovingList = nextListId !== existingListItem.listId
+	const nextCategoryId =
+		input.categoryId === undefined ? existingListItem.categoryId : input.categoryId
+	const category = nextCategoryId ? await findCategoryOrThrow(householdId, nextCategoryId) : null
 
 	if (isMovingList) {
 		await findListOrThrow(nextListId, householdId)
@@ -492,6 +596,10 @@ export async function updateListItem(
 
 	await applyAssignedUnitToItem(item, input.unit, userId)
 
+	if (nextCategoryId) {
+		await ensureListCategoryPosition(householdId, nextListId, nextCategoryId, userId)
+	}
+
 	const [row] = await db
 		.update(schema.listItems)
 		.set({
@@ -502,18 +610,90 @@ export async function updateListItem(
 						position: await getNextListItemPosition(nextListId, householdId)
 					}
 				: {}),
+			...(input.categoryId === undefined ? {} : { categoryId: input.categoryId }),
 			...(input.amount === undefined ? {} : { amount: input.amount }),
 			...(input.unit === undefined ? {} : { unit: input.unit }),
 			...(input.note === undefined ? {} : { note: input.note }),
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
+		.where(
+			and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId))
+		)
 		.returning()
 
 	return {
-		listItem: serializeListItem(assertRow(row), item)
+		listItem: serializeListItem(assertRow(row), item, category)
 	}
+}
+
+async function ensureListCategoryPosition(
+	householdId: string,
+	listId: string,
+	categoryId: string,
+	userId: number,
+	position?: number
+) {
+	const [existing] = await db
+		.select()
+		.from(schema.listCategoryPositions)
+		.where(
+			and(
+				eq(schema.listCategoryPositions.householdId, householdId),
+				eq(schema.listCategoryPositions.listId, listId),
+				eq(schema.listCategoryPositions.categoryId, categoryId)
+			)
+		)
+		.limit(1)
+
+	if (existing) {
+		if (position === undefined || existing.position === position) {
+			return existing
+		}
+
+		const audit = createAudit(userId)
+		const [updated] = await db
+			.update(schema.listCategoryPositions)
+			.set({
+				position,
+				updatedAt: audit.now,
+				updatedByUserId: audit.userId
+			})
+			.where(eq(schema.listCategoryPositions.id, existing.id))
+			.returning()
+
+		return assertRow(updated)
+	}
+
+	const audit = createAudit(userId)
+	const [last] =
+		position === undefined
+			? await db
+					.select({ position: schema.listCategoryPositions.position })
+					.from(schema.listCategoryPositions)
+					.where(
+						and(
+							eq(schema.listCategoryPositions.householdId, householdId),
+							eq(schema.listCategoryPositions.listId, listId)
+						)
+					)
+					.orderBy(sql`${schema.listCategoryPositions.position} desc`)
+					.limit(1)
+			: []
+
+	const [created] = await db
+		.insert(schema.listCategoryPositions)
+		.values({
+			id: createDomainId(),
+			householdId,
+			listId,
+			categoryId,
+			position: position ?? (last?.position ?? -1) + 1,
+			...auditFields(audit)
+		})
+		.returning()
+
+	return assertRow(created)
 }
 
 /**
@@ -536,7 +716,9 @@ export async function checkListItem(householdId: string, listItemId: string, use
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
+		.where(
+			and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId))
+		)
 		.returning()
 
 	const listItem = assertRow(row)
@@ -563,7 +745,9 @@ export async function uncheckListItem(householdId: string, listItemId: string, u
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
+		.where(
+			and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId))
+		)
 		.returning()
 
 	const listItem = assertRow(row)
@@ -590,7 +774,9 @@ export async function deleteListItem(householdId: string, listItemId: string, us
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})
-		.where(and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId)))
+		.where(
+			and(eq(schema.listItems.id, listItemId), eq(schema.listItems.householdId, householdId))
+		)
 		.returning()
 
 	const listItem = assertRow(row)

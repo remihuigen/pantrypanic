@@ -27,6 +27,7 @@ const amountLabel = computed(() =>
 				.join(' ')
 		: ''
 )
+const hasNote = computed(() => Boolean(props.item.note?.trim()))
 const swipeProgress = computed(() => Math.abs(swipeOffsetX.value) / SWIPE_ACTION_DISTANCE)
 const swipeColor = computed(() => (props.item.status === 'checked' ? '59 130 246' : '34 197 94'))
 const cardStyle = computed(() => {
@@ -156,6 +157,12 @@ useGesture(
 				<span class="text-muted shrink-0 text-xs">
 					{{ amountLabel }}
 				</span>
+				<UIcon
+					v-if="hasNote"
+					name="i-lucide-info"
+					class="text-muted size-3.5 shrink-0"
+					aria-label="Heeft notitie"
+				/>
 			</div>
 		</UCard>
 	</div>

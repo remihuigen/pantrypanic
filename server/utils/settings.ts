@@ -1,6 +1,7 @@
-import { seedInitialDomainData } from '#server/utils/domains/seed'
-import { normalizeItemName } from '#server/utils/domains/items'
 import { optional, throwApiError } from '#server/utils/api-core'
+import { findCategoryOrThrow } from '#server/utils/domains/categories'
+import { normalizeItemName } from '#server/utils/domains/items'
+import { seedInitialDomainData } from '#server/utils/domains/seed'
 import { and, asc, desc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
 import { z } from 'zod'
@@ -36,10 +37,14 @@ export const itemListQuerySchema = z.strictObject({
 export const itemUpdateBodySchema = z
 	.strictObject({
 		name: z.string().trim().min(1).max(120).optional(),
-		defaultUnit: z.string().trim().max(40).nullable().optional()
+		defaultUnit: z.string().trim().max(40).nullable().optional(),
+		categoryId: z.string().trim().min(1).max(200).nullable().optional()
 	})
 	.refine(
-		(value) => value.name !== undefined || value.defaultUnit !== undefined,
+		(value) =>
+			value.name !== undefined ||
+			value.defaultUnit !== undefined ||
+			value.categoryId !== undefined,
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
 
@@ -120,7 +125,10 @@ export async function getProfile(userId: number) {
  * @param input - Validated profile patch.
  * @returns Serialized profile payload.
  */
-export async function updateProfile(userId: number, input: z.infer<typeof profileUpdateBodySchema>) {
+export async function updateProfile(
+	userId: number,
+	input: z.infer<typeof profileUpdateBodySchema>
+) {
 	if (input.email !== undefined) {
 		const [existing] = await db
 			.select({ id: schema.users.id })
@@ -143,7 +151,9 @@ export async function updateProfile(userId: number, input: z.infer<typeof profil
 			...(input.name === undefined ? {} : { name: input.name }),
 			...(input.email === undefined ? {} : { email: input.email }),
 			...(input.avatarPathname === undefined ? {} : { avatarPathname: input.avatarPathname }),
-			...(input.password === undefined ? {} : { password: await hashPassword(input.password) })
+			...(input.password === undefined
+				? {}
+				: { password: await hashPassword(input.password) })
 		})
 		.where(eq(schema.users.id, userId))
 		.returning()
@@ -162,11 +172,18 @@ export async function updateProfile(userId: number, input: z.infer<typeof profil
  * @param query - Optional item search query.
  * @returns Item vault rows with usage counts.
  */
-export async function listAllItems(householdId: string, query: z.infer<typeof itemListQuerySchema>) {
+export async function listAllItems(
+	householdId: string,
+	query: z.infer<typeof itemListQuerySchema>
+) {
 	const normalized = query.q ? `%${normalizeItemName(query.q)}%` : undefined
 	const rows = await db
-		.select()
+		.select({
+			item: schema.items,
+			category: schema.itemCategories
+		})
 		.from(schema.items)
+		.leftJoin(schema.itemCategories, eq(schema.itemCategories.id, schema.items.categoryId))
 		.where(
 			and(
 				eq(schema.items.householdId, householdId),
@@ -183,10 +200,10 @@ export async function listAllItems(householdId: string, query: z.infer<typeof it
 	const usage = await getItemUsageCounts(householdId)
 
 	return {
-		items: rows.map((item) => ({
-			...serializeSettingsItem(item),
-			usageCount: usage.get(item.id)?.total ?? 0,
-			activeListItemUsageCount: usage.get(item.id)?.activeListItems ?? 0
+		items: rows.map((row) => ({
+			...serializeSettingsItem(row.item, row.category),
+			usageCount: usage.get(row.item.id)?.total ?? 0,
+			activeListItemUsageCount: usage.get(row.item.id)?.activeListItems ?? 0
 		}))
 	}
 }
@@ -207,6 +224,8 @@ export async function updateCanonicalItem(
 	userId: number
 ) {
 	const existing = await findItemOrThrow(householdId, itemId)
+	const nextCategoryId = input.categoryId === undefined ? existing.categoryId : input.categoryId
+	const category = nextCategoryId ? await findCategoryOrThrow(householdId, nextCategoryId) : null
 	const normalizedName =
 		input.name === undefined ? existing.normalizedName : normalizeItemName(input.name)
 
@@ -237,13 +256,14 @@ export async function updateCanonicalItem(
 		.set({
 			...(input.name === undefined ? {} : { name: input.name, normalizedName }),
 			...(input.defaultUnit === undefined ? {} : { defaultUnit: input.defaultUnit }),
+			...(input.categoryId === undefined ? {} : { categoryId: nextCategoryId }),
 			updatedAt: Date.now(),
 			updatedByUserId: userId
 		})
 		.where(and(eq(schema.items.id, itemId), eq(schema.items.householdId, householdId)))
 		.returning()
 
-	return { item: serializeSettingsItem(assertRow(item)) }
+	return { item: serializeSettingsItem(assertRow(item), category) }
 }
 
 /**
@@ -273,11 +293,21 @@ export async function mergeCanonicalItem(
 	await db
 		.update(schema.listItems)
 		.set({ itemId: targetItemId })
-		.where(and(eq(schema.listItems.householdId, householdId), eq(schema.listItems.itemId, sourceItemId)))
+		.where(
+			and(
+				eq(schema.listItems.householdId, householdId),
+				eq(schema.listItems.itemId, sourceItemId)
+			)
+		)
 	await db
 		.update(schema.recipeItems)
 		.set({ itemId: targetItemId })
-		.where(and(eq(schema.recipeItems.householdId, householdId), eq(schema.recipeItems.itemId, sourceItemId)))
+		.where(
+			and(
+				eq(schema.recipeItems.householdId, householdId),
+				eq(schema.recipeItems.itemId, sourceItemId)
+			)
+		)
 	await db
 		.update(schema.mealPlannerDayItems)
 		.set({ itemId: targetItemId })
@@ -307,11 +337,16 @@ export async function deleteCanonicalItem(householdId: string, itemId: string) {
 
 	await db
 		.delete(schema.listItems)
-		.where(and(eq(schema.listItems.householdId, householdId), eq(schema.listItems.itemId, itemId)))
+		.where(
+			and(eq(schema.listItems.householdId, householdId), eq(schema.listItems.itemId, itemId))
+		)
 	await db
 		.delete(schema.recipeItems)
 		.where(
-			and(eq(schema.recipeItems.householdId, householdId), eq(schema.recipeItems.itemId, itemId))
+			and(
+				eq(schema.recipeItems.householdId, householdId),
+				eq(schema.recipeItems.itemId, itemId)
+			)
 		)
 	await db
 		.delete(schema.mealPlannerDayItems)
@@ -347,10 +382,16 @@ export async function clearHouseholdData(householdId: string, userId: number) {
 	await db
 		.delete(schema.mealPlannerDayItems)
 		.where(eq(schema.mealPlannerDayItems.householdId, householdId))
-	await db.delete(schema.mealPlannerDays).where(eq(schema.mealPlannerDays.householdId, householdId))
+	await db
+		.delete(schema.listCategoryPositions)
+		.where(eq(schema.listCategoryPositions.householdId, householdId))
+	await db
+		.delete(schema.mealPlannerDays)
+		.where(eq(schema.mealPlannerDays.householdId, householdId))
 	await db.delete(schema.recipes).where(eq(schema.recipes.householdId, householdId))
 	await db.delete(schema.lists).where(eq(schema.lists.householdId, householdId))
 	await db.delete(schema.items).where(eq(schema.items.householdId, householdId))
+	await db.delete(schema.itemCategories).where(eq(schema.itemCategories.householdId, householdId))
 
 	await seedInitialDomainData(userId, householdId)
 
@@ -379,6 +420,11 @@ export async function getHouseholdStats(householdId: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(schema.listItems)
 		.where(eq(schema.listItems.householdId, householdId))
+
+	const [categories] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(schema.itemCategories)
+		.where(eq(schema.itemCategories.householdId, householdId))
 
 	const mostUsedItems = await db
 		.select({
@@ -409,6 +455,7 @@ export async function getHouseholdStats(householdId: string) {
 			totals: {
 				lists: Number(totals?.lists ?? 0),
 				items: Number(totals?.items ?? 0),
+				categories: Number(categories?.count ?? 0),
 				recipes: Number(totals?.recipes ?? 0),
 				listItems: Number(listItems?.count ?? 0)
 			},
@@ -438,12 +485,17 @@ function serializeUserProfile(user: {
 	}
 }
 
-function serializeSettingsItem(item: typeof schema.items.$inferSelect) {
+function serializeSettingsItem(
+	item: typeof schema.items.$inferSelect,
+	category?: typeof schema.itemCategories.$inferSelect | null
+) {
 	return {
 		id: item.id,
 		name: item.name,
 		normalizedName: item.normalizedName,
 		defaultUnit: optional(item.defaultUnit),
+		categoryId: optional(item.categoryId),
+		categoryName: optional(category?.name ?? null),
 		updatedAt: item.updatedAt
 	}
 }
@@ -521,7 +573,9 @@ async function countItemReferences(householdId: string, itemId: string) {
 	const [listItems] = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(schema.listItems)
-		.where(and(eq(schema.listItems.householdId, householdId), eq(schema.listItems.itemId, itemId)))
+		.where(
+			and(eq(schema.listItems.householdId, householdId), eq(schema.listItems.itemId, itemId))
+		)
 	const [activeListItems] = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(schema.listItems)
@@ -536,7 +590,10 @@ async function countItemReferences(householdId: string, itemId: string) {
 		.select({ count: sql<number>`count(*)` })
 		.from(schema.recipeItems)
 		.where(
-			and(eq(schema.recipeItems.householdId, householdId), eq(schema.recipeItems.itemId, itemId))
+			and(
+				eq(schema.recipeItems.householdId, householdId),
+				eq(schema.recipeItems.itemId, itemId)
+			)
 		)
 	const [dayItems] = await db
 		.select({ count: sql<number>`count(*)` })

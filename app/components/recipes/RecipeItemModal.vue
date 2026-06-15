@@ -6,9 +6,15 @@ import { createOccurrenceBodySchema } from '#shared/utils/schemas/domain'
 
 type RecipeItemFormState = {
 	name: string
-	amount?: number
+	amount?: number | null
 	unit?: string
 	note?: string
+}
+
+type NormalizedRecipeItemFormState = {
+	amount: number | null
+	unit: string | null
+	note: string | null
 }
 
 const props = defineProps<{
@@ -32,6 +38,9 @@ const state = reactive<RecipeItemFormState>({
 	unit: undefined,
 	note: undefined
 })
+const initialFormValue = shallowRef<NormalizedRecipeItemFormState>(
+	normalizeRecipeItemFormValue(state)
+)
 
 const isEditing = computed(() => Boolean(props.item))
 const modalTitle = computed(() =>
@@ -44,7 +53,14 @@ const modalDescription = computed(() =>
 )
 const submitLabel = computed(() => (isEditing.value ? 'Opslaan' : 'Toevoegen'))
 const submitIcon = computed(() => (isEditing.value ? 'i-lucide-save' : 'i-lucide-plus'))
-const canSubmit = computed(() => state.name.trim().length > 0 && !recipesStore.isSaving)
+const currentFormValue = computed(() => normalizeRecipeItemFormValue(state))
+const { isDirty, resetInitialValue } = useFormState(initialFormValue, currentFormValue)
+const canSubmit = computed(
+	() =>
+		state.name.trim().length > 0 &&
+		(!isEditing.value || isDirty.value) &&
+		!recipesStore.isSaving
+)
 
 watch(
 	() => [isOpen.value, props.item?.id] as const,
@@ -73,7 +89,7 @@ async function submitItem(event: FormSubmitEvent<RecipeItemFormState>) {
 		} else {
 			await recipesStore.addRecipeItem(props.recipeId, {
 				name: event.data.name.trim(),
-				amount: event.data.amount,
+				amount: event.data.amount ?? undefined,
 				unit: normalizeOptionalText(event.data.unit),
 				note: normalizeOptionalText(event.data.note)
 			})
@@ -147,6 +163,8 @@ function syncState() {
 		unit: props.item?.unit,
 		note: props.item?.note
 	})
+	initialFormValue.value = normalizeRecipeItemFormValue(state)
+	resetInitialValue(initialFormValue)
 }
 
 function normalizeOptionalText(value: string | undefined) {
@@ -159,6 +177,14 @@ function normalizeNullableText(value: string | undefined) {
 	const normalized = value?.trim()
 
 	return normalized ? normalized : null
+}
+
+function normalizeRecipeItemFormValue(value: RecipeItemFormState): NormalizedRecipeItemFormState {
+	return {
+		amount: value.amount ?? null,
+		unit: normalizeNullableText(value.unit),
+		note: normalizeNullableText(value.note)
+	}
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -192,12 +218,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 						v-model="state.name"
 						placeholder="Tomaten"
 						:disabled="isEditing"
-						autofocus
+						:autofocus="!isEditing"
 					/>
 				</UFormField>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					<UFormField label="Aantal" name="amount">
-						<UInputNumber v-model="state.amount" :min="0" />
+						<UInputNumber v-model="state.amount" :min="0.5" :step="0.5" />
 					</UFormField>
 					<UFormField label="Eenheid" name="unit">
 						<UInput v-model="state.unit" placeholder="gram" />

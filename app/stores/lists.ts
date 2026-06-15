@@ -1,8 +1,10 @@
 import type { AppError } from '~~/shared/types/api'
 import type {
 	CanonicalItem,
+	CreateCategoryInput,
 	CreateListInput,
 	EntityMap,
+	ItemCategory,
 	ItemSuggestion,
 	ListItem,
 	ListStatus,
@@ -39,6 +41,8 @@ export const useListsStore = defineStore(
 		const listItemsById = ref<EntityMap<ListItem>>({})
 		const listItemIdsByListId = ref<Record<string, string[]>>({})
 		const itemsById = ref<EntityMap<CanonicalItem>>({})
+		const categoriesById = ref<EntityMap<ItemCategory>>({})
+		const categoryIds = ref<string[]>([])
 		const suggestionItemIds = ref<string[]>([])
 		const activeListId = ref<string | null>(null)
 
@@ -69,6 +73,11 @@ export const useListsStore = defineStore(
 					}
 				]
 			})
+		)
+		const categories = computed(() =>
+			categoryIds.value
+				.map((categoryId) => categoriesById.value[categoryId])
+				.filter((category): category is ItemCategory => Boolean(category))
 		)
 
 		function listById(listId: string) {
@@ -103,6 +112,26 @@ export const useListsStore = defineStore(
 				...itemsById.value[item.id],
 				...item
 			}
+
+			if (item.categoryId && item.categoryName) {
+				upsertCategory({ id: item.categoryId, name: item.categoryName })
+			}
+		}
+
+		function upsertCategory(category: ItemCategory) {
+			categoriesById.value[category.id] = {
+				...categoriesById.value[category.id],
+				...category
+			}
+
+			if (!categoryIds.value.includes(category.id)) {
+				categoryIds.value = [...categoryIds.value, category.id].sort((leftId, rightId) =>
+					(categoriesById.value[leftId]?.name ?? '').localeCompare(
+						categoriesById.value[rightId]?.name ?? '',
+						'nl-NL'
+					)
+				)
+			}
 		}
 
 		function upsertListItem(listItem: ListItem) {
@@ -119,7 +148,9 @@ export const useListsStore = defineStore(
 
 			upsertCanonicalItem({
 				id: listItem.itemId,
-				name: listItem.name
+				name: listItem.name,
+				categoryId: listItem.categoryId,
+				categoryName: listItem.categoryName
 			})
 		}
 
@@ -429,6 +460,10 @@ export const useListsStore = defineStore(
 				listId,
 				itemId: tempItemId,
 				name: input.name,
+				categoryId: input.categoryId,
+				categoryName: input.categoryId
+					? categoriesById.value[input.categoryId]?.name
+					: undefined,
 				amount: input.amount,
 				unit: input.unit,
 				note: input.note,
@@ -437,7 +472,14 @@ export const useListsStore = defineStore(
 				sourceType: 'manual'
 			}
 
-			upsertCanonicalItem({ id: tempItemId, name: input.name })
+			upsertCanonicalItem({
+				id: tempItemId,
+				name: input.name,
+				categoryId: input.categoryId,
+				categoryName: input.categoryId
+					? categoriesById.value[input.categoryId]?.name
+					: undefined
+			})
 			upsertListItem(optimisticItem)
 
 			try {
@@ -484,6 +526,80 @@ export const useListsStore = defineStore(
 
 				return data.listItem
 			} catch (err) {
+				throw setStoreError(err)
+			}
+		}
+
+		async function reorderCategorizedListItems(
+			listId: string,
+			groups: Array<{ categoryId: string | null; orderedIds: string[] }>
+		) {
+			error.value = null
+
+			const previousIds = [...(listItemIdsByListId.value[listId] ?? [])]
+			const previousItems = Object.fromEntries(
+				previousIds.map((itemId) => [itemId, listItemsById.value[itemId]])
+			)
+			const orderedIds = groups.flatMap((group) => group.orderedIds)
+
+			listItemIdsByListId.value[listId] = orderedIds
+
+			let position = 0
+			for (const group of groups) {
+				for (const itemId of group.orderedIds) {
+					const listItem = listItemsById.value[itemId]
+
+					if (!listItem) {
+						continue
+					}
+
+					listItemsById.value[itemId] = {
+						...listItem,
+						categoryId: group.categoryId ?? undefined,
+						categoryName: group.categoryId
+							? categoriesById.value[group.categoryId]?.name
+							: undefined,
+						position
+					}
+					position += 1
+				}
+			}
+
+			try {
+				const data = await apiFetch<{
+					items: Array<{ id: string; categoryId?: string; position: number }>
+				}>(`/api/lists/${listId}/items/reorder`, {
+					method: 'POST',
+					body: { groups }
+				})
+
+				for (const updated of data.items) {
+					const current = listItemsById.value[updated.id]
+
+					if (!current) {
+						continue
+					}
+
+					listItemsById.value[updated.id] = {
+						...current,
+						categoryId: updated.categoryId,
+						categoryName: updated.categoryId
+							? categoriesById.value[updated.categoryId]?.name
+							: undefined,
+						position: updated.position
+					}
+				}
+
+				return data.items
+			} catch (err) {
+				listItemIdsByListId.value[listId] = previousIds
+
+				for (const [itemId, snapshot] of Object.entries(previousItems)) {
+					if (snapshot) {
+						listItemsById.value[itemId] = snapshot
+					}
+				}
+
 				throw setStoreError(err)
 			}
 		}
@@ -848,6 +964,52 @@ export const useListsStore = defineStore(
 			}
 		}
 
+		async function fetchCategories(query?: string) {
+			error.value = null
+
+			try {
+				const params = new URLSearchParams()
+
+				if (query?.trim()) {
+					params.set('q', query.trim())
+				}
+
+				const data = await apiFetch<{ categories: ItemCategory[] }>(
+					`/api/settings/categories${params.toString() ? `?${params.toString()}` : ''}`
+				)
+
+				for (const category of data.categories) {
+					upsertCategory(category)
+				}
+
+				categoryIds.value = data.categories.map((category) => category.id)
+
+				return data.categories
+			} catch (err) {
+				throw setStoreError(err)
+			}
+		}
+
+		async function createCategory(input: CreateCategoryInput) {
+			error.value = null
+
+			try {
+				const data = await apiFetch<{ category: ItemCategory }>(
+					'/api/settings/categories',
+					{
+						method: 'POST',
+						body: input
+					}
+				)
+
+				upsertCategory(data.category)
+
+				return data.category
+			} catch (err) {
+				throw setStoreError(err)
+			}
+		}
+
 		async function openList(listId: string) {
 			activeListId.value = listId
 			await fetchList(listId)
@@ -884,6 +1046,8 @@ export const useListsStore = defineStore(
 			listItemsById,
 			listItemIdsByListId,
 			itemsById,
+			categoriesById,
+			categoryIds,
 			suggestionItemIds,
 			activeListId,
 			isLoading,
@@ -891,6 +1055,7 @@ export const useListsStore = defineStore(
 			error,
 			activeLists,
 			listSuggestions,
+			categories,
 			listCount,
 			listById,
 			listItemsForList,
@@ -907,11 +1072,14 @@ export const useListsStore = defineStore(
 			uncheckListItem,
 			deleteListItem,
 			reorderListItems,
+			reorderCategorizedListItems,
 			clearList,
 			clearCheckedListItems,
 			addRecipeToList,
 			fetchSuggestions,
 			searchItems,
+			fetchCategories,
+			createCategory,
 			openList,
 			closeList,
 			startOverviewRefresh,
@@ -930,6 +1098,8 @@ export const useListsStore = defineStore(
 				'listItemsById',
 				'listItemIdsByListId',
 				'itemsById',
+				'categoriesById',
+				'categoryIds',
 				'suggestionItemIds',
 				'activeListId'
 			]

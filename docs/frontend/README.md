@@ -15,6 +15,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - `shared/utils/schemas/domain.ts`: shared Zod schemas for request contracts and frontend-consumed
   domain types.
 - `app/utils/api-client.ts`: unwraps API success/error envelopes and normalizes errors.
+- `app/composables/useFormState.ts`: reusable normalized dirty-state helper for forms that should
+  avoid submit requests when edit payloads have not changed.
 - `app/composables/useStoreRefresh.ts`: the single route-aware refresh scheduler plus the shared
   interval primitive. Refresh timing comes from runtime config and the household-settings override
   loaded by the settings store.
@@ -68,6 +70,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 
 - For API submission failures in forms, show errors via toast notifications (`useToast`) instead of
   inline `UAlert` messages.
+- Edit forms that send update requests should gate submits with `useFormState()` so unchanged
+  normalized payloads do not call the API.
 - Keep inline field validation in `UForm` / `UFormField` for schema errors; reserve toast errors for
   request/response failures after submit.
 - Match auth flow behavior (`app/pages/(auth)/login.vue`):

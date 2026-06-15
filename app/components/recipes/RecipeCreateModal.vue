@@ -9,6 +9,14 @@ type RecipeFormState = Omit<CreateRecipeInput, 'items'> & {
 	items: []
 }
 
+type NormalizedRecipeFormState = {
+	name: string
+	description: string | null
+	servings: number | null
+	sourceUrl: string | null
+	notes: string | null
+}
+
 const props = defineProps<{
 	recipeId?: string
 }>()
@@ -23,7 +31,9 @@ const emit = defineEmits<{
 const recipesStore = useRecipesStore()
 const toast = useToast()
 const recipeFormSchema = createRecipeBodySchema.extend({
-	sourceUrl: z.union([z.literal(''), z.url({ error: 'Bron moet een geldige URL zijn.' })]).optional()
+	sourceUrl: z
+		.union([z.literal(''), z.url({ error: 'Bron moet een geldige URL zijn.' })])
+		.optional()
 })
 type RecipeFormData = z.output<typeof recipeFormSchema>
 const state = reactive<RecipeFormState>({
@@ -34,6 +44,7 @@ const state = reactive<RecipeFormState>({
 	notes: undefined,
 	items: []
 })
+const initialFormValue = shallowRef<NormalizedRecipeFormState>(normalizeRecipeFormValue(state))
 
 const isEditing = computed(() => Boolean(props.recipeId))
 const modalTitle = computed(() => (isEditing.value ? 'Recept wijzigen' : 'Nieuw recept'))
@@ -42,7 +53,14 @@ const modalDescription = computed(() =>
 )
 const submitLabel = computed(() => (isEditing.value ? 'Opslaan' : 'Aanmaken'))
 const submitIcon = computed(() => (isEditing.value ? 'i-lucide-save' : 'i-lucide-plus'))
-const canSubmit = computed(() => state.name.trim().length > 0 && !recipesStore.isSaving)
+const currentFormValue = computed(() => normalizeRecipeFormValue(state))
+const { isDirty, resetInitialValue } = useFormState(initialFormValue, currentFormValue)
+const canSubmit = computed(
+	() =>
+		state.name.trim().length > 0 &&
+		(!isEditing.value || isDirty.value) &&
+		!recipesStore.isSaving
+)
 
 watch(
 	() => [isOpen.value, props.recipeId] as const,
@@ -57,6 +75,10 @@ watch(
 )
 
 async function submitRecipe(event: FormSubmitEvent<RecipeFormData>) {
+	if (!canSubmit.value) {
+		return
+	}
+
 	try {
 		if (props.recipeId) {
 			await updateRecipe(props.recipeId, event.data)
@@ -125,6 +147,8 @@ function syncState() {
 		notes: recipe?.notes,
 		items: []
 	})
+	initialFormValue.value = normalizeRecipeFormValue(state)
+	resetInitialValue(initialFormValue)
 }
 
 function resetState() {
@@ -136,6 +160,8 @@ function resetState() {
 		notes: undefined,
 		items: []
 	})
+	initialFormValue.value = normalizeRecipeFormValue(state)
+	resetInitialValue(initialFormValue)
 }
 
 function normalizeOptionalText(value: string | undefined) {
@@ -148,6 +174,16 @@ function normalizeNullableText(value: string | undefined) {
 	const normalized = value?.trim()
 
 	return normalized ? normalized : null
+}
+
+function normalizeRecipeFormValue(value: RecipeFormState): NormalizedRecipeFormState {
+	return {
+		name: value.name.trim(),
+		description: normalizeNullableText(value.description),
+		servings: value.servings ?? null,
+		sourceUrl: normalizeNullableText(value.sourceUrl),
+		notes: normalizeNullableText(value.notes)
+	}
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -177,7 +213,11 @@ function getErrorMessage(error: unknown, fallback: string) {
 				@submit="submitRecipe"
 			>
 				<UFormField label="Naam" name="name" required>
-					<UInput v-model="state.name" placeholder="Pasta pesto" autofocus />
+					<UInput
+						v-model="state.name"
+						placeholder="Pasta pesto"
+						:autofocus="!isEditing"
+					/>
 				</UFormField>
 				<UFormField label="Beschrijving" name="description">
 					<UTextarea
