@@ -26,7 +26,7 @@ const leadingIcon = computed(() =>
 		/>
 
 		<NuxtLink :to="`/app/lists/${props.listId}`" class="block pe-10 pt-6 pb-1">
-			<p class="text-highlighted text-base leading-tight font-semibold">
+			<p class="text-highlighted text-wrap break-words text-base leading-tight font-semibold">
 				{{ props.name }}
 			</p>
 			<p class="text-muted mt-2 text-sm">{{ props.itemCount }} {{ itemLabel }}</p>

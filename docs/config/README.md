@@ -70,6 +70,11 @@ Keep `/login` and `/logout` outside these route rules so authentication pages re
 server-renderable. Future marketing routes should also stay outside `/app` and can opt into
 prerendering with their own route rules.
 
+The PWA service worker must not handle `/app` navigations. `nuxt.config.ts` adds
+`/^\/app(?:\/.*)?$/` to `pwa.workbox.navigateFallbackDenylist` so Cloudflare/Nitro remains the
+source of truth for SSR app routes instead of Workbox serving the `/app` entry document for deep
+links.
+
 ## Database Migrations
 
 Production D1 builds set `applyMigrationsDuringBuild: false` in `nuxt.config.ts`.

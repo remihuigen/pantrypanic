@@ -219,7 +219,7 @@ export default defineNuxtConfig({
 
 		workbox: {
 			globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,json}'],
-			navigateFallbackDenylist: [/^\/api/]
+			navigateFallbackDenylist: [/^\/api/, /^\/app(?:\/.*)?$/]
 		},
 
 		devOptions: {

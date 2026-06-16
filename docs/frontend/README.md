@@ -27,8 +27,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 
 - Product app pages live under `/app`, backed by files in `app/pages/app/**`.
 - Current app routes include `/app/lists`, `/app/lists/:id`, `/app/recipes`, `/app/recipes/:id`,
-  `/app/meal-planner`, `/app/settings`, `/app/settings/household`, `/app/settings/item-vault`, and
-  `/app/settings/stats`.
+  `/app/meal-planner`, `/app/settings`, `/app/settings/household`, `/app/settings/item-vault`,
+  `/app/settings/categories`, and `/app/settings/stats`.
 - `/` serves the public landing page. `/app` redirects to `/app/lists`.
 - `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**` so product app pages
   render through Nuxt's normal SSR path.
@@ -45,6 +45,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   browser `beforeinstallprompt` event and exposes it through `$pwa.showInstallPrompt`.
 - PWA install and update toasts are handled in `app/app.vue` so prompt state is observed globally,
   independent of the active route layout.
+- Workbox navigation fallback is explicitly denied for `/app/**`, so installed PWAs still fetch app
+  deep links from the SSR worker instead of replaying the `/app` entry route.
 - Browser support for native install prompts is platform-dependent. Browsers that do not emit
   `beforeinstallprompt` still require their own manual install UI.
 

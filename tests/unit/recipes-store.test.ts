@@ -141,8 +141,7 @@ describe('useRecipesStore', () => {
 			name: 'Oud',
 			description: 'oud',
 			servings: 2,
-			sourceUrl: 'https://example.com/oud',
-			notes: 'oude notitie'
+			sourceUrl: 'https://example.com/oud'
 		})
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
 			recipe: { id: 'recipe-1', updatedAt: 9 }
@@ -152,14 +151,12 @@ describe('useRecipesStore', () => {
 			name: 'Nieuw',
 			description: null,
 			servings: 4,
-			sourceUrl: null,
-			notes: 'nieuwe notitie'
+			sourceUrl: null
 		})
 
 		expect(store.recipesById['recipe-1']).toMatchObject({
 			name: 'Nieuw',
 			servings: 4,
-			notes: 'nieuwe notitie',
 			updatedAt: 9
 		})
 		expect(store.recipesById['recipe-1']?.description).toBeUndefined()
@@ -542,7 +539,6 @@ function createRecipeSummaryShape() {
 		description: undefined as string | undefined,
 		servings: undefined as number | undefined,
 		sourceUrl: undefined as string | undefined,
-		notes: undefined as string | undefined,
 		status: 'active' as const,
 		updatedAt: 1
 	}
@@ -566,7 +562,6 @@ function createRecipeDetailShape() {
 		description: undefined as string | undefined,
 		servings: undefined as number | undefined,
 		sourceUrl: undefined as string | undefined,
-		notes: undefined as string | undefined,
 		status: 'active' as const,
 		items: [] as ReturnType<typeof createRecipeItem>[]
 	}

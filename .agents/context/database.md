@@ -36,7 +36,8 @@ Canonical items and list-item occurrences can both reference `item_categories`. 
 is the canonical default category used when future list items are created from that item.
 `list_items.category_id` is the occurrence category used by shopping-list grouping. Dragging items
 between category groups updates the list-item category, not the canonical item category.
-`list_category_positions` stores per-list category ordering.
+`list_category_positions` stores per-list ordering for named categories, while
+`lists.uncategorized_category_position` stores the per-list order slot for the uncategorized group.
 
 Current migration files live under `server/db/migrations/sqlite/`.
 
@@ -104,6 +105,9 @@ The database layer is currently exercised through authenticated API routes for:
 - one seven-day meal planner per household
 - household settings, members, access links, profile, canonical-item maintenance, clear-data, and
   usage stats
+
+`recipes` no longer stores a top-level freeform `notes` field; ingredient-level `recipe_items.note`
+still exists.
 
 All domain data APIs must be scoped to the active household context. Household management actions
 are owner-gated with Nuxt Authorization abilities. Lists, recipes, and list items use status fields

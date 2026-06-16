@@ -270,7 +270,16 @@ export async function orchestrateRefresh(
 		await settingsStore.fetchHouseholds()
 
 		if (settingsStore.activeHouseholdId) {
-			await settingsStore.fetchItems()
+			await Promise.all([settingsStore.fetchItems(), settingsStore.fetchCategories()])
+		}
+		return
+	}
+
+	if (path === '/app/settings/categories') {
+		await settingsStore.fetchHouseholds()
+
+		if (settingsStore.activeHouseholdId) {
+			await settingsStore.fetchCategories()
 		}
 		return
 	}

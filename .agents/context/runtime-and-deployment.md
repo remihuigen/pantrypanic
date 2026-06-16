@@ -23,9 +23,11 @@ The product app UI is namespaced under `/app`:
 
 - `app/pages/app/**` contains product routes such as `/app/lists`, `/app/lists/:id`, `/app/recipes`,
   `/app/recipes/:id`, `/app/meal-planner`, `/app/settings`, `/app/settings/household`,
-  `/app/settings/item-vault`, and `/app/settings/stats`.
+  `/app/settings/item-vault`, `/app/settings/categories`, and `/app/settings/stats`.
 - `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**`, so product app
   routes render through Nuxt's normal SSR path.
+- `nuxt.config.ts` also denies Workbox navigation fallback for `/app/**`, so installed PWAs keep
+  routing deep links through Cloudflare/Nitro SSR instead of serving the `/app` entry document.
 - `/` serves the public landing page. `/app` redirects to `/app/lists`.
 - `app/pages/(auth)/login.vue` contains the email/password sign-in form at `/login`.
 - `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
