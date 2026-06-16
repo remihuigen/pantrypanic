@@ -18,6 +18,7 @@ const enableHouseholdCreation =
 	enableMultiTenancy && process.env.ENABLE_HOUSEHOLD_CREATION === 'true'
 const enablePublicRegistration =
 	enableMultiTenancy && process.env.ENABLE_PUBLIC_REGISTRATION === 'true'
+const enableBetaPeriod = process.env.ENABLE_BETA_PERIOD === 'true'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -104,6 +105,7 @@ export default defineNuxtConfig({
 		enableMultiTenancy,
 		enableHouseholdCreation,
 		enablePublicRegistration,
+		enableBetaPeriod,
 		session: {
 			password: process.env.NUXT_SESSION_PASSWORD ?? '',
 			maxAge: 60 * 60 * 24 * 30
@@ -124,6 +126,7 @@ export default defineNuxtConfig({
 			enableMultiTenancy,
 			enableHouseholdCreation,
 			enablePublicRegistration,
+			enableBetaPeriod,
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."
@@ -235,5 +238,5 @@ export default defineNuxtConfig({
 		devOptions: {
 			enabled: false
 		}
-	},
+	}
 })

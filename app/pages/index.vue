@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import type { AccordionItem } from '@nuxt/ui'
+import type { AccordionItem, PricingPlanProps } from '@nuxt/ui'
 
 definePageMeta({
 	layout: 'base'
 })
 
 const { title, description } = useRuntimeConfig().public.identity
+const { getIcon } = useIcon()
+const { enableBetaPeriod } = useRuntimeConfig().public
 
 useSeoMeta({
 	title,
@@ -87,6 +89,10 @@ const page = {
 	faq: {
 		headline: 'Frequently asked questions',
 		title: 'Questions before the panic starts?'
+	},
+	plans: {
+		headline: 'Pricing Plans',
+		title: 'Choose the plan that fits your family.'
 	}
 } as const
 
@@ -123,36 +129,51 @@ const faqs: AccordionItem[] = [
 	}
 ]
 
+const plans = ref<PricingPlanProps[]>([
+	{
+		title: 'Single household',
+		description: 'Ideal for you if you need to share lists with your direct family.',
+		price: '€25',
+		features: ['Unlimited members', 'Unlimited lists', 'Lifetime access'],
+		button: {
+			label: 'Free trial',
+			to: '/register?plan=single-household'
+		}
+	},
+	{
+		title: 'Multiple households',
+		description: 'Ideal for you, your extended family or trips with friends.',
+		price: '€39',
+		features: [
+			'Unlimited members',
+			'Unlimited lists',
+			'Lifetime access',
+			'Multi-household support'
+		],
+		button: {
+			label: 'Free trial',
+			to: '/register?plan=multiple-households'
+		}
+	},
+	{
+		title: 'Self-Hosted',
+		description: 'Install and run Pantry Panic on your own servers.',
+		price: '€0',
+		features: ['Full control', 'Open source'],
+		button: {
+			label: 'Explore',
+			icon: getIcon('cloud'),
+			color: 'neutral'
+		}
+	}
+])
+
 const cta = {
 	title: 'Ready for a less chaotic\nshopping list?',
-	description: 'Start with Pantry Panic for free and bring some order to the grocery nonsense.'
+	description: 'Start with Pantry Panic for free and bring some order to this grocery nonsense.'
 } as const
 
-function enterMotion(delay: number = 0) {
-	return {
-		initial: { opacity: 0, y: 16 },
-		animate: { opacity: 1, y: 0 },
-		transition: { duration: 0.6, delay }
-	}
-}
-
-function scrollMotion(delay: number = 0) {
-	return {
-		initial: { opacity: 0, y: 16 },
-		whileInView: { opacity: 1, y: 0 },
-		inViewOptions: { once: true, amount: 1 },
-		transition: { duration: 0.6, delay }
-	}
-}
-
-function staggerMotion(index: number = 0) {
-	return {
-		initial: { opacity: 0 },
-		whileInView: { opacity: 1 },
-		inViewOptions: { once: true, amount: 1 },
-		transition: { duration: 0.6, delay: index * 0.08 }
-	}
-}
+const { enterMotion, scrollMotion, staggerMotion } = useMotion()
 </script>
 
 <template>
@@ -169,11 +190,20 @@ function staggerMotion(index: number = 0) {
 				<UBadge
 					color="neutral"
 					variant="soft"
-					label="Shared groceries without the group-chat noise"
+					:label="
+						enableBetaPeriod
+							? 'Free to use during public beta period'
+							: 'Shared groceries without the group-chat noise'
+					"
 					class="gap-1.5 rounded-full bg-white/5 px-3 py-1.5 backdrop-blur"
 				>
 					<template #leading>
-						<UChip inset standalone :ui="{ base: 'animate-pulse ring-0' }" />
+						<UChip
+							inset
+							standalone
+							:color="enableBetaPeriod ? 'success' : 'primary'"
+							:ui="{ base: 'animate-pulse ring-0' }"
+						/>
 					</template>
 				</UBadge>
 			</Motion>
@@ -185,7 +215,7 @@ function staggerMotion(index: number = 0) {
 			<FluidBanner
 				color="primary"
 				class="mt-60 lg:mt-0"
-				container-class="flex flex-col-reverse lg:flex-row lg:gap-20 pt-20"
+				container-class="flex flex-col-reverse lg:flex-row lg:gap-20 pt-20 lg:pt-6 lg:pb-6"
 			>
 				<div class="space-y-8 lg:w-1/3 lg:w-[45%]">
 					<Motion
@@ -308,7 +338,7 @@ function staggerMotion(index: number = 0) {
 							:description="metric.label"
 							class="rounded-none duration-300"
 							:ui="{
-								root: 'text-center h-full',
+								root: 'text-center h-full py-6',
 								wrapper: 'items-center',
 								title: [
 									'text-2xl font-bold tracking-tight leading-none',
@@ -321,6 +351,40 @@ function staggerMotion(index: number = 0) {
 					</Motion>
 				</div>
 			</div>
+		</UPageSection>
+		<UPageSection
+			id="plans"
+			:ui="{
+				root: 'scroll-mt-(--ui-header-height)',
+				container: 'max-w-5xl',
+				headline:
+					'font-mono font-medium text-xs text-primary uppercase tracking-[0.12em] text-center',
+				title: 'max-w-lg mx-auto',
+				description: 'max-w-md mx-auto text-dimmed'
+			}"
+		>
+			<template #headline>
+				<Motion as="span" v-bind="scrollMotion()" class="inline-block">
+					{{ page.plans.headline }}
+				</Motion>
+			</template>
+
+			<template #title>
+				<Motion as="span" v-bind="scrollMotion(0.1)" class="inline-block">
+					{{ page.plans.title }}
+				</Motion>
+			</template>
+			<UPricingPlans>
+				<Motion
+					v-for="(plan, index) in plans"
+					:key="index"
+					as="div"
+					v-bind="staggerMotion(index)"
+					class="grid h-full"
+				>
+					<UPricingPlan v-bind="plan" />
+				</Motion>
+			</UPricingPlans>
 		</UPageSection>
 
 		<UPageSection
@@ -385,7 +449,7 @@ function staggerMotion(index: number = 0) {
 
 			<template #links>
 				<Motion
-					class="flex flex-row items-center justify-center gap-3"
+					class="flex flex-row flex-wrap items-center justify-center gap-3"
 					v-bind="scrollMotion(0.2)"
 				>
 					<LandingBottomCtaLinks />

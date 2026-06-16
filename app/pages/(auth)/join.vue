@@ -73,13 +73,13 @@ async function submit(event: FormSubmitEvent<Schema>) {
 		<UPageCard class="mx-auto w-full max-w-md">
 			<UForm :schema="schema" :state="state" class="space-y-4" @submit="submit">
 				<AppLogo class="mx-auto h-12 w-auto shrink-0" />
-				<UFormField label="Naam" name="name">
+				<UFormField label="Naam" name="name" size="xl">
 					<UInput v-model="state.name" />
 				</UFormField>
-				<UFormField label="E-mail" name="email">
+				<UFormField label="E-mail" name="email" size="xl">
 					<UInput v-model="state.email" type="email" />
 				</UFormField>
-				<UFormField label="Wachtwoord" name="password">
+				<UFormField label="Wachtwoord" name="password" size="xl">
 					<UInput v-model="state.password" type="password" />
 				</UFormField>
 				<UButton type="submit" block :loading="loading">Meedoen</UButton>
