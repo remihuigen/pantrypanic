@@ -357,5 +357,5 @@ to:
 - using Pantry Panic as part of a paid product or commercial service;
 - using Pantry Panic internally within a commercial organization.
 
-For more details, see the [License](./LICENSE.md). For commercial licensing, contact:
+For more details, see the [License](./LICENSE). For commercial licensing, contact:
 remihuigen@proton.me
