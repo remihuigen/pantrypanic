@@ -38,6 +38,10 @@ jobs:
           NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          ENABLE_MULTI_TENANCY: ${{ vars.ENABLE_MULTI_TENANCY }}
+          ENABLE_HOUSEHOLD_CREATION: ${{ vars.ENABLE_HOUSEHOLD_CREATION }}
+          ENABLE_PUBLIC_REGISTRATION: ${{ vars.ENABLE_PUBLIC_REGISTRATION }}
+          ENABLE_BETA_PERIOD: ${{ vars.ENABLE_BETA_PERIOD }}
 
       - name: Verify generated Wrangler config
         run: test -f .output/server/wrangler.json
