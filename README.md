@@ -67,12 +67,12 @@ This is the simplest and most predictable setup for most self-hosted installs.
 ENABLE_MULTI_TENANCY=true
 ```
 
-Use this when one Pantry Panic instance should host multiple separate households. Users only see data
-for households they are a member of, and the active household is stored in their session. Existing
-household owners can invite others with invite links from settings. Household owners can manage
-members, promote other members to owner, create reset links, change household settings, clear app
-data, and destroy the household. Regular members can still use the app's core grocery, recipe, and
-meal-planner flows.
+Use this when one Pantry Panic instance should host multiple separate households. Users only see
+data for households they are a member of, and the active household is stored in their session.
+Existing household owners can invite others with invite links from settings. Household owners can
+manage members, promote other members to owner, create reset links, change household settings, clear
+app data, and destroy the household. Regular members can still use the app's core grocery, recipe,
+and meal-planner flows.
 
 `ENABLE_HOUSEHOLD_CREATION=true` lets logged-in users create their first or an extra household from
 the household selector. Keep it `false` when household owners should control membership strictly
@@ -269,8 +269,8 @@ in public runtime config for UI affordances and private runtime config for serve
 routes read the private values. The `NUXT_PANTRY_*` variables are wired directly to
 `runtimeConfig.pantry` in `nuxt.config.ts`.
 
-Production blob and database configuration also expects the following variables, though they
-are not required for local development:
+Production blob and database configuration also expects the following variables, though they are not
+required for local development:
 
 ```bash
 CLOUDFLARE_D1_DATABASE_ID=<database-id>
@@ -345,6 +345,17 @@ Except Cloudflare. I don't like Cloudflare that much — but it's cheap.
 
 ## 📝 License
 
-This project is licensed under the MIT License.
+Pantry Panic is source-available under the PolyForm Noncommercial License 1.0.0.
 
-See the [LICENSE](./LICENSE) file for details.
+You may use, copy, modify, and self-host Pantry Panic for non-commercial purposes.
+
+Commercial use is not permitted without prior written permission. This includes, but is not limited
+to:
+
+- selling Pantry Panic or a modified version of it;
+- offering Pantry Panic as a hosted service;
+- using Pantry Panic as part of a paid product or commercial service;
+- using Pantry Panic internally within a commercial organization.
+
+For more details, see the [License](./LICENSE.md). For commercial licensing, contact:
+remihuigen@proton.me
