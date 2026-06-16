@@ -2,6 +2,7 @@
 	"name": "pantrypanic",
 	"private": true,
 	"type": "module",
+	"license": "PolyForm-Noncommercial-1.0.0",
 	"imports": {
 		"#server/*": "./server/*.ts",
 		"#shared/*": "./shared/*.ts"
