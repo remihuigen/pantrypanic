@@ -6,7 +6,7 @@ const { identity } = useRuntimeConfig().public
 	<USeparator>
 		<AppIcon class="w-6" />
 	</USeparator>
-	<UFooter :ui="{ root: 'mb-3' }">
+	<UFooter :ui="{ root: 'mb-3', right: 'space-x-4' }">
 		<template #left>
 			<p class="text-muted text-sm">
 				{{ identity.title }} • © {{ new Date().getFullYear() }}
@@ -14,6 +14,12 @@ const { identity } = useRuntimeConfig().public
 		</template>
 		<template #right>
 			<p class="text-muted text-sm">{{ identity.description }}</p>
+			<UButton
+				to="https://github.com/remihuigen/pantrypanic"
+				icon="mdi:github"
+				variant="ghost"
+				color="neutral"
+			/>
 		</template>
 	</UFooter>
 </template>

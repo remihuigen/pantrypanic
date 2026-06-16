@@ -26,6 +26,11 @@ The product app UI is namespaced under `/app`:
   `/app/settings/item-vault`, `/app/settings/categories`, and `/app/settings/stats`.
 - `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**`, so product app
   routes render through Nuxt's normal SSR path.
+- `nuxt.config.ts` sets `pwa.scope = '/app/'`, so the generated service worker only controls
+  `/app/**` and stays off `/`, `/login`, `/logout`, and other public/auth routes.
+- `nuxt.config.ts` also forces `shaders` through `build.transpile` and
+  `vite.optimizeDeps.include` as a workaround for Vite dev transform stack overflows triggered by
+  `shaders/vue`.
 - `nuxt.config.ts` also denies Workbox navigation fallback for `/app/**`, so installed PWAs keep
   routing deep links through Cloudflare/Nitro SSR instead of serving the `/app` entry document.
 - `/` serves the public landing page. `/app` redirects to `/app/lists`.
