@@ -6,6 +6,7 @@ definePageMeta({
 })
 
 const { title, description } = useRuntimeConfig().public.identity
+const { getIcon } = useIcon()
 
 useSeoMeta({
 	title,
@@ -14,55 +15,33 @@ useSeoMeta({
 	ogDescription: description
 })
 
-const heroTitle = computed(() => {
-	const [primary = '', ...secondaryParts] = 'Pantry Panic\nFor calm grocery runs'.split('\n')
-
-	return {
-		primary,
-		secondary: secondaryParts.join(' ').trim()
-	}
-})
-
-const heroLinks: ButtonProps[] = [
-	{
-		label: 'Open app',
-		to: '/app',
-		color: 'primary',
-		size: 'xl',
-		trailingIcon: 'lucide:arrow-right'
-	},
-	{
-		label: 'See features',
-		to: '#features',
-		color: 'neutral',
-		size: 'xl'
-	}
-]
+const colorMode = useColorMode()
+const { loggedIn } = useUserSession()
 
 const page = {
 	features: {
 		headline: 'Why Pantry Panic',
-		title: 'Everything your household needs before anyone reaches the store.',
+		title: 'Everything you need before anyone reaches the store.',
 		description:
-			'Keep grocery lists, recipes, pantry staples, and weekly meals in one simple shared app.',
+			'Another grocery app? Technically, yes. Except this one actually understands what needs to happen before anyone is already standing in aisle seven.',
 		items: [
 			{
 				icon: 'i-lucide-list-checks',
 				title: 'Shared lists',
 				description:
-					'Everyone sees the same live grocery list, so last-minute additions stop living in chat.'
+					'One list for everyone. Add, edit, and check off groceries without creating three versions of the same shopping chaos.'
 			},
 			{
 				icon: 'i-lucide-refresh-cw',
 				title: 'Live updates',
 				description:
-					'Checked items and new groceries sync quickly across devices while someone is shopping.'
+					'Checked items and new groceries sync quickly across devices, so last-minute additions stop living in chat.'
 			},
 			{
 				icon: 'i-lucide-utensils',
-				title: 'Recipes to groceries',
+				title: 'Recipe-based shopping',
 				description:
-					'Save recurring meals and copy ingredients straight to the right shopping list.'
+					'Save the meals you actually cook and send their ingredients straight to the right shopping list.'
 			},
 			{
 				icon: 'i-lucide-calendar-days',
@@ -74,64 +53,69 @@ const page = {
 				icon: 'i-lucide-archive',
 				title: 'Item memory',
 				description:
-					'Pantry Panic remembers common items, units, and previous names to keep entry fast.'
+					'Pantry Panic remembers common items, units, and categories, so building your list gets faster every time.'
 			},
 			{
-				icon: 'i-lucide-home',
-				title: 'Household control',
+				icon: 'lucide:home',
+				title: 'For the whole household',
 				description:
-					'Invite members, manage owners, and keep each household scoped to the people who belong there.'
+					'Invite everyone who shops, cooks, forgets things, or mysteriously finishes the good snacks.'
 			}
 		]
 	},
 	metrics: {
-		headline: 'Built for real homes',
-		title: 'Small enough for your family, solid enough to self-host.',
+		headline: 'Built for private people',
+		title: 'No ads, no tracking, no guardrails.',
 		description:
-			'Pantry Panic keeps the daily workflow fast while preserving clear household boundaries and data ownership.',
+			'Pantry Panic gives you a calm grocery app without creepy data games, usage limits, surprise monetization or unwanted third party involvement.',
 		items: [
 			{
-				value: '7 days',
-				label: 'Meal planner',
-				class: 'text-success'
-			},
-			{
-				value: '1 tap',
-				label: 'Check off items',
-				class: 'text-primary'
-			},
-			{
 				value: '0 ads',
-				label: 'Self-hosted focus',
-				class: 'text-info'
+				label: 'because groceries are not billboards',
+				class: 'text-secondary'
 			},
 			{
-				value: 'Multi',
-				label: 'Household ready',
-				class: 'text-warning'
-			}
-		]
-	},
-	cta: {
-		title: 'Ready for a less chaotic\nshopping list?',
-		description:
-			'Open the app if you already have access, or self-host Pantry Panic for your own household.',
-		command: 'pnpm dev',
-		links: [
-			{
-				label: 'Open app',
-				color: 'primary',
-				to: '/app'
+				value: '0 trackers',
+				label: 'because your fridge is your business',
+				class: 'text-secondary'
 			},
 			{
-				label: 'Review setup',
-				color: 'neutral',
-				variant: 'subtle',
-				to: 'https://github.com/remihuigen/pantrypanic'
+				value: '0 limits',
+				label: 'because households are messy',
+				class: 'text-secondary'
+			},
+			{
+				value: 'Self-hostable',
+				label: 'because control should notbe optional',
+				class: 'text-primary'
 			}
 		]
 	}
 } as const
+
+const cta = computed<{
+	title: string
+	description: string
+	links: Array<ButtonProps>
+}>(() => ({
+	title: 'Ready for a less chaotic\nshopping list?',
+	description: 'Start with Pantry Panic for free and bring some order to the grocery nonsense.',
+	links: [
+		{
+			label: loggedIn.value ? 'Open app' : 'Start free trial',
+			color: 'primary',
+			to: loggedIn.value ? '/app' : undefined,
+			trailingIcon: getIcon('right')
+		},
+		{
+			label: 'Explore self-hosting',
+			color: 'neutral',
+			variant: 'subtle',
+			trailingIcon: getIcon('cloud'),
+			to: 'https://github.com/remihuigen/pantrypanic'
+		}
+	]
+}))
 
 function enterMotion(delay: number = 0) {
 	return {
@@ -158,87 +142,107 @@ function staggerMotion(index: number = 0) {
 		transition: { duration: 0.6, delay: index * 0.08 }
 	}
 }
-
-const { copy, copied } = useClipboard()
 </script>
 
 <template>
-	<div>
+	<div class="overflow-x-hidden">
 		<Motion v-bind="staggerMotion(0)">
 			<HeroShaders class="absolute inset-x-0 top-0 h-[130vh] opacity-30 dark:opacity-25" />
 		</Motion>
-		<UPageHero
-			:ui="{
-				root: 'pb-24 sm:pb-32',
-				container: 'relative z-10 lg:py-32',
-				wrapper: 'flex flex-col items-center',
-				title: 'sm:text-6xl lg:text-7xl xl:text-[80px] tracking-tighter leading-[1.05]',
-				description:
-					'mt-5 max-w-xl mx-auto text-base sm:text-lg leading-relaxed text-default',
-				links: 'gap-3'
-			}"
-		>
-			<template #top>
-				<GradientGlow class="top-0 h-1/2 w-2/3 opacity-70" />
-			</template>
 
-			<template #headline>
-				<Motion v-bind="enterMotion(0.2)">
-					<UBadge
-						color="neutral"
-						variant="soft"
-						label="Shared groceries without the group-chat noise"
-						class="gap-1.5 rounded-full bg-white/5 px-3 py-1.5 backdrop-blur"
-					>
-						<template #leading>
-							<UChip inset standalone :ui="{ base: 'animate-pulse ring-0' }" />
-						</template>
-					</UBadge>
-				</Motion>
-			</template>
-
-			<template #title>
-				<Motion as="span" v-bind="enterMotion(0.35)" class="inline-block">
-					{{ heroTitle.primary }}
-					<br v-if="heroTitle.secondary" />
+		<UContainer class="relative space-y-8 pt-16 pb-16 md:pt-28">
+			<GradientGlow
+				class="top-0 left-0 h-full w-1/2 animate-pulse opacity-100 [animation-duration:5s]"
+			/>
+			<Motion v-bind="enterMotion(0.2)">
+				<UBadge
+					color="neutral"
+					variant="soft"
+					label="Shared groceries without the group-chat noise"
+					class="gap-1.5 rounded-full bg-white/5 px-3 py-1.5 backdrop-blur"
+				>
+					<template #leading>
+						<UChip inset standalone :ui="{ base: 'animate-pulse ring-0' }" />
+					</template>
+				</UBadge>
+			</Motion>
+			<Motion as="span" v-bind="enterMotion(0.35)" class="inline-block">
+				<h1 class="text-5xl font-bold md:text-7xl lg:text-8xl">
 					<span
-						v-if="heroTitle.secondary"
 						class="animate-shimmer bg-size-[200%_auto] bg-clip-text text-transparent"
 						:style="{
 							backgroundImage:
-								'linear-gradient(135deg, var(--color-primary-400), var(--color-primary-300), var(--color-primary-200), var(--color-primary-100), var(--color-primary-200), var(--color-primary-300), var(--color-primary-400))',
+								colorMode.value === 'dark'
+									? 'linear-gradient(135deg, var(--color-primary-300), var(--color-primary-200), var(--color-primary-100), var(--color-primary-50), var(--color-primary-100), var(--color-primary-200), var(--color-primary-300))'
+									: 'linear-gradient(135deg, var(--ui-text-highlighted), var(--ui-text), var(--color-primary-500), var(--ui-text), var(--ui-text-highlighted))',
 							animationDuration: '10s'
 						}"
 					>
-						{{ heroTitle.secondary }}
+						For <strong class="font-black">calm</strong>
+						<br />
+						grocery runs
 					</span>
-				</Motion>
-			</template>
-
-			<template #description>
-				<Motion as="span" v-bind="enterMotion(0.5)" class="inline-block">
-					A fast, self-hostable grocery app for households that want shared lists,
-					recipe-powered shopping, and a weekly plan without turning dinner into project
-					management.
-				</Motion>
-			</template>
-
-			<template #links>
-				<Motion class="flex flex-wrap justify-center gap-6" v-bind="enterMotion(0.65)">
-					<UButton v-for="link in heroLinks" :key="link.label" v-bind="link" />
-				</Motion>
-			</template>
-		</UPageHero>
+				</h1>
+			</Motion>
+		</UContainer>
+		<Motion as="div" v-bind="enterMotion(0.3)" class="block">
+			<FluidBanner
+				color="primary"
+				class="mt-80 lg:mt-0"
+				containerClass="flex flex-col-reverse md:flex-row gap-8 lg:gap-20"
+			>
+				<div class="space-y-8 md:w-[45%] lg:w-1/3">
+					<Motion
+						as="p"
+						v-bind="enterMotion(0.5)"
+						class="inline-block leading-loose font-medium"
+					>
+						A fast, modern and minimalistic grocery app for households that want shared
+						lists, recipe-powered shopping, and a weekly plan without turning dinner
+						into project management.
+					</Motion>
+					<Motion as="div" v-bind="enterMotion(0.6)" class="inline-block">
+						<div clas="flex gap-3 items-center flex-wrap">
+							<UButton
+								size="xl"
+								color="primary"
+								:label="!!loggedIn ? 'Open app' : 'Start free trial'"
+								:to="!!loggedIn ? '/app/lists' : undefined"
+								:trailing-icon="getIcon('right')"
+								:ui="{ trailingIcon: 'size-4' }"
+							/>
+							<UButton
+								v-if="!loggedIn"
+								size="xl"
+								color="neutral"
+								variant="link"
+								label="login with account"
+								to="/login"
+							/>
+						</div>
+					</Motion>
+				</div>
+				<div class="relative -mt-80 grow lg:mt-0">
+					<UColorModeImage
+						light="/lightmode.png"
+						dark="/darkmode.png"
+						:width="600"
+						:height="800"
+						class="mx-auto max-w-[420px] lg:absolute lg:-right-1/6 lg:bottom-0"
+					/>
+				</div>
+			</FluidBanner>
+		</Motion>
 
 		<UPageSection
 			id="features"
 			:ui="{
-				root: 'py-24 sm:py-32 scroll-mt-(--ui-header-height)',
+				root: 'py-12 scroll-mt-(--ui-header-height)',
 				container: 'max-w-5xl',
 				headline:
-					'font-mono font-medium text-xs text-primary uppercase tracking-[0.12em] text-center',
+					'font-mono font-black text-xs text-primary uppercase tracking-[0.12em] text-center',
 				title: 'max-w-lg mx-auto',
-				description: 'max-w-md mx-auto text-dimmed'
+				description: 'max-w-2xl mx-auto text-dimmed'
 			}"
 		>
 			<template #headline>
@@ -254,7 +258,7 @@ const { copy, copied } = useClipboard()
 			</template>
 
 			<template #description>
-				<Motion as="span" v-bind="scrollMotion(0.2)" class="inline-block">
+				<Motion as="p" v-bind="scrollMotion(0.2)" class="block">
 					{{ page.features.description }}
 				</Motion>
 			</template>
@@ -272,6 +276,7 @@ const { copy, copied } = useClipboard()
 							:description="feature.description"
 							class="rounded-none duration-300"
 							:ui="{
+								root: 'h-full!',
 								leading: 'mb-5 flex size-9 justify-center rounded-lg bg-primary/10',
 								title: 'text-sm tracking-tight',
 								description:
@@ -286,7 +291,7 @@ const { copy, copied } = useClipboard()
 		<UPageSection
 			id="metrics"
 			:ui="{
-				root: 'py-24 sm:py-32 scroll-mt-(--ui-header-height)',
+				root: 'scroll-mt-(--ui-header-height)',
 				container: 'max-w-5xl',
 				headline:
 					'font-mono font-medium text-xs text-primary uppercase tracking-[0.12em] text-center',
@@ -324,10 +329,10 @@ const { copy, copied } = useClipboard()
 							:description="metric.label"
 							class="rounded-none duration-300"
 							:ui="{
-								root: 'text-center',
+								root: 'text-center h-full',
 								wrapper: 'items-center',
 								title: [
-									'text-4xl font-bold tracking-tight leading-none',
+									'text-2xl font-bold tracking-tight leading-none',
 									metric.class
 								],
 								description:
@@ -342,7 +347,7 @@ const { copy, copied } = useClipboard()
 		<UPageCTA
 			variant="naked"
 			:ui="{
-				root: 'py-24 sm:py-32',
+				root: 'py-12 sm:py-16',
 				container: 'max-w-3xl text-center',
 				title: 'lg:text-5xl tracking-tighter whitespace-pre-line',
 				description: 'mx-auto max-w-sm leading-relaxed text-dimmed'
@@ -354,38 +359,22 @@ const { copy, copied } = useClipboard()
 
 			<template #title>
 				<Motion as="span" v-bind="scrollMotion()" class="inline-block">
-					{{ page.cta.title }}
+					{{ cta.title }}
 				</Motion>
 			</template>
 
 			<template #description>
 				<Motion as="span" v-bind="scrollMotion(0.1)" class="inline-block">
-					{{ page.cta.description }}
+					{{ cta.description }}
 				</Motion>
 			</template>
 
 			<template #links>
 				<Motion
-					class="flex flex-col items-center justify-center gap-6"
+					class="flex flex-row items-center justify-center gap-3"
 					v-bind="scrollMotion(0.2)"
 				>
-					<UButton
-						v-for="link in page.cta.links"
-						:key="link.label"
-						v-bind="link"
-						size="xl"
-					/>
-
-					<UButton
-						:label="page.cta.command"
-						:trailing-icon="copied ? 'i-lucide-copy-check' : 'i-lucide-copy'"
-						color="neutral"
-						variant="subtle"
-						class="text-toned gap-4 font-mono font-light"
-						size="xl"
-						:ui="{ trailingIcon: 'size-5' }"
-						@click="copy(page.cta.command)"
-					/>
+					<UButton v-for="link in cta.links" :key="link.label" v-bind="link" size="xl" />
 				</Motion>
 			</template>
 		</UPageCTA>

@@ -17,7 +17,9 @@ export const useIcon = () => {
 		trash: 'i-lucide-trash-2',
 		leave: 'i-lucide-log-out',
 		copy: 'i-lucide-copy',
-		search: 'i-lucide-search'
+		search: 'i-lucide-search',
+		right: 'i-lucide-chevron-right',
+		cloud: 'i-lucide-cloud'
 	} as const
 
 	/**

@@ -29,5 +29,7 @@ export const LIST_ICON_OPTIONS: ListIconOption[] = [
 	{ label: 'Pizza', value: 'lucide:pizza', icon: 'lucide:pizza' },
 	{ label: 'Salade', value: 'lucide:salad', icon: 'lucide:salad' },
 	{ label: 'Soep', value: 'lucide:soup', icon: 'lucide:soup' },
-	{ label: 'Koffie', value: 'lucide:coffee', icon: 'lucide:coffee' }
+	{ label: 'Koffie', value: 'lucide:coffee', icon: 'lucide:coffee' },
+	{ label: 'Zon', value: 'lucide:cloud-sun', icon: 'lucide:cloud-sun' },
+	{ label: 'Medicatie', value: 'lucide:pill', icon: 'lucide:pill' }
 ]

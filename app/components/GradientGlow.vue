@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="pointer-events-none absolute left-1/2 -translate-x-1/2"
+		class="pointer-events-none absolute"
 		style="
 			background: radial-gradient(
 				ellipse at center,

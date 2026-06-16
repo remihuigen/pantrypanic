@@ -28,6 +28,11 @@
 	--color-black-pearl-900: #244256;
 	--color-black-pearl-950: #12202b;
 
+	--container-8xl: 88rem;
+	--container-9xl: 94rem;
+	--ui-container: var(--container-8xl);
+	--ui-fluid-container-inner: var(--container-8xl);
+
 	--animate-shimmer: shimmer 8s ease-in-out infinite alternate;
 
 	@keyframes shimmer {
