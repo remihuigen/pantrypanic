@@ -97,7 +97,7 @@ watch(
 					/>
 				</UFormField>
 
-				<UFormField name="icon" size="lg">
+				<UFormField name="icon" size="xl">
 					<IconPicker v-model="formState.icon" :disabled="isSubmitting" />
 				</UFormField>
 			</UForm>

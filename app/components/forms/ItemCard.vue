@@ -65,9 +65,10 @@ function clampSwipeOffset(movementX: number) {
 	return Math.min(0, Math.max(-SWIPE_ACTION_DISTANCE, movementX))
 }
 
-function isDragHandleEvent(event: Event) {
+function isSortableDragEvent(event: Event) {
 	return (
-		event.target instanceof Element && Boolean(event.target.closest('.item-card__drag-handle'))
+		event.target instanceof Element &&
+		Boolean(event.target.closest('.sortable-chosen, .sortable-drag, .sortable-ghost'))
 	)
 }
 
@@ -86,7 +87,7 @@ function resetSwipeMotion() {
 useGesture(
 	{
 		onDrag: ({ event, movement: [movementX], tap }) => {
-			if (tap || isDragHandleEvent(event)) {
+			if (tap || isSortableDragEvent(event)) {
 				resetSwipeMotion()
 				return
 			}
@@ -95,7 +96,7 @@ useGesture(
 			swipeOffsetX.value = clampSwipeOffset(movementX)
 		},
 		onDragEnd: ({ event, movement: [movementX], tap }) => {
-			if (tap || isDragHandleEvent(event)) {
+			if (tap || isSortableDragEvent(event)) {
 				resetSwipeMotion()
 				return
 			}

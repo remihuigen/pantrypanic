@@ -187,6 +187,7 @@ function isOnlyHouseholdOwner(userId: number) {
 			<UFormField
 				v-if="settingsStore.enableMultiTenancy || settingsStore.enableHouseholdCreation"
 				label="Huishouden"
+				size="xl"
 			>
 				<USelect
 					:model-value="settingsStore.activeHouseholdId ?? undefined"

@@ -16,7 +16,6 @@ const pageTitle = computed(
 	() => recipe.value?.name ?? (isLoadingRecipe.value ? 'Recept laden...' : 'Recept')
 )
 const recipeDescription = computed(() => recipe.value?.description)
-const recipeNotes = computed(() => recipe.value?.notes)
 const recipeSourceUrl = computed(() => recipe.value?.sourceUrl)
 const recipeServings = computed(() => recipe.value?.servings)
 const recipeLoadError = shallowRef<string | null>(null)
@@ -331,9 +330,9 @@ onUnmounted(() => {
 						</UButton>
 					</div>
 
-					<p v-if="recipeNotes" class="text-muted text-sm leading-relaxed">
+					<!-- <p v-if="recipeNotes" class="text-muted text-sm leading-relaxed">
 						{{ recipeNotes }}
-					</p>
+					</p> -->
 				</UPageCard>
 
 				<RecipeItemGrid

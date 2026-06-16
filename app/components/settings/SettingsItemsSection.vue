@@ -93,6 +93,7 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 				:icon="getIcon('search')"
 				placeholder="Zoeken"
 				class="max-w-120"
+				size="xl"
 			/>
 		</UPageCard>
 		<UPageCard variant="subtle" :ui="{ body: 'space-y-3 grid' }">
@@ -102,23 +103,23 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 				class="border-default rounded-md border"
 			>
 				<div v-if="editingId === item.id" class="grid gap-2">
-					<UInput v-model="draft.name" />
-					<FieldRow>
-						<UInput v-model="draft.defaultUnit" placeholder="Eenheid" />
-						<USelectMenu
-							v-model="draft.categoryId"
-							value-key="value"
-							:items="
-								settingsStore.categories.map((category) => ({
-									label: category.name,
-									value: category.id
-								}))
-							"
-							placeholder="Categorie"
-							clearable
-							:autofocus="false"
-						/>
-					</FieldRow>
+					<UInput v-model="draft.name" size="lg" />
+
+					<UInput v-model="draft.defaultUnit" placeholder="Eenheid" size="lg" />
+					<USelectMenu
+						v-model="draft.categoryId"
+						value-key="value"
+						:items="
+							settingsStore.categories.map((category) => ({
+								label: category.name,
+								value: category.id
+							}))
+						"
+						placeholder="Categorie"
+						clearable
+						:autofocus="false"
+						size="lg"
+					/>
 					<div class="flex gap-2">
 						<UButton
 							icon="i-lucide-save"

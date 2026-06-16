@@ -64,6 +64,20 @@
 			"when": 1781632800000,
 			"tag": "0008_item_categories",
 			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "6",
+			"when": 1781636400000,
+			"tag": "0009_lists_uncategorized_category_position",
+			"breakpoints": true
+		},
+		{
+			"idx": 10,
+			"version": "6",
+			"when": 1781722800000,
+			"tag": "0010_drop_recipe_notes",
+			"breakpoints": true
 		}
 	]
 }

@@ -86,7 +86,6 @@ export async function createRecipe(
 			description: resolvedInput.description ?? null,
 			servings: resolvedInput.servings ?? null,
 			sourceUrl: resolvedInput.sourceUrl ?? null,
-			notes: resolvedInput.notes ?? null,
 			status: 'active',
 			archivedAt: null,
 			deletedAt: null,
@@ -174,7 +173,6 @@ export async function updateRecipe(
 			...(input.description === undefined ? {} : { description: input.description }),
 			...(input.servings === undefined ? {} : { servings: input.servings }),
 			...(input.sourceUrl === undefined ? {} : { sourceUrl: input.sourceUrl }),
-			...(input.notes === undefined ? {} : { notes: input.notes }),
 			updatedAt: audit.now,
 			updatedByUserId: audit.userId
 		})

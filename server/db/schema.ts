@@ -1,6 +1,8 @@
 import { relations } from 'drizzle-orm'
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
+const uncategorizedCategoryPositionDefault = 2147483647
+
 export const listStatusValues = ['active', 'archived', 'deleted'] as const
 
 export const listItemStatusValues = ['unchecked', 'checked', 'archived', 'deleted'] as const
@@ -118,6 +120,9 @@ export const lists = sqliteTable(
 		icon: text('icon'),
 		status: text('status', { enum: listStatusValues }).notNull(),
 		position: integer('position').notNull(),
+		uncategorizedCategoryPosition: integer('uncategorized_category_position')
+			.notNull()
+			.default(uncategorizedCategoryPositionDefault),
 		archivedAt: integer('archived_at'),
 		deletedAt: integer('deleted_at'),
 		...auditColumns
@@ -212,7 +217,6 @@ export const recipes = sqliteTable(
 		description: text('description'),
 		servings: integer('servings'),
 		sourceUrl: text('source_url'),
-		notes: text('notes'),
 		status: text('status', { enum: recipeStatusValues }).notNull(),
 		archivedAt: integer('archived_at'),
 		deletedAt: integer('deleted_at'),

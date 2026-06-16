@@ -130,7 +130,6 @@ export function serializeRecipeDetail(recipe: RecipeRow) {
 		description: optional(recipe.description),
 		servings: optional(recipe.servings),
 		sourceUrl: optional(recipe.sourceUrl),
-		notes: optional(recipe.notes),
 		status: recipe.status
 	}
 }

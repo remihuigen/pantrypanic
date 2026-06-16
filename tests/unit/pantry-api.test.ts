@@ -35,6 +35,7 @@ import {
 	mealPlannerDayBodySchema,
 	recipeQuerySchema,
 	reorderListItems,
+	reorderCategorizedListItems,
 	reorderMealPlannerDayItems,
 	reorderRecipeItems,
 	reorderShoppingLists,
@@ -205,6 +206,7 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([recipeRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([recipeRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([recipeRow()]) as never)
@@ -278,8 +280,7 @@ describe('pantry api domain helpers', () => {
 					name: 'Updated',
 					description: 'Dinner',
 					servings: 4,
-					sourceUrl: 'https://example.com',
-					notes: 'Fast'
+					sourceUrl: 'https://example.com'
 				},
 				1
 			)
@@ -357,6 +358,7 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(createSelectBuilder([{ position: 2 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([listRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([itemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([listItemRow()]) as never)
@@ -448,6 +450,204 @@ describe('pantry api domain helpers', () => {
 		})
 		await expect(deleteListItem('li-1', 1)).resolves.toMatchObject({
 			listItem: { status: 'deleted' }
+		})
+	})
+
+	it('reorders categorized list items with named and uncategorized groups', async () => {
+		vi.mocked(db.select)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					listRow({ householdId: 'household', uncategorizedCategoryPosition: 7 })
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([categoryRow({ id: 'produce', householdId: 'household' })]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					listCategoryPositionRow({
+						id: 'lcp-1',
+						householdId: 'household',
+						listId: 'list-1',
+						categoryId: 'produce',
+						position: 5
+					})
+				]) as never
+			)
+
+		vi.mocked(db.update)
+			.mockReturnValueOnce(
+				createUpdateBuilder([
+					listCategoryPositionRow({
+						id: 'lcp-1',
+						householdId: 'household',
+						listId: 'list-1',
+						categoryId: 'produce',
+						position: 0
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createUpdateBuilder([
+					listItemRow({ id: 'li-1', categoryId: 'produce', position: 0 })
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createUpdateBuilder([
+					listRow({ householdId: 'household', uncategorizedCategoryPosition: 1 })
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createUpdateBuilder([
+					listItemRow({ id: 'li-2', categoryId: null, position: 1 })
+				]) as never
+			)
+
+		await expect(
+			reorderCategorizedListItems(
+				'household',
+				'list-1',
+				[
+					{ categoryId: 'produce', orderedIds: ['li-1'] },
+					{ categoryId: null, orderedIds: ['li-2'] }
+				],
+				1
+			)
+		).resolves.toMatchObject({
+			items: [
+				{ id: 'li-1', categoryId: 'produce', position: 0, categoryPosition: 0 },
+				{ id: 'li-2', categoryId: null, position: 1, categoryPosition: 1 }
+			]
+		})
+	})
+
+	it('adds list items with created category positions and persisted uncategorized position', async () => {
+		mocks.findOrCreateItem
+			.mockResolvedValueOnce(itemRow({ id: 'item-1', categoryId: 'produce' }))
+			.mockResolvedValueOnce(itemRow({ id: 'item-2', categoryId: null }))
+
+		vi.mocked(db.select)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					listRow({ householdId: 'household', uncategorizedCategoryPosition: 9 })
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([categoryRow({ id: 'produce', householdId: 'household' })]) as never
+			)
+			.mockReturnValueOnce(createSelectBuilder([{ position: 3 }]) as never)
+			.mockReturnValueOnce(createSelectBuilder([]) as never)
+			.mockReturnValueOnce(createSelectBuilder([{ position: 4 }]) as never)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					listRow({ householdId: 'household', uncategorizedCategoryPosition: 9 })
+				]) as never
+			)
+			.mockReturnValueOnce(createSelectBuilder([{ position: 4 }]) as never)
+
+		vi.mocked(db.insert)
+			.mockReturnValueOnce(
+				createInsertBuilder([
+					listCategoryPositionRow({
+						id: 'lcp-2',
+						householdId: 'household',
+						listId: 'list-1',
+						categoryId: 'produce',
+						position: 5
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createInsertBuilder([
+					listItemRow({
+						id: 'li-categorized',
+						listId: 'list-1',
+						itemId: 'item-1',
+						categoryId: 'produce',
+						position: 4
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createInsertBuilder([
+					listItemRow({
+						id: 'li-default',
+						listId: 'list-1',
+						itemId: 'item-2',
+						categoryId: null,
+						position: 5
+					})
+				]) as never
+			)
+
+		await expect(
+			addListItem('household', 'list-1', { name: 'Tomaat', categoryId: 'produce' }, 1)
+		).resolves.toMatchObject({
+			listItem: { id: 'li-categorized', categoryId: 'produce', categoryPosition: 5 }
+		})
+
+		await expect(addListItem('household', 'list-1', { name: 'Water' }, 1)).resolves.toMatchObject(
+			{
+				listItem: { id: 'li-default', categoryId: undefined, categoryPosition: 9 }
+			}
+		)
+	})
+
+	it('updates list items when moving to another list without a category', async () => {
+		mocks.findOrCreateItem.mockResolvedValueOnce(itemRow({ id: 'item-9', categoryId: null }))
+
+		vi.mocked(db.select)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					listItemRow({ id: 'li-9', listId: 'list-1', itemId: 'item-1', categoryId: 'produce' })
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					listRow({ id: 'list-2', householdId: 'household', uncategorizedCategoryPosition: 4 })
+				]) as never
+			)
+			.mockReturnValueOnce(createSelectBuilder([{ position: 6 }]) as never)
+
+		vi.mocked(db.update).mockReturnValueOnce(
+				createUpdateBuilder([
+					listItemRow({
+						id: 'li-9',
+						listId: 'list-2',
+						itemId: 'item-9',
+						categoryId: null,
+						position: 7,
+						amount: 2,
+						unit: null,
+						note: 'Verplaatst'
+					})
+				]) as never
+		)
+
+		await expect(
+			updateListItem(
+				'household',
+				'li-9',
+				{
+					listId: 'list-2',
+					name: 'Melk',
+					categoryId: null,
+					amount: 2,
+					note: 'Verplaatst'
+				},
+				1
+			)
+		).resolves.toMatchObject({
+			listItem: {
+				id: 'li-9',
+				listId: 'list-2',
+				itemId: 'item-9',
+				categoryId: undefined,
+				categoryPosition: 4,
+				amount: 2,
+				unit: undefined,
+				note: 'Verplaatst'
+			}
 		})
 	})
 
@@ -779,12 +979,43 @@ describe('pantry api domain helpers', () => {
 function listRow(overrides: Partial<Record<string, unknown>> = {}) {
 	return {
 		id: 'list-1',
+		householdId: 'household',
 		name: 'Groceries',
 		icon: null,
 		status: 'active',
 		position: 0,
+		uncategorizedCategoryPosition: 2147483647,
 		archivedAt: null,
 		deletedAt: null,
+		createdAt: 1,
+		updatedAt: 2,
+		createdByUserId: 1,
+		updatedByUserId: 1,
+		...overrides
+	}
+}
+
+function categoryRow(overrides: Partial<Record<string, unknown>> = {}) {
+	return {
+		id: 'produce',
+		householdId: 'household',
+		name: 'Groente',
+		normalizedName: 'groente',
+		createdAt: 1,
+		updatedAt: 2,
+		createdByUserId: 1,
+		updatedByUserId: 1,
+		...overrides
+	}
+}
+
+function listCategoryPositionRow(overrides: Partial<Record<string, unknown>> = {}) {
+	return {
+		id: 'lcp-1',
+		householdId: 'household',
+		listId: 'list-1',
+		categoryId: 'produce',
+		position: 0,
 		createdAt: 1,
 		updatedAt: 2,
 		createdByUserId: 1,
@@ -841,7 +1072,6 @@ function recipeRow(overrides: Partial<Record<string, unknown>> = {}) {
 		description: null,
 		servings: null,
 		sourceUrl: null,
-		notes: null,
 		status: 'active',
 		archivedAt: null,
 		deletedAt: null,

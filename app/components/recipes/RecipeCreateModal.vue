@@ -14,7 +14,6 @@ type NormalizedRecipeFormState = {
 	description: string | null
 	servings: number | null
 	sourceUrl: string | null
-	notes: string | null
 }
 
 const props = defineProps<{
@@ -41,7 +40,6 @@ const state = reactive<RecipeFormState>({
 	description: undefined,
 	servings: undefined,
 	sourceUrl: undefined,
-	notes: undefined,
 	items: []
 })
 const initialFormValue = shallowRef<NormalizedRecipeFormState>(normalizeRecipeFormValue(state))
@@ -113,7 +111,6 @@ async function createRecipe(data: RecipeFormData) {
 		description: normalizeOptionalText(data.description),
 		servings: data.servings,
 		sourceUrl: normalizeOptionalText(data.sourceUrl),
-		notes: normalizeOptionalText(data.notes),
 		items: []
 	})
 }
@@ -123,8 +120,7 @@ async function updateRecipe(recipeId: string, data: RecipeFormData) {
 		name: data.name.trim(),
 		description: normalizeNullableText(data.description),
 		servings: data.servings ?? null,
-		sourceUrl: normalizeNullableText(data.sourceUrl),
-		notes: normalizeNullableText(data.notes)
+		sourceUrl: normalizeNullableText(data.sourceUrl)
 	}
 
 	await recipesStore.updateRecipe(recipeId, input)
@@ -144,7 +140,6 @@ function syncState() {
 		description: recipe?.description,
 		servings: recipe?.servings,
 		sourceUrl: recipe?.sourceUrl,
-		notes: recipe?.notes,
 		items: []
 	})
 	initialFormValue.value = normalizeRecipeFormValue(state)
@@ -157,7 +152,6 @@ function resetState() {
 		description: undefined,
 		servings: undefined,
 		sourceUrl: undefined,
-		notes: undefined,
 		items: []
 	})
 	initialFormValue.value = normalizeRecipeFormValue(state)
@@ -181,8 +175,7 @@ function normalizeRecipeFormValue(value: RecipeFormState): NormalizedRecipeFormS
 		name: value.name.trim(),
 		description: normalizeNullableText(value.description),
 		servings: value.servings ?? null,
-		sourceUrl: normalizeNullableText(value.sourceUrl),
-		notes: normalizeNullableText(value.notes)
+		sourceUrl: normalizeNullableText(value.sourceUrl)
 	}
 }
 
@@ -212,14 +205,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 				class="grid gap-4"
 				@submit="submitRecipe"
 			>
-				<UFormField label="Naam" name="name" required>
+				<UFormField label="Naam" name="name" required size="xl">
 					<UInput
 						v-model="state.name"
 						placeholder="Pasta pesto"
 						:autofocus="!isEditing"
 					/>
 				</UFormField>
-				<UFormField label="Beschrijving" name="description">
+				<UFormField label="Beschrijving" name="description" size="xl">
 					<UTextarea
 						v-model="state.description"
 						placeholder="Korte notitie voor de receptenlijst"
@@ -227,10 +220,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 					/>
 				</UFormField>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-[120px_1fr]">
-					<UFormField label="Porties" name="servings">
+					<UFormField label="Porties" name="servings" size="xl">
 						<UInputNumber v-model="state.servings" :min="1" />
 					</UFormField>
-					<UFormField label="Bron" name="sourceUrl">
+					<UFormField label="Bron" name="sourceUrl" size="xl">
 						<UInput
 							v-model="state.sourceUrl"
 							type="url"
@@ -239,13 +232,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 						/>
 					</UFormField>
 				</div>
-				<UFormField label="Notities" name="notes">
-					<UTextarea
-						v-model="state.notes"
-						placeholder="Bereiding, variaties of geheugensteuntjes"
-						:rows="3"
-					/>
-				</UFormField>
 				<div class="flex justify-end gap-2">
 					<UButton color="neutral" variant="soft" @click="isOpen = false">
 						Annuleren

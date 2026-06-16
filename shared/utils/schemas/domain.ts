@@ -234,10 +234,9 @@ export const createRecipeBodySchema = z.strictObject({
 	servings: z
 		.number({ error: 'Porties moet een getal zijn.' })
 		.int({ error: 'Porties moet een getal zijn.' })
-		.positive({ error: 'Porties moet groter zijn dan 0.' })
-		.optional(),
+			.positive({ error: 'Porties moet groter zijn dan 0.' })
+			.optional(),
 	sourceUrl: z.url({ error: 'Bron moet een geldige URL zijn.' }).optional(),
-	notes: noteSchema,
 	items: z
 		.array(recipeIngredientSchema, { error: 'Ingrediënten moeten een lijst zijn.' })
 		.optional()
@@ -253,16 +252,14 @@ export const updateRecipeBodySchema = z
 			.positive({ error: 'Porties moet groter zijn dan 0.' })
 			.nullable()
 			.optional(),
-		sourceUrl: z.url({ error: 'Bron moet een geldige URL zijn.' }).nullable().optional(),
-		notes: nullableNoteSchema
+		sourceUrl: z.url({ error: 'Bron moet een geldige URL zijn.' }).nullable().optional()
 	})
 	.refine(
 		(value) =>
 			value.name !== undefined ||
 			value.description !== undefined ||
 			value.servings !== undefined ||
-			value.sourceUrl !== undefined ||
-			value.notes !== undefined,
+			value.sourceUrl !== undefined,
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
 
@@ -371,7 +368,6 @@ export const recipeDetailSchema = z.strictObject({
 	description: z.string().optional(),
 	servings: z.number().int().optional(),
 	sourceUrl: z.string().optional(),
-	notes: z.string().optional(),
 	status: recipeStatusSchema,
 	items: z.array(recipeItemSchema)
 })

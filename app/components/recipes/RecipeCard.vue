@@ -57,7 +57,7 @@ const hasSourceUrl = computed(() => Boolean(props.recipe.sourceUrl))
 		/>
 
 		<div class="pointer-events-none relative z-[1] space-y-3 pe-16">
-			<p class="text-highlighted text-base leading-tight font-semibold">
+			<p class="text-highlighted text-wrap break-words text-base leading-tight font-semibold">
 				{{ props.recipe.name }}
 			</p>
 			<div class="text-muted flex flex-wrap items-center gap-2 text-xs">

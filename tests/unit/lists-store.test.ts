@@ -429,8 +429,8 @@ describe('useListsStore', () => {
 		]
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
 			items: [
-				{ id: 'li-2', categoryId: 'produce', position: 0 },
-				{ id: 'li-1', categoryId: undefined, position: 1 }
+				{ id: 'li-2', categoryId: 'produce', categoryPosition: 0, position: 0 },
+				{ id: 'li-1', categoryId: undefined, categoryPosition: 1, position: 1 }
 			]
 		})
 
@@ -444,9 +444,11 @@ describe('useListsStore', () => {
 		expect(store.listItemsById['li-2']).toMatchObject({
 			categoryId: 'produce',
 			categoryName: 'Groente',
+			categoryPosition: 0,
 			position: 0
 		})
 		expect(store.listItemsById['li-1']).toMatchObject({
+			categoryPosition: 1,
 			categoryId: undefined,
 			position: 1
 		})

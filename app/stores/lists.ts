@@ -545,7 +545,7 @@ export const useListsStore = defineStore(
 			listItemIdsByListId.value[listId] = orderedIds
 
 			let position = 0
-			for (const group of groups) {
+			for (const [categoryPosition, group] of groups.entries()) {
 				for (const itemId of group.orderedIds) {
 					const listItem = listItemsById.value[itemId]
 
@@ -559,6 +559,7 @@ export const useListsStore = defineStore(
 						categoryName: group.categoryId
 							? categoriesById.value[group.categoryId]?.name
 							: undefined,
+						categoryPosition,
 						position
 					}
 					position += 1
@@ -567,7 +568,12 @@ export const useListsStore = defineStore(
 
 			try {
 				const data = await apiFetch<{
-					items: Array<{ id: string; categoryId?: string; position: number }>
+					items: Array<{
+						categoryId?: string
+						categoryPosition?: number
+						id: string
+						position: number
+					}>
 				}>(`/api/lists/${listId}/items/reorder`, {
 					method: 'POST',
 					body: { groups }
@@ -586,6 +592,7 @@ export const useListsStore = defineStore(
 						categoryName: updated.categoryId
 							? categoriesById.value[updated.categoryId]?.name
 							: undefined,
+						categoryPosition: updated.categoryPosition ?? current.categoryPosition,
 						position: updated.position
 					}
 				}

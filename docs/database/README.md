@@ -69,11 +69,13 @@ category used when creating future list-item occurrences from that item.
 `item_categories` stores household-scoped grocery categories. Category names are unique per
 household by normalized name.
 
-`list_category_positions` stores list-specific category ordering. Dragging items between category
-groups updates the list-item category and this list-level category order; it does not change the
-canonical item category.
+`list_category_positions` stores list-specific ordering for named categories.
+`lists.uncategorized_category_position` stores the special list-specific order slot for the
+uncategorized group. Dragging items between category groups updates the list-item category and this
+list-level category order; it does not change the canonical item category.
 
-`recipes` stores reusable recipe templates.
+`recipes` stores reusable recipe templates and source metadata. Top-level recipe notes are no
+longer stored.
 
 `recipe_items` stores ordered recipe ingredients.
 

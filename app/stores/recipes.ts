@@ -14,7 +14,7 @@ import { apiFetch, normalizeAppError } from '~/utils/api-client'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-type StoredRecipe = RecipeSummary & Partial<Pick<RecipeDetail, 'sourceUrl' | 'notes'>>
+type StoredRecipe = RecipeSummary & Partial<Pick<RecipeDetail, 'sourceUrl'>>
 
 export const useRecipesStore = defineStore(
 	'recipes',
@@ -165,8 +165,7 @@ export const useRecipesStore = defineStore(
 						: { servings: input.servings ?? undefined }),
 					...(input.sourceUrl === undefined
 						? {}
-						: { sourceUrl: input.sourceUrl ?? undefined }),
-					...(input.notes === undefined ? {} : { notes: input.notes ?? undefined })
+						: { sourceUrl: input.sourceUrl ?? undefined })
 				}
 			}
 
@@ -482,7 +481,6 @@ export const useRecipesStore = defineStore(
 				description: recipe.description,
 				servings: recipe.servings,
 				sourceUrl: recipe.sourceUrl,
-				notes: recipe.notes,
 				status: recipe.status,
 				updatedAt: recipesById.value[recipe.id]?.updatedAt ?? Date.now()
 			}
