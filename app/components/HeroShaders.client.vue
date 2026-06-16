@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { Pixelate, Plasma, Shader, SineWave } from 'shaders/vue'
+import Pixelate from '#shaders-vue/Pixelate.js'
+import Plasma from '#shaders-vue/Plasma.js'
+import Shader from '#shaders-vue/Shader.js'
+import SineWave from '#shaders-vue/SineWave.js'
 
 const colorMode = useColorMode()
 </script>

@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import type { AccordionItem, ButtonProps } from '@nuxt/ui'
+import type { AccordionItem } from '@nuxt/ui'
 
 definePageMeta({
 	layout: 'base'
 })
 
 const { title, description } = useRuntimeConfig().public.identity
-const { getIcon } = useIcon()
 
 useSeoMeta({
 	title,
@@ -14,9 +13,6 @@ useSeoMeta({
 	description,
 	ogDescription: description
 })
-
-const colorMode = useColorMode()
-const { loggedIn } = useUserSession()
 
 const page = {
 	features: {
@@ -127,29 +123,10 @@ const faqs: AccordionItem[] = [
 	}
 ]
 
-const cta = computed<{
-	title: string
-	description: string
-	links: Array<ButtonProps>
-}>(() => ({
+const cta = {
 	title: 'Ready for a less chaotic\nshopping list?',
-	description: 'Start with Pantry Panic for free and bring some order to the grocery nonsense.',
-	links: [
-		{
-			label: loggedIn.value ? 'Open app' : 'Start free trial',
-			color: 'primary',
-			to: loggedIn.value ? '/app' : undefined,
-			trailingIcon: getIcon('right')
-		},
-		{
-			label: 'Explore self-hosting',
-			color: 'neutral',
-			variant: 'subtle',
-			trailingIcon: getIcon('cloud'),
-			to: 'https://github.com/remihuigen/pantrypanic'
-		}
-	]
-}))
+	description: 'Start with Pantry Panic for free and bring some order to the grocery nonsense.'
+} as const
 
 function enterMotion(delay: number = 0) {
 	return {
@@ -201,22 +178,7 @@ function staggerMotion(index: number = 0) {
 				</UBadge>
 			</Motion>
 			<Motion as="span" v-bind="enterMotion(0.35)" class="inline-block">
-				<h1 class="text-5xl font-bold sm:text-7xl lg:text-8xl">
-					<span
-						class="animate-shimmer bg-size-[200%_auto] bg-clip-text text-transparent"
-						:style="{
-							backgroundImage:
-								colorMode.value === 'dark'
-									? 'linear-gradient(135deg, var(--color-primary-300), var(--color-primary-200), var(--color-primary-100), var(--color-primary-50), var(--color-primary-100), var(--color-primary-200), var(--color-primary-300))'
-									: 'linear-gradient(135deg, var(--ui-text-highlighted), var(--ui-text), var(--color-primary-500), var(--ui-text), var(--ui-text-highlighted))',
-							animationDuration: '10s'
-						}"
-					>
-						For <strong class="font-black">calm</strong>
-						<br />
-						grocery runs
-					</span>
-				</h1>
+				<LandingHeroHeadline />
 			</Motion>
 		</UContainer>
 		<Motion as="div" v-bind="enterMotion(0.3)" class="block">
@@ -236,24 +198,7 @@ function staggerMotion(index: number = 0) {
 						into project management.
 					</Motion>
 					<Motion as="div" v-bind="enterMotion(0.6)" class="inline-block">
-						<div clas="flex gap-3 items-center flex-wrap">
-							<UButton
-								size="xl"
-								color="primary"
-								:label="!!loggedIn ? 'Open app' : 'Start free trial'"
-								:to="!!loggedIn ? '/app/lists' : undefined"
-								:trailing-icon="getIcon('right')"
-								:ui="{ trailingIcon: 'size-4' }"
-							/>
-							<UButton
-								v-if="!loggedIn"
-								size="xl"
-								color="neutral"
-								variant="link"
-								label="login with account"
-								to="/login"
-							/>
-						</div>
+						<LandingHeroActions />
 					</Motion>
 				</div>
 				<div class="relative -mt-80 grow lg:mt-0">
@@ -443,7 +388,7 @@ function staggerMotion(index: number = 0) {
 					class="flex flex-row items-center justify-center gap-3"
 					v-bind="scrollMotion(0.2)"
 				>
-					<UButton v-for="link in cta.links" :key="link.label" v-bind="link" size="xl" />
+					<LandingBottomCtaLinks />
 				</Motion>
 			</template>
 		</UPageCTA>
