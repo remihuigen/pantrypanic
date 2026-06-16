@@ -189,7 +189,7 @@ function staggerMotion(index: number = 0) {
 			<FluidBanner
 				color="primary"
 				class="mt-80 lg:mt-0"
-				containerClass="flex flex-col-reverse md:flex-row gap-8 lg:gap-20"
+				container-class="flex flex-col-reverse md:flex-row gap-8 lg:gap-20"
 			>
 				<div class="space-y-8 md:w-[45%] lg:w-1/3">
 					<Motion

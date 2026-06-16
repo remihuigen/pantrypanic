@@ -3,8 +3,8 @@ import { LIST_ICON_OPTIONS } from '~/utils/listIconOptions'
 import { describe, expect, it } from 'vitest'
 
 describe('LIST_ICON_OPTIONS', () => {
-	it('contains 25 unique Dutch-labelled Lucide Iconify icons', () => {
-		expect(LIST_ICON_OPTIONS).toHaveLength(25)
+	it('contains 27 unique Dutch-labelled Lucide Iconify icons', () => {
+		expect(LIST_ICON_OPTIONS).toHaveLength(27)
 
 		const labels = new Set<string>()
 		const values = new Set<string>()
@@ -18,8 +18,8 @@ describe('LIST_ICON_OPTIONS', () => {
 			expect(option.value.startsWith('lucide:')).toBe(true)
 		}
 
-		expect(labels.size).toBe(25)
-		expect(values.size).toBe(25)
+		expect(labels.size).toBe(27)
+		expect(values.size).toBe(27)
 	})
 
 	it('only references icons that exist in the installed Iconify Lucide source', () => {

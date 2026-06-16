@@ -1,8 +1,6 @@
 <script lang="ts" setup>
-import { container } from '#build/ui'
-
 withDefaults(
-	defineProps<{ color: 'primary' | 'secondary' | 'neutral'; containerClass?: string }>(),
+	defineProps<{ color?: 'primary' | 'secondary' | 'neutral'; containerClass?: string }>(),
 	{
 		color: 'primary'
 	}
