@@ -331,9 +331,9 @@ onUnmounted(() => {
 						</UButton>
 					</div>
 
-					<p v-if="recipeNotes" class="text-muted text-sm leading-relaxed">
+					<!-- <p v-if="recipeNotes" class="text-muted text-sm leading-relaxed">
 						{{ recipeNotes }}
-					</p>
+					</p> -->
 				</UPageCard>
 
 				<RecipeItemGrid

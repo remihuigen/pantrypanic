@@ -91,6 +91,7 @@ function normalizeDraft(value: { name: string }) {
 				:icon="getIcon('search')"
 				placeholder="Zoeken"
 				class="max-w-120"
+				size="xl"
 			/>
 		</UPageCard>
 

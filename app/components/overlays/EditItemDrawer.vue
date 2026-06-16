@@ -450,7 +450,7 @@ onBeforeUnmount(() => {
 					<div v-if="areItemOptionsVisible" class="edit-item-drawer-options-shell">
 						<div class="edit-item-drawer-options-content grid gap-y-4">
 							<FieldRow>
-								<UFormField name="amount" size="lg">
+								<UFormField name="amount" size="xl">
 									<UInputNumber
 										v-model="formState.amount"
 										:step="0.5"
@@ -460,7 +460,7 @@ onBeforeUnmount(() => {
 									/>
 								</UFormField>
 
-								<UFormField name="unit" size="lg">
+								<UFormField name="unit" size="xl">
 									<UInput
 										v-model="formState.unit"
 										placeholder="Stuks"

@@ -212,14 +212,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 				class="grid gap-4"
 				@submit="submitRecipe"
 			>
-				<UFormField label="Naam" name="name" required>
+				<UFormField label="Naam" name="name" required size="xl">
 					<UInput
 						v-model="state.name"
 						placeholder="Pasta pesto"
 						:autofocus="!isEditing"
 					/>
 				</UFormField>
-				<UFormField label="Beschrijving" name="description">
+				<UFormField label="Beschrijving" name="description" size="xl">
 					<UTextarea
 						v-model="state.description"
 						placeholder="Korte notitie voor de receptenlijst"
@@ -227,10 +227,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 					/>
 				</UFormField>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-[120px_1fr]">
-					<UFormField label="Porties" name="servings">
+					<UFormField label="Porties" name="servings" size="xl">
 						<UInputNumber v-model="state.servings" :min="1" />
 					</UFormField>
-					<UFormField label="Bron" name="sourceUrl">
+					<UFormField label="Bron" name="sourceUrl" size="xl">
 						<UInput
 							v-model="state.sourceUrl"
 							type="url"
@@ -239,13 +239,13 @@ function getErrorMessage(error: unknown, fallback: string) {
 						/>
 					</UFormField>
 				</div>
-				<UFormField label="Notities" name="notes">
+				<!-- <UFormField label="Notities" name="notes" size="xl">
 					<UTextarea
 						v-model="state.notes"
 						placeholder="Bereiding, variaties of geheugensteuntjes"
 						:rows="3"
 					/>
-				</UFormField>
+				</UFormField> -->
 				<div class="flex justify-end gap-2">
 					<UButton color="neutral" variant="soft" @click="isOpen = false">
 						Annuleren

@@ -93,6 +93,7 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 				:icon="getIcon('search')"
 				placeholder="Zoeken"
 				class="max-w-120"
+				size="xl"
 			/>
 		</UPageCard>
 		<UPageCard variant="subtle" :ui="{ body: 'space-y-3 grid' }">
