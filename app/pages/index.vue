@@ -170,7 +170,7 @@ const plans = ref<PricingPlanProps[]>([
 
 const cta = {
 	title: 'Ready for a less chaotic\nshopping list?',
-	description: 'Start with Pantry Panic for free and bring some order to the grocery nonsense.'
+	description: 'Start with Pantry Panic for free and bring some order to this grocery nonsense.'
 } as const
 
 const { enterMotion, scrollMotion, staggerMotion } = useMotion()
@@ -215,7 +215,7 @@ const { enterMotion, scrollMotion, staggerMotion } = useMotion()
 			<FluidBanner
 				color="primary"
 				class="mt-60 lg:mt-0"
-				container-class="flex flex-col-reverse lg:flex-row lg:gap-20 pt-20"
+				container-class="flex flex-col-reverse lg:flex-row lg:gap-20 pt-20 lg:pt-6 lg:pb-6"
 			>
 				<div class="space-y-8 lg:w-1/3 lg:w-[45%]">
 					<Motion
