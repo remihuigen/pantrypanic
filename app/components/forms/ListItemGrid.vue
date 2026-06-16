@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ListItem } from '#shared/utils/schemas/domain'
 import type { CategorySection } from '~/utils/listItemGrid'
-import type { SortableEvent } from 'sortablejs'
 
 import {
 	DEFAULT_CATEGORY_KEY,
@@ -32,8 +31,8 @@ const checkedItems = computed(() => props.items.filter((item) => item.status ===
 const itemGridRef = useTemplateRef<HTMLElement>('itemGridRef')
 const collapsedSectionKeys = shallowRef<string[]>([])
 const activeHeaderDropSectionKey = shallowRef<string | null>(null)
+const activeDraggedItemId = shallowRef<string | null>(null)
 const isItemDragActive = shallowRef(false)
-const headerSortables = ref<Sortable[]>([])
 const itemSortables = ref<Sortable[]>([])
 const renderedSections = shallowRef(buildCategorizedSections(props.items))
 const sectionSortable = ref<Sortable | null>(null)
@@ -169,66 +168,111 @@ async function emitCategorizedReorder() {
 	)
 }
 
-function findSectionItemContainer(sectionKey: string) {
+function extractPointerCoordinates(
+	event: Event | MouseEvent | PointerEvent | TouchEvent | null | undefined
+) {
+	if (!event) {
+		return null
+	}
+
+	if ('touches' in event) {
+		const touch = event.touches[0] ?? event.changedTouches[0]
+
+		if (!touch) {
+			return null
+		}
+
+		return { clientX: touch.clientX, clientY: touch.clientY }
+	}
+
+	if ('clientX' in event && 'clientY' in event) {
+		return { clientX: event.clientX, clientY: event.clientY }
+	}
+
+	return null
+}
+
+function findHeaderDropSectionKeyAtPoint(clientX: number, clientY: number) {
 	const root = itemGridRef.value
 
 	if (!root) {
 		return null
 	}
 
-	for (const sectionElement of root.querySelectorAll<HTMLElement>('.list-item-grid__section')) {
-		if (sectionElement.dataset.sectionKey !== sectionKey) {
-			continue
-		}
+	for (const headerDropzone of root.querySelectorAll<HTMLElement>('[data-header-dropzone]')) {
+		const rect = headerDropzone.getBoundingClientRect()
 
-		return sectionElement.querySelector<HTMLElement>('[data-item-container]')
+		if (
+			clientX >= rect.left &&
+			clientX <= rect.right &&
+			clientY >= rect.top &&
+			clientY <= rect.bottom
+		) {
+			return headerDropzone.dataset.dropSectionKey ?? null
+		}
 	}
 
 	return null
 }
 
+function syncActiveHeaderDropSectionFromEvent(
+	event: Event | MouseEvent | PointerEvent | TouchEvent | null | undefined
+) {
+	const coordinates = extractPointerCoordinates(event)
+
+	if (!coordinates) {
+		activeHeaderDropSectionKey.value = null
+		return
+	}
+
+	activeHeaderDropSectionKey.value = findHeaderDropSectionKeyAtPoint(
+		coordinates.clientX,
+		coordinates.clientY
+	)
+}
+
+function handleDragPointerMove(event: Event) {
+	if (!isItemDragActive.value) {
+		return
+	}
+
+	syncActiveHeaderDropSectionFromEvent(event)
+}
+
+function startDragState(draggedItemId: string | null) {
+	activeDraggedItemId.value = draggedItemId
+	isItemDragActive.value = true
+	document.addEventListener('pointermove', handleDragPointerMove, { passive: true })
+	document.addEventListener('touchmove', handleDragPointerMove, { passive: true })
+}
+
+function commitHeaderDrop() {
+	if (!activeDraggedItemId.value || !activeHeaderDropSectionKey.value) {
+		return false
+	}
+
+	renderedSections.value = moveItemToSectionTail(
+		renderedSections.value,
+		activeDraggedItemId.value,
+		activeHeaderDropSectionKey.value
+	)
+
+	return true
+}
+
 function clearDragState() {
+	document.removeEventListener('pointermove', handleDragPointerMove)
+	document.removeEventListener('touchmove', handleDragPointerMove)
 	activeHeaderDropSectionKey.value = null
+	activeDraggedItemId.value = null
 	isItemDragActive.value = false
 }
 
-function updateActiveHeaderDropSection(event: SortableEvent) {
-	activeHeaderDropSectionKey.value = event.to.dataset.dropSectionKey ?? null
-}
-
-function handleHeaderDrop(event: SortableEvent) {
-	const targetSectionKey = event.to.dataset.dropSectionKey
-	const draggedItemId = event.item.dataset.itemId
-
-	if (!targetSectionKey || !draggedItemId) {
-		return
-	}
-
-	const targetContainer = findSectionItemContainer(targetSectionKey)
-
-	if (!targetContainer) {
-		return
-	}
-
-	targetContainer.append(event.item)
-	renderedSections.value = moveItemToSectionTail(
-		renderedSections.value,
-		draggedItemId,
-		targetSectionKey
-	)
-	activeHeaderDropSectionKey.value = targetSectionKey
-}
-
 function destroySortables() {
-	for (const sortable of headerSortables.value) {
-		sortable.destroy()
-	}
-
 	for (const sortable of itemSortables.value) {
 		sortable.destroy()
 	}
 
-	headerSortables.value = []
 	itemSortables.value = []
 	sectionSortable.value?.destroy()
 	sectionSortable.value = null
@@ -271,40 +315,25 @@ async function initializeSortables() {
 				emptyInsertThreshold: 24,
 				fallbackTolerance: 4,
 				group: 'list-item-grid-items',
-				onChoose: () => {
-					isItemDragActive.value = true
+				onChoose: (event) => {
+					startDragState(event.item.dataset.itemId ?? null)
 				},
 				onMove: (event) => {
-					updateActiveHeaderDropSection(event)
+					syncActiveHeaderDropSectionFromEvent((event as { originalEvent?: Event }).originalEvent)
 					return true
 				},
 				touchStartThreshold: 4,
 				onEnd: () => {
+					const didCommitHeaderDrop = commitHeaderDrop()
 					clearDragState()
+
+					if (didCommitHeaderDrop) {
+						void emitCategorizedReorder()
+						return
+					}
+
 					void emitCategorizedReorder()
 				}
-			})
-		)
-	}
-
-	for (const headerDropzone of root.querySelectorAll<HTMLElement>('[data-header-dropzone]')) {
-		headerSortables.value.push(
-			Sortable.create(headerDropzone, {
-				animation: 180,
-				emptyInsertThreshold: 24,
-				fallbackTolerance: 4,
-				group: 'list-item-grid-items',
-				onAdd: (event) => {
-					handleHeaderDrop(event)
-				},
-				onEnd: () => {
-					activeHeaderDropSectionKey.value = null
-				},
-				onMove: (event) => {
-					updateActiveHeaderDropSection(event)
-					return true
-				},
-				sort: false
 			})
 		)
 	}
@@ -362,62 +391,73 @@ function openCreateItemDrawer() {
 			:data-section-key="section.key"
 		>
 			<div
-				class="list-item-grid__section-header border-default/70 relative flex min-h-9 items-center rounded-md border-b px-1 pt-2 pb-1 text-xs font-semibold tracking-normal uppercase transition-colors duration-150"
+				class="list-item-grid__section-header relative min-h-9 rounded-md text-xs font-semibold tracking-normal uppercase"
 				:class="[
 					isSectionChecked(section) ? 'text-success opacity-50' : 'text-muted',
-					activeHeaderDropSectionKey === section.key ? 'bg-elevated/30' : ''
+					activeHeaderDropSectionKey === section.key ? 'bg-elevated/40' : ''
 				]"
 			>
 				<div
 					:data-drop-section-key="section.key"
 					:class="isItemDragActive ? 'pointer-events-auto' : 'pointer-events-none'"
-					class="absolute inset-0 z-20 rounded-md"
+					class="list-item-grid__header-dropzone absolute inset-0 z-20 rounded-md"
 					data-header-dropzone
 				/>
-				<button
-					type="button"
-					class="list-item-grid__section-handle text-muted relative z-10 flex items-center overflow-hidden transition-all duration-200 ease-out"
-					:class="
-						isSectionCollapsed(section)
-							? 'me-2 w-4 translate-x-0 cursor-grab opacity-100 active:cursor-grabbing'
-							: 'pointer-events-none w-0 -translate-x-1 opacity-0'
-					"
-					:aria-label="`Versleep ${section.label}`"
-					tabindex="-1"
+				<div
+					class="relative z-10 flex min-h-9 items-center px-1 pt-2 pb-1 transition-transform duration-150"
+					:class="activeHeaderDropSectionKey === section.key ? 'translate-x-0.5' : ''"
 				>
-					<UIcon name="i-lucide-grip-vertical" class="size-4 shrink-0" />
-				</button>
+					<button
+						type="button"
+						class="list-item-grid__section-handle text-muted flex items-center overflow-hidden transition-all duration-200 ease-out"
+						:class="
+							isSectionCollapsed(section)
+								? 'me-2 w-4 translate-x-0 cursor-grab opacity-100 active:cursor-grabbing'
+								: 'pointer-events-none w-0 -translate-x-1 opacity-0'
+						"
+						:aria-label="`Versleep ${section.label}`"
+						tabindex="-1"
+					>
+						<UIcon name="i-lucide-grip-vertical" class="size-4 shrink-0" />
+					</button>
 
-				<button
-					type="button"
-					class="relative z-10 flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
-					:aria-expanded="!isSectionCollapsed(section)"
-					:aria-label="
-						isSectionCollapsed(section)
-							? `Toon items in ${section.label}`
-							: `Verberg items in ${section.label}`
-					"
-					@click="toggleSectionCollapse(section.key)"
-				>
-					<span class="min-w-0 truncate">{{ section.label }}</span>
-					<span class="flex shrink-0 items-center gap-2">
-						<UBadge
-							class="shrink-0 tabular-nums"
-							:color="isSectionChecked(section) ? 'success' : 'neutral'"
-							variant="subtle"
-							size="sm"
-							:label="section.itemIds.length"
-						/>
-						<UIcon
-							:name="
-								isSectionCollapsed(section)
-									? 'i-lucide-chevron-down'
-									: 'i-lucide-chevron-up'
-							"
-							class="size-4 shrink-0"
-						/>
-					</span>
-				</button>
+					<button
+						type="button"
+						class="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+						:aria-expanded="!isSectionCollapsed(section)"
+						:aria-label="
+							isSectionCollapsed(section)
+								? `Toon items in ${section.label}`
+								: `Verberg items in ${section.label}`
+						"
+						@click="toggleSectionCollapse(section.key)"
+					>
+						<span class="min-w-0 truncate">{{ section.label }}</span>
+						<span class="flex shrink-0 items-center gap-2">
+							<UBadge
+								class="shrink-0 tabular-nums"
+								:color="isSectionChecked(section) ? 'success' : 'neutral'"
+								variant="subtle"
+								size="sm"
+								:label="section.itemIds.length"
+							/>
+							<UIcon
+								:name="
+									isSectionCollapsed(section)
+										? 'i-lucide-chevron-down'
+										: 'i-lucide-chevron-up'
+								"
+								class="size-4 shrink-0"
+							/>
+						</span>
+					</button>
+				</div>
+
+				<USeparator
+					class="pointer-events-none absolute inset-x-0 bottom-0"
+					color="neutral"
+					decorative
+				/>
 			</div>
 
 			<div
