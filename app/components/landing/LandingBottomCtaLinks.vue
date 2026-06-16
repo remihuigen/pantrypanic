@@ -3,12 +3,17 @@ import type { ButtonProps } from '@nuxt/ui'
 
 const { getIcon } = useIcon()
 const { loggedIn } = useUserSession()
+const { enablePublicRegistration } = useRuntimeConfig().public
 
 const links = computed<Array<ButtonProps>>(() => [
 	{
-		label: loggedIn.value ? 'Open app' : 'Start free trial',
+		label: loggedIn.value
+			? 'Open app'
+			: enablePublicRegistration
+				? 'Start free trial'
+				: 'Login',
 		color: 'primary',
-		to: loggedIn.value ? '/app' : undefined,
+		to: loggedIn.value ? '/app' : enablePublicRegistration ? '/register' : '/login',
 		trailingIcon: getIcon('right')
 	},
 	{
