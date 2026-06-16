@@ -84,18 +84,18 @@ const plans = ref<RadioGroupItem[]>([
 	}
 ])
 
-const toast = useToast()
-
 const loading = ref(false)
 
 // TODO implement turnstile
 // - register endpoint from backend should ONLY accept request from this specific page
 
-async function onSubmit(payload: FormSubmitEvent<Schema>) {
+async function onSubmit(_payload: FormSubmitEvent<Schema>) {
 	loading.value = true
 
 	try {
-	} catch {
+		console.log('Send ', _payload)
+	} catch (error) {
+		console.error(error)
 	} finally {
 		loading.value = false
 	}
@@ -105,88 +105,98 @@ const { staggerMotion } = useMotion()
 </script>
 
 <template>
-	<Motion v-bind="staggerMotion(0)">
-		<HeroShaders class="absolute inset-x-0 top-0 h-[130vh] opacity-30 dark:opacity-25" />
-	</Motion>
-	<UContainer class="relative py-8">
-		<div class="mx-auto max-w-2xl space-y-4">
-			<UPageCard
-				title="Registreer"
-				description="Meld je aan voor de gratis proefperiode van Pantry Panic"
-				variant="naked"
-			/>
-
-			<UPageCard variant="subtle" :ui="{ body: 'space-y-4' }">
-				<p v-if="!enableBetaPeriod" class="text-dimmed text-sm">
-					Tijdens de proefperiode heb je 30 dagen lang onbeperkt toegang tot Pantry Panic.
-					Na afloop van je ervoor kiezen om een <i>lifetime subscription</i> aan te
-					schaffen en de app te blijven gebruiken.
-				</p>
-				<UAlert
-					v-else
-					icon="lucide:badge-check"
-					color="success"
-					variant="subtle"
-					title="Beta periode"
-					description="De bètaperiode van Pantry Panic is actief. Tijdens deze periode kun je de app gratis gebruiken. Beschouw het als een hele lange proefperiode!"
+	<div>
+		<Motion v-bind="staggerMotion(0)">
+			<HeroShaders class="absolute inset-x-0 top-0 h-[130vh] opacity-30 dark:opacity-25" />
+		</Motion>
+		<UContainer class="relative py-8">
+			<div class="mx-auto max-w-2xl space-y-4">
+				<UPageCard
+					title="Registreer"
+					description="Meld je aan voor de gratis proefperiode van Pantry Panic"
+					variant="naked"
 				/>
-				<UForm
-					:state="state"
-					:schema="schema"
-					class="flex flex-col gap-5"
-					@submit="onSubmit"
-				>
-					<UFormField
-						label="Soort abonnement"
-						name="plan"
-						size="lg"
-						:ui="{ label: 'text-base' }"
-					>
-						<URadioGroup
-							v-model="state.plan"
-							:items="plans"
-							color="primary"
-							variant="table"
-						/>
-					</UFormField>
-					<UFormField label="Huishouden" name="initialHouseholdName" size="xl">
-						<UInput
-							v-model="state.initialHouseholdName"
-							:placeholder="`Naam van je ${state.plan === 'multiple-households' ? 'eerste ' : ''} huishouden`"
-						/>
-					</UFormField>
-					<UFormField label="Naam" name="name" size="xl">
-						<UInput v-model="state.name" placeholder="Je naam" />
-					</UFormField>
-					<UFormField label="E-mail" name="email" size="xl">
-						<UInput v-model="state.email" type="email" placeholder="Je e-mailadres" />
-					</UFormField>
-					<FieldRow>
-						<UFormField label="Wachtwoord" name="password" size="xl">
-							<UInput
-								v-model="state.password"
-								type="password"
-								placeholder="Je wachtwoord"
-							/>
-						</UFormField>
-						<UFormField label="Bevestig wachtwoord" name="confirmPassword" size="xl">
-							<UInput
-								v-model="state.confirmPassword"
-								type="password"
-								placeholder="Bevestig je wachtwoord"
-							/>
-						</UFormField>
-					</FieldRow>
-					<UButton
-						type="submit"
-						:loading="loading"
-						label="Registreer nu"
-						size="xl"
-						class="self-start"
-						:icon="getIcon('right')"
+
+				<UPageCard variant="subtle" :ui="{ body: 'space-y-4' }">
+					<p v-if="!enableBetaPeriod" class="text-dimmed text-sm">
+						Tijdens de proefperiode heb je 30 dagen lang onbeperkt toegang tot Pantry
+						Panic. Na afloop van je ervoor kiezen om een
+						<i>lifetime subscription</i> aan te schaffen en de app te blijven gebruiken.
+					</p>
+					<UAlert
+						v-else
+						icon="lucide:badge-check"
+						color="success"
+						variant="subtle"
+						title="Beta periode"
+						description="De bètaperiode van Pantry Panic is actief. Tijdens deze periode kun je de app gratis gebruiken. Beschouw het als een hele lange proefperiode!"
 					/>
-				</UForm>
-			</UPageCard>
-		</div>
-	</UContainer>
+					<UForm
+						:state="state"
+						:schema="schema"
+						class="flex flex-col gap-5"
+						@submit="onSubmit"
+					>
+						<UFormField
+							label="Soort abonnement"
+							name="plan"
+							size="lg"
+							:ui="{ label: 'text-base' }"
+						>
+							<URadioGroup
+								v-model="state.plan"
+								:items="plans"
+								color="primary"
+								variant="table"
+							/>
+						</UFormField>
+						<UFormField label="Huishouden" name="initialHouseholdName" size="xl">
+							<UInput
+								v-model="state.initialHouseholdName"
+								:placeholder="`Naam van je ${state.plan === 'multiple-households' ? 'eerste ' : ''} huishouden`"
+							/>
+						</UFormField>
+						<UFormField label="Naam" name="name" size="xl">
+							<UInput v-model="state.name" placeholder="Je naam" />
+						</UFormField>
+						<UFormField label="E-mail" name="email" size="xl">
+							<UInput
+								v-model="state.email"
+								type="email"
+								placeholder="Je e-mailadres"
+							/>
+						</UFormField>
+						<FieldRow>
+							<UFormField label="Wachtwoord" name="password" size="xl">
+								<UInput
+									v-model="state.password"
+									type="password"
+									placeholder="Je wachtwoord"
+								/>
+							</UFormField>
+							<UFormField
+								label="Bevestig wachtwoord"
+								name="confirmPassword"
+								size="xl"
+							>
+								<UInput
+									v-model="state.confirmPassword"
+									type="password"
+									placeholder="Bevestig je wachtwoord"
+								/>
+							</UFormField>
+						</FieldRow>
+						<UButton
+							type="submit"
+							:loading="loading"
+							label="Registreer nu"
+							size="xl"
+							class="self-start"
+							:icon="getIcon('right')"
+						/>
+					</UForm>
+				</UPageCard>
+			</div>
+		</UContainer>
+	</div>
 </template>

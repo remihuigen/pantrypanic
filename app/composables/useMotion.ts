@@ -1,3 +1,7 @@
+/**
+ * v-motion helpers for various transitions
+ * @returns An object containing motion helper functions: enterMotion, scrollMotion, and staggerMotion
+ */
 export const useMotion = () => {
 	function enterMotion(delay: number = 0) {
 		return {

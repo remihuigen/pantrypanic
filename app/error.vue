@@ -11,7 +11,7 @@ useHead({
 	}
 })
 
-const props = defineProps<{
+defineProps<{
 	error: NuxtError
 }>()
 
