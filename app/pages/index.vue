@@ -189,9 +189,9 @@ function staggerMotion(index: number = 0) {
 			<FluidBanner
 				color="primary"
 				class="mt-80 lg:mt-0"
-				container-class="flex flex-col-reverse md:flex-row gap-8 lg:gap-20"
+				container-class="flex flex-col-reverse lg:flex-row gap-8 lg:gap-20"
 			>
-				<div class="space-y-8 md:w-[45%] lg:w-1/3">
+				<div class="space-y-8 lg:w-1/3 lg:w-[45%]">
 					<Motion
 						as="p"
 						v-bind="enterMotion(0.5)"
@@ -226,9 +226,9 @@ function staggerMotion(index: number = 0) {
 					<UColorModeImage
 						light="/lightmode.png"
 						dark="/darkmode.png"
-						:width="600"
+						:width="800"
 						:height="800"
-						class="mx-auto max-w-[420px] lg:absolute lg:-right-1/6 lg:bottom-0"
+						class="mx-auto md:max-w-lg lg:absolute lg:right-0 lg:bottom-0 lg:w-[85%] lg:max-w-2xl"
 					/>
 				</div>
 			</FluidBanner>
