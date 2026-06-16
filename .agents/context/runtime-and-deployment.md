@@ -28,11 +28,13 @@ The product app UI is namespaced under `/app`:
   routes render through Nuxt's normal SSR path.
 - `nuxt.config.ts` sets `pwa.scope = '/app/'`, so the generated service worker only controls
   `/app/**` and stays off `/`, `/login`, `/logout`, and other public/auth routes.
-- `nuxt.config.ts` also forces `shaders` through `build.transpile` and
-  `vite.optimizeDeps.include` as a workaround for Vite dev transform stack overflows triggered by
-  `shaders/vue`.
 - `nuxt.config.ts` also denies Workbox navigation fallback for `/app/**`, so installed PWAs keep
   routing deep links through Cloudflare/Nitro SSR instead of serving the `/app` entry document.
+- `app/plugins/data-hydration.client.ts` only boots authenticated store hydration and the refresh
+  scheduler when the current route lives under `/app`, so public landing/auth routes do not fetch
+  product-app profile or household state during client startup.
+- `nuxt.config.ts` defines `#shaders-vue` as a Vite alias to `node_modules/shaders/dist/vue` so the
+  landing-page shader imports resolve to direct runtime modules instead of the package barrel.
 - `/` serves the public landing page. `/app` redirects to `/app/lists`.
 - `app/pages/(auth)/login.vue` contains the email/password sign-in form at `/login`.
 - `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
@@ -171,10 +173,11 @@ Implemented route families:
 - `/api/settings` for canonical item/category maintenance, clear-data, and usage stats
 
 Frontend interval refresh is centralized in `app/composables/useStoreRefresh.ts`. The client
-plugin starts one scheduler after session and household membership context are available. The
-scheduler calls `orchestrateRefresh()` and dispatches by current `/app/**` route namespace: list
-overview, list detail with items, recipe overview/detail, meal planner, or the active settings
-subroute. Route pages remain responsible for their own entry fetches.
+plugin only starts the scheduler after the active route enters `/app` and session plus household
+membership context are available. The scheduler calls `orchestrateRefresh()` and dispatches by
+current `/app/**` route namespace: list overview, list detail with items, recipe overview/detail,
+meal planner, or the active settings subroute. Route pages remain responsible for their own entry
+fetches.
 
 New domain routes use the shared response envelope:
 

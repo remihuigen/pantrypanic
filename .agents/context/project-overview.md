@@ -39,9 +39,11 @@ Implemented:
 - build-time HTTP admin-user seed from `.env`
 - Pinia-based frontend data layer with normalized entity stores, API envelope wrapper, optimistic
   updates, and one route-aware polling refresh scheduler
+- public-route startup keeps product-store hydration off `/` and other non-`/app` routes
 - Pantry Panic grocery-list UI for lists and list items
 - prompt-based PWA update and Chromium-style install prompt handling
 - service worker registration scoped to `/app/**` so landing/auth routes stay outside SW control
+- landing-page shader imports routed through a local `#shaders-vue` alias to direct runtime modules
 - human docs under `docs/`
 
 Not implemented yet:

@@ -76,14 +76,9 @@ still adds `^\/app(?:\/.*)?$` to `pwa.workbox.navigateFallbackDenylist` so Cloud
 remains the source of truth for SSR app routes instead of Workbox serving the `/app` entry
 document for deep links.
 
-## Vite Dependency Workarounds
-
-`nuxt.config.ts` forces `shaders` through both `build.transpile` and `vite.optimizeDeps.include`.
-
-This is a defensive workaround for the landing-page hero shader dependency. Without it, Vite dev
-transforms can recurse while processing `shaders/vue`, surfacing `Maximum call stack size
-exceeded` from Vite's internal transform filter path. Keep the transpile and optimize-deps entries
-unless the dependency is removed or the upstream package no longer needs the workaround.
+`nuxt.config.ts` also defines the local Vite alias `#shaders-vue` to
+`node_modules/shaders/dist/vue`. Landing-page shader components import through that alias so Vite
+can resolve the exact runtime modules that are used instead of walking the `shaders/vue` barrel.
 
 ## Database Migrations
 

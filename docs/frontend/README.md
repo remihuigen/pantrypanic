@@ -20,7 +20,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - `app/composables/useStoreRefresh.ts`: the single route-aware refresh scheduler plus the shared
   interval primitive. Refresh timing comes from runtime config and the household-settings override
   loaded by the settings store.
-- `app/plugins/data-hydration.client.ts`: starts the route-aware refresh scheduler after session and
+- `app/plugins/data-hydration.client.ts`: only hydrates authenticated product-app state when the
+  active route is under `/app`, then starts the route-aware refresh scheduler after session and
   household membership context are available.
 
 ## App Routes And Rendering
@@ -61,6 +62,9 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   scheduler that calls `orchestrateRefresh()` and only fetches the active route namespace.
 - Route pages are still responsible for fetching required data when the user enters the route.
   Interval refresh is a background reconciliation path, not the initial page-load data source.
+- `HeroShaders.client.vue` imports shader primitives through the local `#shaders-vue` alias, which
+  points at direct runtime modules under `node_modules/shaders/dist/vue` instead of the package's
+  barrel export. This keeps the landing-page shader graph smaller during Vite transforms.
 - Recipe overview favorites are derived from local per-user browser usage counts. The count is
   incremented when a recipe is copied to a list and is not synchronized through the backend.
 - Settings is split into subroutes: general profile/theme/danger-zone controls, household

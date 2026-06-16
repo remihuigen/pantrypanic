@@ -1,4 +1,7 @@
+import { resolve } from 'node:path'
+
 const pantryDefaultListName = process.env.NUXT_PANTRY_DEFAULT_LIST_NAME ?? 'Boodschappen'
+const shadersVueRuntimeDir = resolve('./node_modules/shaders/dist/vue')
 
 function readNumberEnv(name: string, fallback: number) {
 	const value = process.env[name]
@@ -128,12 +131,6 @@ export default defineNuxtConfig({
 		}
 	},
 
-	build: {
-		// Shaders ships a very large Vue entry surface; forcing Nuxt/Vite to transpile it keeps
-		// dev transforms on a stable path and avoids recursive filter crashes in Vite.
-		transpile: ['shaders']
-	},
-
 	routeRules: {
 		'/app': { ssr: true },
 		'/app/**': { ssr: true }
@@ -152,6 +149,12 @@ export default defineNuxtConfig({
 	},
 
 	vite: {
+		resolve: {
+			alias: {
+				'#shaders-vue': shadersVueRuntimeDir
+			}
+		},
+
 		optimizeDeps: {
 			include: [
 				'@vue/devtools-core',
@@ -161,7 +164,6 @@ export default defineNuxtConfig({
 				'@tiptap/starter-kit',
 				'@tiptap/markdown',
 				'@tiptap/**',
-				'shaders/vue',
 				'sortablejs',
 				'workbox-window'
 			]
