@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ButtonProps } from '@nuxt/ui'
+import type { AccordionItem, ButtonProps } from '@nuxt/ui'
 
 definePageMeta({
 	layout: 'base'
@@ -71,18 +71,15 @@ const page = {
 		items: [
 			{
 				value: '0 ads',
-				label: 'because groceries are not billboards',
-				class: 'text-secondary'
+				label: 'because groceries are not billboards'
 			},
 			{
 				value: '0 trackers',
-				label: 'because your fridge is your business',
-				class: 'text-secondary'
+				label: 'because your fridge is your business'
 			},
 			{
 				value: '0 limits',
-				label: 'because households are messy',
-				class: 'text-secondary'
+				label: 'because households are messy'
 			},
 			{
 				value: 'Self-hostable',
@@ -90,8 +87,45 @@ const page = {
 				class: 'text-primary'
 			}
 		]
+	},
+	faq: {
+		headline: 'Frequently asked questions',
+		title: 'Questions before the panic starts?'
 	}
 } as const
+
+const faqs: AccordionItem[] = [
+	{
+		label: 'Why can’t I find Pantry Panic in the App Store or Play Store?',
+		content:
+			'Pantry Panic is an installable web app, also known as a PWA. That means you use it through your browser, but it can still live on your home screen like a normal app. When your device supports it, Pantry Panic will show an install prompt. If that does not appear, you can usually install it from your browser menu by choosing something like “Add to Home Screen” or “Install app”.'
+	},
+	{
+		label: 'Does Pantry Panic support other languages?',
+		content:
+			'Not yet. Pantry Panic is currently only available in Dutch. Internationalization is planned for a future update, because grocery chaos is sadly not limited to one country.'
+	},
+	{
+		label: 'How does pricing work for the cloud version?',
+		content:
+			'Right now, you can buy a lifetime subscription to the Pantry Panic cloud version. One payment, unlimited usage, for as long as Pantry Panic exists. Pricing may change in the future, so if you like lifetime deals, this is probably the good bit.'
+	},
+	{
+		label: 'How does self-hosting work for Pantry Panic?',
+		content:
+			'Pantry Panic is open source and the code is available on GitHub. The easiest route is deploying it to Cloudflare, without writing a single line of code. Other deployment targets should work too, but Cloudflare is the setup we actively use and test.'
+	},
+	{
+		label: 'Where is my data stored?',
+		content:
+			'The cloud version of Pantry Panic runs on Cloudflare infrastructure, with data stored in the European Union. Your data is encrypted at rest and in transit, so your grocery lists are treated like private household business — including the suspicious number of snacks.'
+	},
+	{
+		label: 'Who can access my data?',
+		content:
+			'Your household members can access the lists and data you share with them. Pantry Panic does not sell your data, does not use ads, and does not add trackers to watch your shopping behavior. We keep the business model boring on purpose.'
+	}
+]
 
 const cta = computed<{
 	title: string
@@ -167,7 +201,7 @@ function staggerMotion(index: number = 0) {
 				</UBadge>
 			</Motion>
 			<Motion as="span" v-bind="enterMotion(0.35)" class="inline-block">
-				<h1 class="text-5xl font-bold md:text-7xl lg:text-8xl">
+				<h1 class="text-5xl font-bold sm:text-7xl lg:text-8xl">
 					<span
 						class="animate-shimmer bg-size-[200%_auto] bg-clip-text text-transparent"
 						:style="{
@@ -188,8 +222,8 @@ function staggerMotion(index: number = 0) {
 		<Motion as="div" v-bind="enterMotion(0.3)" class="block">
 			<FluidBanner
 				color="primary"
-				class="mt-80 lg:mt-0"
-				container-class="flex flex-col-reverse lg:flex-row gap-8 lg:gap-20"
+				class="mt-60 lg:mt-0"
+				container-class="flex flex-col-reverse lg:flex-row lg:gap-20 pt-20"
 			>
 				<div class="space-y-8 lg:w-1/3 lg:w-[45%]">
 					<Motion
@@ -333,7 +367,7 @@ function staggerMotion(index: number = 0) {
 								wrapper: 'items-center',
 								title: [
 									'text-2xl font-bold tracking-tight leading-none',
-									metric.class
+									'class' in metric ? metric.class : ''
 								],
 								description:
 									'font-mono text-xs uppercase tracking-[0.06em] text-dimmed mt-3'
@@ -344,10 +378,45 @@ function staggerMotion(index: number = 0) {
 			</div>
 		</UPageSection>
 
+		<UPageSection
+			id="faq"
+			:ui="{
+				root: 'scroll-mt-(--ui-header-height)',
+				container: 'max-w-5xl',
+				headline:
+					'font-mono font-medium text-xs text-primary uppercase tracking-[0.12em] text-center',
+				title: 'max-w-lg mx-auto',
+				description: 'max-w-md mx-auto text-dimmed'
+			}"
+		>
+			<template #headline>
+				<Motion as="span" v-bind="scrollMotion()" class="inline-block">
+					{{ page.faq.headline }}
+				</Motion>
+			</template>
+
+			<template #title>
+				<Motion as="span" v-bind="scrollMotion(0.1)" class="inline-block">
+					{{ page.faq.title }}
+				</Motion>
+			</template>
+
+			<Motion as="div" v-bind="enterMotion(0.3)" class="mx-auto w-full max-w-xl">
+				<UAccordion
+					type="multiple"
+					:items="faqs"
+					:unmount-on-hide="false"
+					:ui="{
+						trigger: 'text-base py-5',
+						body: 'text-base text-muted leading-relaxed'
+					}"
+				/>
+			</Motion>
+		</UPageSection>
 		<UPageCTA
 			variant="naked"
 			:ui="{
-				root: 'py-12 sm:py-16',
+				root: 'pb-12 sm:pb-16',
 				container: 'max-w-3xl text-center',
 				title: 'lg:text-5xl tracking-tighter whitespace-pre-line',
 				description: 'mx-auto max-w-sm leading-relaxed text-dimmed'

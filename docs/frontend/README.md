@@ -45,6 +45,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   browser `beforeinstallprompt` event and exposes it through `$pwa.showInstallPrompt`.
 - PWA install and update toasts are handled in `app/app.vue` so prompt state is observed globally,
   independent of the active route layout.
+- The service worker is registered with `scope: '/app/'`, so it only controls `/app/**` and leaves
+  `/`, `/login`, `/logout`, and other public/auth routes outside service-worker control.
 - Workbox navigation fallback is explicitly denied for `/app/**`, so installed PWAs still fetch app
   deep links from the SSR worker instead of replaying the `/app` entry route.
 - Browser support for native install prompts is platform-dependent. Browsers that do not emit

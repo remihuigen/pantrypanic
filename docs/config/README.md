@@ -70,10 +70,20 @@ Keep `/login` and `/logout` outside these route rules so authentication pages re
 server-renderable. Future marketing routes should also stay outside `/app` and can opt into
 prerendering with their own route rules.
 
-The PWA service worker must not handle `/app` navigations. `nuxt.config.ts` adds
-`/^\/app(?:\/.*)?$/` to `pwa.workbox.navigateFallbackDenylist` so Cloudflare/Nitro remains the
-source of truth for SSR app routes instead of Workbox serving the `/app` entry document for deep
-links.
+The PWA service worker is registered with `scope: '/app/'`, so it only controls `/app/**` routes
+and does not take over `/`, `/login`, `/logout`, or other public/auth pages. `nuxt.config.ts`
+still adds `^\/app(?:\/.*)?$` to `pwa.workbox.navigateFallbackDenylist` so Cloudflare/Nitro
+remains the source of truth for SSR app routes instead of Workbox serving the `/app` entry
+document for deep links.
+
+## Vite Dependency Workarounds
+
+`nuxt.config.ts` forces `shaders` through both `build.transpile` and `vite.optimizeDeps.include`.
+
+This is a defensive workaround for the landing-page hero shader dependency. Without it, Vite dev
+transforms can recurse while processing `shaders/vue`, surfacing `Maximum call stack size
+exceeded` from Vite's internal transform filter path. Keep the transpile and optimize-deps entries
+unless the dependency is removed or the upstream package no longer needs the workaround.
 
 ## Database Migrations
 

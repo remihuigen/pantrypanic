@@ -64,7 +64,7 @@ function openCreateItemDrawer() {
 
 			<div class="relative h-full px-4">
 				<UButton
-					class="shrink-0 -translate-y-1/2 rounded-full p-4"
+					class="shrink-0 -translate-y-[calc(50%+0.5rem)] rounded-full p-4"
 					color="primary"
 					:icon="getIcon('plus')"
 					size="xl"

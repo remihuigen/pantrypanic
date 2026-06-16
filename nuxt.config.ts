@@ -128,6 +128,12 @@ export default defineNuxtConfig({
 		}
 	},
 
+	build: {
+		// Shaders ships a very large Vue entry surface; forcing Nuxt/Vite to transpile it keeps
+		// dev transforms on a stable path and avoids recursive filter crashes in Vite.
+		transpile: ['shaders']
+	},
+
 	routeRules: {
 		'/app': { ssr: true },
 		'/app/**': { ssr: true }
@@ -155,6 +161,7 @@ export default defineNuxtConfig({
 				'@tiptap/starter-kit',
 				'@tiptap/markdown',
 				'@tiptap/**',
+				'shaders/vue',
 				'sortablejs',
 				'workbox-window'
 			]
@@ -176,6 +183,7 @@ export default defineNuxtConfig({
 
 	pwa: {
 		registerType: 'prompt',
+		scope: '/app/',
 		client: {
 			installPrompt: 'pantrypanic:hide-install-prompt'
 		},
@@ -195,7 +203,7 @@ export default defineNuxtConfig({
 			theme_color: '#EB533A',
 			background_color: '#FFFFFF',
 
-			lang: 'en',
+			lang: 'nl',
 
 			icons: [
 				{
@@ -223,7 +231,7 @@ export default defineNuxtConfig({
 		},
 
 		devOptions: {
-			enabled: true
+			enabled: false
 		}
-	}
+	},
 })

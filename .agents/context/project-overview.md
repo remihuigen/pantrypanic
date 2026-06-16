@@ -41,6 +41,7 @@ Implemented:
   updates, and one route-aware polling refresh scheduler
 - Pantry Panic grocery-list UI for lists and list items
 - prompt-based PWA update and Chromium-style install prompt handling
+- service worker registration scoped to `/app/**` so landing/auth routes stay outside SW control
 - human docs under `docs/`
 
 Not implemented yet:
