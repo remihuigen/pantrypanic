@@ -94,6 +94,11 @@ Create the following resources in your Cloudflare dashboard:
   - If you are located in the EU, consider opting into EU jurisdiction
 - [ ] A Workers KV namespace
   - Write down the `namespace ID`
+- [ ] A Turnstile Widget (optional, but recommended for enhanced security)
+  - Choose `invisible` widget mode. Make sure to reference
+    [Turnstile Privacy Addendum](https://www.cloudflare.com/en-gb/turnstile-privacy-policy/) in your
+    own policy.
+  - Write down your `site key` and `secret key`
 
 ### 2️⃣ Step 2: Create an API Token
 
@@ -146,6 +151,10 @@ CLOUDFLARE_R2_BUCKET=<bucket-name>
 
 CLOUDFLARE_API_TOKEN=<api-token>
 CLOUDFLARE_ACCOUNT_ID=<account-id>
+
+ENABLE_TURNSTILE=true
+TURNSTILE_SITE_KEY="<turnstile-site-key>"
+TURNSTILE_SECRET_KEY="<turnstile-secret-key>"
 
 NUXT_SESSION_PASSWORD=<hashing-secret>
 ADMIN_API_KEY=<admin-api-key>
