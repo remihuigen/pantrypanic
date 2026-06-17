@@ -2,8 +2,11 @@ import { defineApiHandler, parseApiBody, throwApiError } from '#server/utils/api
 import { consumeAccessLink, ensureHouseholdMembership } from '#server/utils/domains/households'
 import { inviteAcceptBodySchema } from '#server/utils/settings'
 import { createUser, findUserForAuthentication } from '#server/utils/user-management'
+import { TURNSTILE_ACTIONS } from '#shared/utils/constants'
 
 export default defineApiHandler(async (event) => {
+	await assertTurnstileToken(event, TURNSTILE_ACTIONS.join_household)
+
 	const body = await parseApiBody(event, inviteAcceptBodySchema)
 	const link = await consumeAccessLink(body.token, 'invite')
 	let user = await findUserForAuthentication(body.email)

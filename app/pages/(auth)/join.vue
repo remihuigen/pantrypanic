@@ -20,8 +20,7 @@ const schema = z.strictObject({
 	password: z.string().min(8, 'Wachtwoord moet minimaal 8 tekens bevatten.')
 })
 
-type Schema = z.output<typeof schema>
-
+const turnstileRef = useTemplateRef('turnstile')
 const route = useRoute()
 const toast = useToast()
 const { fetch } = useUserSession()
@@ -32,10 +31,25 @@ const state = reactive<Schema>({
 	password: ''
 })
 
-async function submit(event: FormSubmitEvent<Schema>) {
-	const token = typeof route.query.token === 'string' ? route.query.token : ''
+type Schema = z.output<typeof schema>
 
-	if (!token) {
+const {
+	token: turnstileToken,
+	isEnabled: isTurnstileEnabled,
+	getTokenWithRetry,
+	isReady,
+	reset: resetTurnstile,
+	showPendingHint,
+	showMissingTokenErrorHint,
+	captureTurnstileError,
+	HEADER,
+	ACTIONS
+} = useTurnstile()
+
+async function submit(event: FormSubmitEvent<Schema>) {
+	const inviteToken = typeof route.query.token === 'string' ? route.query.token : ''
+
+	if (!inviteToken) {
 		toast.add({
 			title: 'Uitnodigingslink ontbreekt.',
 			color: 'error',
@@ -47,13 +61,28 @@ async function submit(event: FormSubmitEvent<Schema>) {
 	loading.value = true
 
 	try {
+		// Wait for turnstile to be ready and get token
+		if (!isReady()) {
+			showPendingHint()
+		}
+
+		const token = await getTokenWithRetry()
+		if (isTurnstileEnabled.value && !token) {
+			showMissingTokenErrorHint()
+			return
+		}
+
 		await apiFetch('/api/access-links/invite/accept', {
 			method: 'POST',
-			body: { ...event.data, token }
+			body: { ...event.data, token, inviteToken },
+			headers: isTurnstileEnabled.value && token ? { [HEADER]: token } : undefined
 		})
 		await fetch()
 		await navigateTo('/app/lists')
 	} catch (error) {
+		if (captureTurnstileError(error)) {
+			return
+		}
 		toast.add({
 			title:
 				error && typeof error === 'object' && 'message' in error
@@ -64,6 +93,7 @@ async function submit(event: FormSubmitEvent<Schema>) {
 		})
 	} finally {
 		loading.value = false
+		resetTurnstile(turnstileRef.value)
 	}
 }
 </script>
@@ -73,6 +103,15 @@ async function submit(event: FormSubmitEvent<Schema>) {
 		<UPageCard class="mx-auto w-full max-w-md">
 			<UForm :schema="schema" :state="state" class="space-y-4" @submit="submit">
 				<AppLogo class="mx-auto h-12 w-auto shrink-0" />
+				<NuxtTurnstile
+					ref="turnstile"
+					v-model="turnstileToken"
+					:options="{
+						action: ACTIONS.join_household,
+						appearance: 'interaction-only'
+					}"
+					class="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
+				/>
 				<UFormField label="Naam" name="name" size="xl">
 					<UInput v-model="state.name" />
 				</UFormField>

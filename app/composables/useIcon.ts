@@ -19,7 +19,9 @@ export const useIcon = () => {
 		copy: 'i-lucide-copy',
 		search: 'i-lucide-search',
 		right: 'i-lucide-chevron-right',
-		cloud: 'i-lucide-cloud'
+		cloud: 'i-lucide-cloud',
+		warn: 'lucide:triangle-alert',
+		error: 'lucide:circle-alert'
 	} as const
 
 	/**
