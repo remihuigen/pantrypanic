@@ -37,6 +37,12 @@ export async function requireAuthenticated(event: H3Event): Promise<void> {
 	})
 }
 
+/**
+ * Checks whether a server request has a valid admin API key.
+ *
+ * @param event - H3 request event to inspect.
+ * @returns Whether the request has a valid admin API key.
+ */
 export function hasValidAdminApiKey(event: H3Event): boolean {
 	const configuredKey = getConfiguredAdminApiKey(event)
 	const requestKey = getHeader(event, SECURITY_HEADERS.adminToken)

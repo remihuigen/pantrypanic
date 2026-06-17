@@ -19,7 +19,7 @@ function readNumberEnv(name: string, fallback: number) {
  * If in development, the methods return tokens that are always valid
  * @returns An object containing the Turnstile site key and secret key
  */
-export function resolveTurnstile() {
+function resolveTurnstile() {
 	const isDev = process.env.NODE_ENV === 'development'
 
 	const turnstileSiteKey =
@@ -213,10 +213,6 @@ export default defineNuxtConfig({
 		provider: 'none'
 	},
 
-	turnstile: {
-		siteKey: turnstileSiteKey
-	},
-
 	pwa: {
 		registerType: 'prompt',
 		scope: '/app/',
@@ -269,5 +265,9 @@ export default defineNuxtConfig({
 		devOptions: {
 			enabled: false
 		}
+	},
+
+	turnstile: {
+		siteKey: turnstileSiteKey
 	}
 })
