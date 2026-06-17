@@ -138,47 +138,44 @@ In your fork, navigate to:
 Settings → Secrets and Variables → Actions
 ```
 
-Add the following variables and secrets.
+Add the following secrets.
 
 ```text
-# Repository variables
-CLOUDFLARE_WORKER_NAME=<worker-name> # Defaults to `pantrypanic`
-NUXT_PUBLIC_SITE_URL=<instance-url> # Added after the first deployment
-
-# Repository secrets
+# Cloudflare config
 CLOUDFLARE_D1_DATABASE_ID=<database-id>
 CLOUDFLARE_R2_BUCKET=<bucket-name>
 
 CLOUDFLARE_API_TOKEN=<api-token>
 CLOUDFLARE_ACCOUNT_ID=<account-id>
 
-ENABLE_TURNSTILE=true
-TURNSTILE_SITE_KEY="<turnstile-site-key>"
+# Turnstile config
 TURNSTILE_SECRET_KEY="<turnstile-secret-key>"
 
+# Hashing secret
 NUXT_SESSION_PASSWORD=<hashing-secret>
-ADMIN_API_KEY=<admin-api-key>
 
+# Initial admin user
+ADMIN_API_KEY=<admin-api-key>
 ADMIN_USER_EMAIL=<initial-user-email>
 
 # Choose a password with at least 8 characters
 ADMIN_USER_PASSWORD=<initial-user-password>
+```
+
+Add the following variables:
+
+```text
+CLOUDFLARE_WORKER_NAME=<worker-name> # Defaults to `pantrypanic`
+NUXT_PUBLIC_SITE_URL=<instance-url> # Added after the first deployment
 
 # Household mode
 ENABLE_MULTI_TENANCY=false
 ENABLE_HOUSEHOLD_CREATION=false
 ENABLE_PUBLIC_REGISTRATION=false
 
-# App defaults
-NUXT_PUBLIC_REFRESH_INTERVAL=5000
-NUXT_PANTRY_DEFAULT_LIST_NAME=Boodschappen
-NUXT_PANTRY_DEFAULT_USER_LIST_LIMIT=50
-NUXT_PANTRY_MAX_USER_LIST_LIMIT=100
-NUXT_PANTRY_DEFAULT_ITEM_SEARCH_LIMIT=10
-NUXT_PANTRY_MAX_ITEM_SEARCH_LIMIT=50
-NUXT_PANTRY_DEFAULT_BLOB_LIST_LIMIT=100
-NUXT_PANTRY_MAX_BLOB_LIST_LIMIT=1000
-NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE=32MB
+# Turnstile config
+ENABLE_TURNSTILE=true
+TURNSTILE_SITE_KEY="<turnstile-site-key>"
 ```
 
 ### 7️⃣ Step 7: Deploy
