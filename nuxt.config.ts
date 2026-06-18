@@ -72,23 +72,6 @@ export default defineNuxtConfig({
 		'@nuxtjs/turnstile'
 	],
 
-	typescript: {
-		// .nuxt/tsconfig.app.json
-		tsConfig: {
-			include: [join(layerDir, '**/*.ts'), join(layerDir, '**/*.vue')]
-		},
-
-		// .nuxt/tsconfig.shared.json
-		sharedTsConfig: {
-			include: [join(layerDir, 'shared/**/*.ts')]
-		},
-
-		// .nuxt/tsconfig.node.json
-		nodeTsConfig: {
-			include: [join(layerDir, 'nuxt.config.ts'), join(layerDir, 'modules/**/*.ts')]
-		}
-	},
-
 	$production: {
 		nitro: {
 			prerender: {
