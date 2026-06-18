@@ -12,11 +12,11 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div class="pb-20">
+	<div class="pb-20 lg:pb-0">
 		<EditItemDrawer />
 		<EditListDrawer />
 		<AppNavigation class="z-10" />
-		<UContainer class="flex min-h-screen flex-col">
+		<UContainer class="mx-auto flex min-h-screen max-w-2xl flex-col">
 			<AppHouseholdGate v-if="resolvedHouseholdState && settingsStore.hasNoHousehold" />
 			<slot v-else />
 		</UContainer>

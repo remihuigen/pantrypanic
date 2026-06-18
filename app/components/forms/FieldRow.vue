@@ -1,7 +1,7 @@
 <script lang="ts" setup></script>
 
 <template>
-	<div class="field-row flex items-start gap-3"><slot /></div>
+	<div class="field-row flex flex-col items-start gap-3 sm:flex-row"><slot /></div>
 </template>
 
 <style>

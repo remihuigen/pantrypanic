@@ -6,7 +6,12 @@ const { identity } = useRuntimeConfig().public
 	<USeparator>
 		<AppIcon class="w-6" />
 	</USeparator>
-	<UFooter :ui="{ root: 'mb-3', right: 'space-x-4' }">
+	<UFooter
+		:ui="{
+			root: 'mb-3',
+			right: 'space-x-4'
+		}"
+	>
 		<template #left>
 			<p class="text-muted text-sm">
 				{{ identity.title }} • © {{ new Date().getFullYear() }}

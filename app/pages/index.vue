@@ -81,7 +81,7 @@ const page = {
 			},
 			{
 				value: 'Self-hostable',
-				label: 'because control should notbe optional',
+				label: 'because you should not have to pay for control',
 				class: 'text-primary'
 			}
 		]
@@ -110,7 +110,7 @@ const faqs: AccordionItem[] = [
 	{
 		label: 'How does pricing work for the cloud version?',
 		content:
-			'Right now, you can buy a lifetime subscription to the Pantry Panic cloud version. One payment, unlimited usage, for as long as Pantry Panic exists. Pricing may change in the future, so if you like lifetime deals, this is probably the good bit.'
+			'Right now, you can buy a lifetime subscription to the Pantry Panic cloud versions. One payment, unlimited usage, for as long as Pantry Panic exists. Pricing may change in the future, so if you like lifetime deals, this is probably the right time to buy.'
 	},
 	{
 		label: 'How does self-hosting work for Pantry Panic?',
@@ -136,7 +136,7 @@ const plans = ref<PricingPlanProps[]>([
 		price: '€25',
 		features: ['Unlimited members', 'Unlimited lists', 'Lifetime access'],
 		button: {
-			label: 'Free trial',
+			label: 'Start free trial',
 			to: '/register?plan=single-household'
 		}
 	},
@@ -151,7 +151,7 @@ const plans = ref<PricingPlanProps[]>([
 			'Multi-household support'
 		],
 		button: {
-			label: 'Free trial',
+			label: 'Start free trial',
 			to: '/register?plan=multiple-households'
 		}
 	},
@@ -178,10 +178,6 @@ const { enterMotion, scrollMotion, staggerMotion } = useMotion()
 
 <template>
 	<div class="overflow-x-hidden">
-		<Motion v-bind="staggerMotion(0)">
-			<HeroShaders class="absolute inset-x-0 top-0 h-[130vh] opacity-30 dark:opacity-25" />
-		</Motion>
-
 		<UContainer class="relative space-y-8 pt-16 pb-16 md:pt-28">
 			<GradientGlow
 				class="top-0 left-0 h-full w-1/2 animate-pulse opacity-100 [animation-duration:5s]"
