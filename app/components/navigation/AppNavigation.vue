@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ButtonProps } from '@nuxt/ui'
+import type { ButtonProps, NavigationMenuItem } from '@nuxt/ui'
 
 import { useEditItemDrawer } from '~/composables/useEditItemDrawer'
 
@@ -7,20 +7,22 @@ const route = useRoute()
 const editItemDrawer = useEditItemDrawer()
 const { getIcon } = useIcon()
 
-const leftContainer: ButtonProps[] = [
+type MenuItem = Pick<ButtonProps, 'name' | 'to' | 'icon'>
+
+const leftContainer: MenuItem[] = [
 	{
 		name: 'Lijsten',
 		to: '/app/lists',
 		icon: getIcon('list')
 	},
 	{
-		name: 'Meal Planner',
+		name: 'Weekplanner',
 		to: '/app/meal-planner',
 		icon: getIcon('planner')
 	}
 ]
 
-const rightContainer: ButtonProps[] = [
+const rightContainer: MenuItem[] = [
 	{
 		name: 'Recepten',
 		to: '/app/recipes',
@@ -40,11 +42,34 @@ function isActive(btn: ButtonProps) {
 function openCreateItemDrawer() {
 	editItemDrawer.open({ mode: 'create' })
 }
+
+const desktopNavigation: NavigationMenuItem[][] = [
+	[...leftContainer, ...rightContainer].map((btn) => ({
+		...btn,
+		label: btn.name
+	}))
+]
 </script>
 
 <template>
+	<UHeader :toggle="false" class="hidden lg:flex">
+		<template #left>
+			<NuxtLink to="/">
+				<AppLogo class="h-9 w-auto shrink-0" />
+			</NuxtLink>
+		</template>
+		<UNavigationMenu :items="desktopNavigation" class="w-full" :ui="{ list: 'gap-4' }" />
+		<template #right>
+			<UButton
+				label="Nieuw item"
+				:icon="getIcon('plus')"
+				color="primary"
+				@click="openCreateItemDrawer"
+			/>
+		</template>
+	</UHeader>
 	<nav
-		class="border-elevated/50 bg-default border-default fixed right-0 bottom-0 left-0 grid h-18 border-t py-2 shadow-2xl"
+		class="border-elevated/50 bg-default border-default fixed right-0 bottom-0 left-0 z-10 grid h-18 border-t py-2 shadow-2xl lg:hidden"
 	>
 		<div class="relative flex items-center justify-center gap-3 px-4">
 			<div class="relative grid h-full grid-cols-2 gap-4">

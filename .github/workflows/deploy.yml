@@ -42,6 +42,9 @@ jobs:
           ENABLE_HOUSEHOLD_CREATION: ${{ vars.ENABLE_HOUSEHOLD_CREATION }}
           ENABLE_PUBLIC_REGISTRATION: ${{ vars.ENABLE_PUBLIC_REGISTRATION }}
           ENABLE_BETA_PERIOD: ${{ vars.ENABLE_BETA_PERIOD }}
+          ENABLE_TURNSTILE: ${{ vars.ENABLE_TURNSTILE }}
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
 
       - name: Verify generated Wrangler config
         run: test -f .output/server/wrangler.json

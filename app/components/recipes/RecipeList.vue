@@ -34,7 +34,7 @@ const emptyDescription = computed(() =>
 			<UBadge color="neutral" variant="subtle">{{ recipes.length }}</UBadge>
 		</div>
 
-		<div v-if="recipes.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		<div v-if="recipes.length > 0" class="grid gap-4">
 			<RecipeCard
 				v-for="recipe in recipes"
 				:key="recipe.id"

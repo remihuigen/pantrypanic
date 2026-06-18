@@ -13,12 +13,32 @@ function readNumberEnv(name: string, fallback: number) {
 	return Number.isFinite(parsed) ? parsed : fallback
 }
 
+/**
+ * Resolve environment based turnstile token from process.env
+ *
+ * If in development, the methods return tokens that are always valid
+ * @returns An object containing the Turnstile site key and secret key
+ */
+function resolveTurnstile() {
+	const isDev = process.env.NODE_ENV === 'development'
+
+	const turnstileSiteKey =
+		process.env.TURNSTILE_SITE_KEY ?? (isDev ? '1x00000000000000000000BB' : undefined)
+	const turnstileSecretKey =
+		process.env.TURNSTILE_SECRET_KEY ??
+		(isDev ? '1x0000000000000000000000000000000AA' : undefined)
+	const turnstileEnabled = process.env.ENABLE_TURNSTILE === 'true'
+	return { turnstileSiteKey, turnstileSecretKey, turnstileEnabled }
+}
+
 const enableMultiTenancy = process.env.ENABLE_MULTI_TENANCY === 'true'
 const enableHouseholdCreation =
 	enableMultiTenancy && process.env.ENABLE_HOUSEHOLD_CREATION === 'true'
 const enablePublicRegistration =
 	enableMultiTenancy && process.env.ENABLE_PUBLIC_REGISTRATION === 'true'
 const enableBetaPeriod = process.env.ENABLE_BETA_PERIOD === 'true'
+
+const { turnstileSiteKey, turnstileSecretKey, turnstileEnabled } = resolveTurnstile()
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -33,7 +53,8 @@ export default defineNuxtConfig({
 		'@vueuse/nuxt',
 		'@vite-pwa/nuxt',
 		'nuxt-authorization',
-		'motion-v/nuxt'
+		'motion-v/nuxt',
+		'@nuxtjs/turnstile'
 	],
 
 	$production: {
@@ -76,9 +97,7 @@ export default defineNuxtConfig({
 			blob: {
 				driver: 'cloudflare-r2',
 				bucketName: process.env.CLOUDFLARE_R2_BUCKET,
-				binding: 'BLOB',
-				// @ts-expect-error This prop should be valid
-				jurisdiction: 'eu'
+				binding: 'BLOB'
 			}
 		},
 
@@ -120,6 +139,10 @@ export default defineNuxtConfig({
 			maxBlobListLimit: readNumberEnv('NUXT_PANTRY_MAX_BLOB_LIST_LIMIT', 1000),
 			managedBlobMaxUploadSize: process.env.NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE ?? '32MB'
 		},
+		turnstile: {
+			enabled: turnstileEnabled,
+			secretKey: turnstileSecretKey
+		},
 
 		public: {
 			refreshInterval: readNumberEnv('NUXT_PUBLIC_REFRESH_INTERVAL', 5000),
@@ -130,6 +153,10 @@ export default defineNuxtConfig({
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."
+			},
+			turnstile: {
+				enabled: turnstileEnabled,
+				siteKey: turnstileSiteKey
 			}
 		}
 	},
@@ -238,5 +265,9 @@ export default defineNuxtConfig({
 		devOptions: {
 			enabled: false
 		}
+	},
+
+	turnstile: {
+		siteKey: turnstileSiteKey
 	}
 })

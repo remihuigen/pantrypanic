@@ -35,6 +35,7 @@
 		"@nuxt/scripts": "catalog:",
 		"@nuxt/ui": "catalog:",
 		"@nuxthub/core": "catalog:",
+		"@nuxtjs/turnstile": "catalog:",
 		"@pinia/nuxt": "catalog:",
 		"@tailwindcss/typography": "catalog:",
 		"@types/node": "catalog:",

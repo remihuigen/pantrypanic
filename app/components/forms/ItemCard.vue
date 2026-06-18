@@ -135,7 +135,7 @@ useGesture(
 		@keydown.space.prevent="handleEdit"
 	>
 		<UCard
-			class="will-change-transform"
+			class="will-change-transform select-none"
 			variant="outline"
 			:style="cardStyle"
 			:ui="{

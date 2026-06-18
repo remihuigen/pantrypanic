@@ -36,7 +36,7 @@ const { staggerMotion } = useMotion()
 			<UMain class="flex min-h-auto grow flex-col justify-center">
 				<Motion v-bind="staggerMotion(0)">
 					<HeroShaders
-						class="absolute inset-x-0 top-0 h-[130vh] opacity-30 dark:opacity-25"
+						class="absolute inset-x-0 top-0 h-[100vh] opacity-30 dark:opacity-25"
 					/>
 				</Motion>
 				<UError :error="error" class="relative" />

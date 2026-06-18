@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
-import { createError, getHeader } from 'h3'
 
-const ADMIN_API_KEY_HEADER = 'x-api-token'
+import { SECURITY_HEADERS } from '#shared/utils/constants'
+import { createError, getHeader } from 'h3'
 
 /**
  * Checks whether a server request is authenticated by session or admin API key.
@@ -37,16 +37,23 @@ export async function requireAuthenticated(event: H3Event): Promise<void> {
 	})
 }
 
-function hasValidAdminApiKey(event: H3Event): boolean {
+/**
+ * Checks whether a server request has a valid admin API key.
+ *
+ * @param event - H3 request event to inspect.
+ * @returns Whether the request has a valid admin API key.
+ */
+export function hasValidAdminApiKey(event: H3Event): boolean {
 	const configuredKey = getConfiguredAdminApiKey(event)
-	const requestKey = getHeader(event, ADMIN_API_KEY_HEADER)
+	const requestKey = getHeader(event, SECURITY_HEADERS.adminToken)
 
 	return constantTimeEqual(requestKey, configuredKey)
 }
 
 function getConfiguredAdminApiKey(event: H3Event): string {
 	const runtimeConfig = useRuntimeConfig(event)
-	const runtimeKey = typeof runtimeConfig.adminApiKey === 'string' ? runtimeConfig.adminApiKey : ''
+	const runtimeKey =
+		typeof runtimeConfig.adminApiKey === 'string' ? runtimeConfig.adminApiKey : ''
 
 	return process.env.ADMIN_API_KEY || runtimeKey
 }

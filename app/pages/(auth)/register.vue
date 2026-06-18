@@ -100,15 +100,10 @@ async function onSubmit(_payload: FormSubmitEvent<Schema>) {
 		loading.value = false
 	}
 }
-
-const { staggerMotion } = useMotion()
 </script>
 
 <template>
 	<div>
-		<Motion v-bind="staggerMotion(0)">
-			<HeroShaders class="absolute inset-x-0 top-0 h-[130vh] opacity-30 dark:opacity-25" />
-		</Motion>
 		<UContainer class="relative py-8">
 			<div class="mx-auto max-w-2xl space-y-4">
 				<UPageCard

@@ -129,7 +129,7 @@ onMounted(() => {
 			</template>
 		</UEmpty>
 
-		<div ref="listGridRef" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		<div ref="listGridRef" class="grid gap-4">
 			<ListCard
 				v-for="listId in listsStore.activeListIds"
 				:key="listId"
