@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AccordionItem, PricingPlanProps } from '@nuxt/ui'
+import type { PricingPlanProps } from '@nuxt/ui'
 
 definePageMeta({
 	layout: 'base'
@@ -96,38 +96,10 @@ const page = {
 	}
 } as const
 
-const faqs: AccordionItem[] = [
-	{
-		label: 'Why can’t I find Pantry Panic in the App Store or Play Store?',
-		content:
-			'Pantry Panic is an installable web app, also known as a PWA. That means you use it through your browser, but it can still live on your home screen like a normal app. When your device supports it, Pantry Panic will show an install prompt. If that does not appear, you can usually install it from your browser menu by choosing something like “Add to Home Screen” or “Install app”.'
-	},
-	{
-		label: 'Does Pantry Panic support other languages?',
-		content:
-			'Not yet. Pantry Panic is currently only available in Dutch. Internationalization is planned for a future update, because grocery chaos is sadly not limited to one country.'
-	},
-	{
-		label: 'How does pricing work for the cloud version?',
-		content:
-			'Right now, you can buy a lifetime subscription to the Pantry Panic cloud versions. One payment, unlimited usage, for as long as Pantry Panic exists. Pricing may change in the future, so if you like lifetime deals, this is probably the right time to buy.'
-	},
-	{
-		label: 'How does self-hosting work for Pantry Panic?',
-		content:
-			'Pantry Panic is open source and the code is available on GitHub. The easiest route is deploying it to Cloudflare, without writing a single line of code. Other deployment targets should work too, but Cloudflare is the setup we actively use and test.'
-	},
-	{
-		label: 'Where is my data stored?',
-		content:
-			'The cloud version of Pantry Panic runs on Cloudflare infrastructure, with data stored in the European Union. Your data is encrypted at rest and in transit, so your grocery lists are treated like private household business — including the suspicious number of snacks.'
-	},
-	{
-		label: 'Who can access my data?',
-		content:
-			'Your household members can access the lists and data you share with them. Pantry Panic does not sell your data, does not use ads, and does not add trackers to watch your shopping behavior. We keep the business model boring on purpose.'
-	}
-]
+// Get all authors
+const { data: faqs } = await useAsyncData('faqs', () => {
+	return queryCollection('faqs').all()
+})
 
 const plans = ref<PricingPlanProps[]>([
 	{

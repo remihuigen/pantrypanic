@@ -29,6 +29,7 @@
 		"@ianvs/prettier-plugin-sort-imports": "catalog:",
 		"@iconify-json/lucide": "catalog:",
 		"@libsql/client": "catalog:",
+		"@nuxt/content": "catalog:",
 		"@nuxt/eslint": "catalog:",
 		"@nuxt/fonts": "catalog:",
 		"@nuxt/image": "catalog:",

@@ -93,6 +93,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 		loading.value = false
 	}
 }
+
+const { enablePublicRegistration } = useRuntimeConfig().public
 </script>
 
 <template>
@@ -112,6 +114,14 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 					<AppLogo class="mx-auto h-12 w-auto shrink-0" />
 				</template>
 			</UAuthForm>
+			<UButton
+				v-if="enablePublicRegistration"
+				color="neutral"
+				variant="link"
+				class="mx-auto mt-4 mb-3"
+				to="/register"
+				>Of registreer je huishouden</UButton
+			>
 		</UPageCard>
 	</UContainer>
 </template>

@@ -1,4 +1,9 @@
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { join } from 'pathe'
+
+const layerDir = fileURLToPath(new URL('./layer', import.meta.url))
 
 const pantryDefaultListName = process.env.NUXT_PANTRY_DEFAULT_LIST_NAME ?? 'Boodschappen'
 const shadersVueRuntimeDir = resolve('./node_modules/shaders/dist/vue')
@@ -31,18 +36,28 @@ function resolveTurnstile() {
 	return { turnstileSiteKey, turnstileSecretKey, turnstileEnabled }
 }
 
+// Feature flag
 const enableMultiTenancy = process.env.ENABLE_MULTI_TENANCY === 'true'
 const enableHouseholdCreation =
 	enableMultiTenancy && process.env.ENABLE_HOUSEHOLD_CREATION === 'true'
 const enablePublicRegistration =
 	enableMultiTenancy && process.env.ENABLE_PUBLIC_REGISTRATION === 'true'
 const enableBetaPeriod = process.env.ENABLE_BETA_PERIOD === 'true'
+const enableMarketing = process.env.ENABLE_MARKETING === 'true'
 
 const { turnstileSiteKey, turnstileSecretKey, turnstileEnabled } = resolveTurnstile()
 
+const layers: string[] = []
+
+if (enableMarketing) {
+	layers.push('./layer/marketing')
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+	extends: layers,
 	modules: [
+		// Base Modules
 		'@nuxthub/core',
 		'nuxt-auth-utils',
 		'@nuxt/eslint',
@@ -57,10 +72,28 @@ export default defineNuxtConfig({
 		'@nuxtjs/turnstile'
 	],
 
+	typescript: {
+		// .nuxt/tsconfig.app.json
+		tsConfig: {
+			include: [join(layerDir, '**/*.ts'), join(layerDir, '**/*.vue')]
+		},
+
+		// .nuxt/tsconfig.shared.json
+		sharedTsConfig: {
+			include: [join(layerDir, 'shared/**/*.ts')]
+		},
+
+		// .nuxt/tsconfig.node.json
+		nodeTsConfig: {
+			include: [join(layerDir, 'nuxt.config.ts'), join(layerDir, 'modules/**/*.ts')]
+		}
+	},
+
 	$production: {
 		nitro: {
 			prerender: {
-				routes: ['/']
+				routes: enableMarketing ? ['/'] : [],
+				crawlLinks: false
 			},
 			preset: 'cloudflare_module',
 			cloudflare: {
@@ -150,6 +183,7 @@ export default defineNuxtConfig({
 			enableHouseholdCreation,
 			enablePublicRegistration,
 			enableBetaPeriod,
+			enableMarketing,
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."
@@ -159,11 +193,6 @@ export default defineNuxtConfig({
 				siteKey: turnstileSiteKey
 			}
 		}
-	},
-
-	routeRules: {
-		'/app': { ssr: true },
-		'/app/**': { ssr: true }
 	},
 
 	compatibilityDate: '2025-01-15',
@@ -269,5 +298,8 @@ export default defineNuxtConfig({
 
 	turnstile: {
 		siteKey: turnstileSiteKey
+	},
+	marketing: {
+		enabled: enableMarketing
 	}
 })

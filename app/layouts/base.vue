@@ -2,6 +2,8 @@
 const { staggerMotion } = useMotion()
 
 const { loggedIn } = useUserSession()
+
+const { enableBetaPeriod } = useRuntimeConfig().public
 </script>
 
 <template>
@@ -11,6 +13,23 @@ const { loggedIn } = useUserSession()
 				<NuxtLink to="/">
 					<AppLogo class="h-9 w-auto shrink-0" />
 				</NuxtLink>
+				<UBadge
+					v-if="enableBetaPeriod"
+					color="neutral"
+					variant="soft"
+					label="beta"
+					size="sm"
+					class="bg-success-50! relative top-1 ml-3 gap-1.5 rounded-full bg-white/5 px-2 py-1 backdrop-blur select-none dark:bg-neutral-800!"
+				>
+					<template #leading>
+						<UChip
+							inset
+							standalone
+							color="success"
+							:ui="{ base: 'animate-pulse ring-0' }"
+						/>
+					</template>
+				</UBadge>
 			</template>
 
 			<template #right>

@@ -6,6 +6,7 @@ catalog:
   '@ianvs/prettier-plugin-sort-imports': 4.7.1
   '@iconify-json/lucide': 1.2.111
   '@libsql/client': 0.17.3
+  '@nuxt/content': 3.14.0
   '@nuxt/eslint': 1.15.2
   '@nuxt/fonts': 0.14.0
   '@nuxt/image': 2.0.0
