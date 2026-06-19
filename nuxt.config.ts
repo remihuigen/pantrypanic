@@ -252,6 +252,7 @@ export default defineNuxtConfig({
 	marketing: {
 		enabled: enableMarketing
 	},
+	ogImage: false,
 
 	pwa: {
 		registerType: 'prompt',
@@ -307,10 +308,6 @@ export default defineNuxtConfig({
 		}
 	},
 
-	turnstile: {
-		siteKey: turnstileSiteKey
-	},
-
 	schemaOrg: {
 		identity: defineOrganization({
 			name: 'Pantry Panic',
@@ -321,5 +318,8 @@ export default defineNuxtConfig({
 			url: 'https://pantrypanic.com'
 		})
 	},
-	ogImage: false
+
+	turnstile: {
+		siteKey: turnstileSiteKey
+	},
 })

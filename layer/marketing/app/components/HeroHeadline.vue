@@ -1,7 +1,3 @@
-<script setup lang="ts">
-const colorMode = useColorMode()
-</script>
-
 <template>
 	<h1 class="text-5xl font-bold sm:text-7xl lg:text-8xl">
 		<span
