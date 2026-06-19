@@ -1,6 +1,9 @@
 import type { AppError } from '~~/shared/types/api'
 
 import { setStoreRefreshInterval } from '~/composables/useStoreRefresh'
+import { useListsStore } from '~/stores/lists'
+import { useMealPlannerStore } from '~/stores/meal-planner'
+import { useRecipesStore } from '~/stores/recipes'
 import { apiFetch, normalizeAppError } from '~/utils/api-client'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -121,6 +124,22 @@ export const useSettingsStore = defineStore('settings', () => {
 		return appError
 	}
 
+	function clearHouseholdScopedState() {
+		members.value = []
+		householdSettings.value = null
+		items.value = []
+		categories.value = []
+		stats.value = null
+		inviteUrl.value = null
+		resetUrl.value = null
+	}
+
+	function clearHouseholdScopedStores() {
+		useListsStore().resetHouseholdState()
+		useRecipesStore().resetHouseholdState()
+		useMealPlannerStore().resetHouseholdState()
+	}
+
 	async function fetchAll() {
 		isLoading.value = true
 		error.value = null
@@ -129,11 +148,7 @@ export const useSettingsStore = defineStore('settings', () => {
 			await Promise.all([fetchProfile(), fetchHouseholds()])
 
 			if (!activeHouseholdId.value) {
-				members.value = []
-				householdSettings.value = null
-				items.value = []
-				categories.value = []
-				stats.value = null
+				clearHouseholdScopedState()
 				return
 			}
 
@@ -209,11 +224,14 @@ export const useSettingsStore = defineStore('settings', () => {
 	}
 
 	async function switchHousehold(householdId: string) {
-		await apiFetch<{ activeHouseholdId: string }>('/api/households/switch', {
+		const data = await apiFetch<{ activeHouseholdId: string }>('/api/households/switch', {
 			method: 'POST',
 			body: { householdId }
 		})
-		activeHouseholdId.value = householdId
+
+		activeHouseholdId.value = data.activeHouseholdId
+		clearHouseholdScopedState()
+		clearHouseholdScopedStores()
 		await fetchAll()
 	}
 

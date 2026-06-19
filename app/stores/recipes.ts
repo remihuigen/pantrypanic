@@ -550,6 +550,18 @@ export const useRecipesStore = defineStore(
 			recipeItemIdsByRecipeId.value = omitRecordKey(recipeItemIdsByRecipeId.value, recipeId)
 		}
 
+		function resetHouseholdState() {
+			recipesById.value = {}
+			activeRecipeIds.value = []
+			archivedRecipeIds.value = []
+			recipeItemsById.value = {}
+			recipeItemIdsByRecipeId.value = {}
+			activeRecipeId.value = null
+			error.value = null
+			isLoading.value = false
+			isSaving.value = false
+		}
+
 		return {
 			recipesById,
 			activeRecipeIds,
@@ -579,7 +591,8 @@ export const useRecipesStore = defineStore(
 			addRecipeItem,
 			updateRecipeItem,
 			deleteRecipeItem,
-			reorderRecipeItems
+			reorderRecipeItems,
+			resetHouseholdState
 		}
 	},
 	{

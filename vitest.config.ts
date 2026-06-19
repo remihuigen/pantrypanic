@@ -9,6 +9,7 @@ export default defineConfig({
 		alias: {
 			'#server': fileURLToPath(new URL('./server', import.meta.url)),
 			'#shared': fileURLToPath(new URL('./shared', import.meta.url)),
+			'#tests': fileURLToPath(new URL('./tests', import.meta.url)),
 			'~': fileURLToPath(new URL('./app', import.meta.url)),
 			'@': fileURLToPath(new URL('./app', import.meta.url)),
 			'~~': rootDir,
@@ -24,7 +25,14 @@ export default defineConfig({
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'lcov'],
-			include: ['server/utils/**/*.{ts,js,mjs}', 'scripts/**/*.mjs', 'app/**/*.{ts,js,mjs}'],
+			include: [
+				'app/**/*.{ts,js,mjs}',
+				'content.config.ts',
+				'layer/**/*.{ts,js,mjs}',
+				'modules/**/*.{ts,js,mjs}',
+				'scripts/**/*.mjs',
+				'server/utils/**/*.{ts,js,mjs}'
+			],
 			exclude: [
 				'**/*.d.ts',
 				'app/composables/useStoreRefresh.ts',

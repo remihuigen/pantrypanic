@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const props = defineProps<{
 	listId: string
 	name: string
@@ -9,7 +11,7 @@ const props = defineProps<{
 
 const itemLabel = computed(() => (props.itemCount === 1 ? 'item' : 'items'))
 const leadingIcon = computed(() =>
-	props.icon && props.icon.trim().length > 0 ? props.icon : 'i-lucide-grip-vertical'
+	props.icon && props.icon.trim().length > 0 ? props.icon : getIcon('gripVertical')
 )
 </script>
 

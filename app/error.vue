@@ -15,7 +15,7 @@ defineProps<{
 	error: NuxtError
 }>()
 
-const { staggerMotion } = useMotion()
+const { enableMarketing } = useRuntimeConfig().public
 </script>
 
 <template>
@@ -23,7 +23,7 @@ const { staggerMotion } = useMotion()
 		<div class="flex min-h-screen grow flex-col">
 			<UHeader :toggle="false">
 				<template #left>
-					<NuxtLink to="/">
+					<NuxtLink :to="enableMarketing ? '/' : '/app'">
 						<AppLogo class="h-9 w-auto shrink-0" />
 					</NuxtLink>
 				</template>
@@ -34,11 +34,11 @@ const { staggerMotion } = useMotion()
 			</UHeader>
 
 			<UMain class="flex min-h-auto grow flex-col justify-center">
-				<Motion v-bind="staggerMotion(0)">
+				<div>
 					<HeroShaders
 						class="absolute inset-x-0 top-0 h-[100vh] opacity-30 dark:opacity-25"
 					/>
-				</Motion>
+				</div>
 				<UError :error="error" class="relative" />
 			</UMain>
 

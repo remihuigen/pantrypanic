@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RecipeSummary } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 const props = defineProps<{
 	recipes: Array<
@@ -48,7 +49,7 @@ const emptyDescription = computed(() =>
 
 		<UEmpty
 			v-else
-			icon="i-lucide-book-open"
+			:icon="getIcon('bookOpen')"
 			:title="emptyTitle"
 			:description="emptyDescription"
 			variant="subtle"

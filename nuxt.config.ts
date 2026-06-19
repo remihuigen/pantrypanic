@@ -1,4 +1,11 @@
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { defineOrganization } from 'nuxt-schema-org/schema'
+import { join } from 'pathe'
+
+const rootDir = fileURLToPath(new URL('./', import.meta.url))
+const layerDir = fileURLToPath(new URL('./layer', import.meta.url))
 
 const pantryDefaultListName = process.env.NUXT_PANTRY_DEFAULT_LIST_NAME ?? 'Boodschappen'
 const shadersVueRuntimeDir = resolve('./node_modules/shaders/dist/vue')
@@ -31,18 +38,46 @@ function resolveTurnstile() {
 	return { turnstileSiteKey, turnstileSecretKey, turnstileEnabled }
 }
 
+// Feature flag
 const enableMultiTenancy = process.env.ENABLE_MULTI_TENANCY === 'true'
 const enableHouseholdCreation =
 	enableMultiTenancy && process.env.ENABLE_HOUSEHOLD_CREATION === 'true'
 const enablePublicRegistration =
 	enableMultiTenancy && process.env.ENABLE_PUBLIC_REGISTRATION === 'true'
 const enableBetaPeriod = process.env.ENABLE_BETA_PERIOD === 'true'
+const enableMarketing = process.env.ENABLE_MARKETING === 'true'
 
 const { turnstileSiteKey, turnstileSecretKey, turnstileEnabled } = resolveTurnstile()
 
+const layers: string[] = []
+const marketingLayerTypeGlobs = enableMarketing
+	? {
+			app: [join(layerDir, '*/app/**/*'), join(layerDir, '*/modules/*/runtime/**/*')],
+			node: [
+				join(layerDir, '*/nuxt.config.*'),
+				join(layerDir, '*/.config/nuxt.*'),
+				join(layerDir, '*/modules/**/*')
+			],
+			shared: [join(layerDir, '*/shared/**/*')],
+			declarations: [join(layerDir, '*/*.d.ts'), join(layerDir, '*/shared/**/*.d.ts')]
+		}
+	: {
+			app: [],
+			node: [],
+			shared: [],
+			declarations: []
+		}
+const optionalModuleDeclarationGlobs = [join(rootDir, 'types/**/*.d.ts')]
+
+if (enableMarketing) {
+	layers.push('./layer/marketing')
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+	extends: layers,
 	modules: [
+		// Base Modules
 		'@nuxthub/core',
 		'nuxt-auth-utils',
 		'@nuxt/eslint',
@@ -54,13 +89,15 @@ export default defineNuxtConfig({
 		'@vite-pwa/nuxt',
 		'nuxt-authorization',
 		'motion-v/nuxt',
-		'@nuxtjs/turnstile'
+		'@nuxtjs/turnstile',
+		'@nuxtjs/seo'
 	],
 
 	$production: {
 		nitro: {
 			prerender: {
-				routes: ['/']
+				routes: enableMarketing ? ['/'] : [],
+				crawlLinks: false
 			},
 			preset: 'cloudflare_module',
 			cloudflare: {
@@ -150,6 +187,7 @@ export default defineNuxtConfig({
 			enableHouseholdCreation,
 			enablePublicRegistration,
 			enableBetaPeriod,
+			enableMarketing,
 			identity: {
 				title: 'Pantry Panic',
 				description: "The grocery list manager that doesn't suck."
@@ -159,11 +197,6 @@ export default defineNuxtConfig({
 				siteKey: turnstileSiteKey
 			}
 		}
-	},
-
-	routeRules: {
-		'/app': { ssr: true },
-		'/app/**': { ssr: true }
 	},
 
 	compatibilityDate: '2025-01-15',
@@ -195,7 +228,24 @@ export default defineNuxtConfig({
 				'@tiptap/markdown',
 				'@tiptap/**',
 				'sortablejs',
-				'workbox-window'
+				'workbox-window',
+				'@vueuse/integrations/useSortable',
+				'@vueuse/gesture'
+			]
+		}
+	},
+	typescript: {
+		tsConfig: {
+			include: [...marketingLayerTypeGlobs.app, ...marketingLayerTypeGlobs.declarations]
+		},
+		nodeTsConfig: {
+			include: [...marketingLayerTypeGlobs.node, ...optionalModuleDeclarationGlobs]
+		},
+		sharedTsConfig: {
+			include: [
+				...marketingLayerTypeGlobs.shared,
+				...marketingLayerTypeGlobs.declarations,
+				...optionalModuleDeclarationGlobs
 			]
 		}
 	},
@@ -212,6 +262,10 @@ export default defineNuxtConfig({
 	image: {
 		provider: 'none'
 	},
+	marketing: {
+		enabled: enableMarketing
+	},
+	ogImage: false,
 
 	pwa: {
 		registerType: 'prompt',
@@ -267,7 +321,18 @@ export default defineNuxtConfig({
 		}
 	},
 
+	schemaOrg: {
+		identity: defineOrganization({
+			name: 'Pantry Panic',
+
+			// Profile Information, if applicable
+			image: '/logo-1200.png',
+			description: "The grocery list manager that doesn't suck.",
+			url: 'https://pantrypanic.com'
+		})
+	},
+
 	turnstile: {
 		siteKey: turnstileSiteKey
-	}
+	},
 })

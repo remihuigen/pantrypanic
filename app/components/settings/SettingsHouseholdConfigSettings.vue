@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { manageHousehold } from '#shared/utils/abilities'
+import { getIcon } from '#shared/utils/icons'
 
 const props = withDefaults(
 	defineProps<{
@@ -35,7 +36,7 @@ async function saveSettings() {
 	await settingsStore.updateSettings({
 		refreshIntervalMs: refreshIntervalSeconds.value * 1000
 	})
-	toast.add({ title: 'Instellingen opgeslagen.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Instellingen opgeslagen.', color: 'success', icon: getIcon('check') })
 }
 </script>
 
@@ -56,7 +57,7 @@ async function saveSettings() {
 					</UFormField>
 
 					<UButton
-						icon="i-lucide-save"
+						:icon="getIcon('save')"
 						:disabled="!isRefreshIntervalDirty"
 						@click="saveSettings"
 					>

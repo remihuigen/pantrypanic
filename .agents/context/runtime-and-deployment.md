@@ -12,10 +12,9 @@
 - VueUse
 - NuxtHub
 - Nuxt Image
+- Nuxt Content
 - nuxt-auth-utils
 - nuxt-authorization
-
-There is no Docus/content layer in the current checkout.
 
 ## Frontend State
 
@@ -30,9 +29,21 @@ The product app UI is namespaced under `/app`:
   `/app/**` and stays off `/`, `/login`, `/logout`, and other public/auth routes.
 - `nuxt.config.ts` also denies Workbox navigation fallback for `/app/**`, so installed PWAs keep
   routing deep links through Cloudflare/Nitro SSR instead of serving the `/app` entry document.
+- `app/composables/usePwaInstallPrompt.ts` treats standalone/fullscreen launches and the
+  `appinstalled` event as a persisted install signal, so browser tabs stop surfacing the custom
+  install toast after the installed app has been opened in the same profile.
 - `app/plugins/data-hydration.client.ts` only boots authenticated store hydration and the refresh
   scheduler when the current route lives under `/app`, so public landing/auth routes do not fetch
   product-app profile or household state during client startup.
+- The optional marketing layer is stored at `layer/marketing`, not `layers/marketing`, so Nuxt
+  does not auto-discover it. `nuxt.config.ts` only adds it to `extends` when
+  `ENABLE_MARKETING=true`.
+- Because Nuxt's generated app/node/shared tsconfigs only include `layers/*`, `nuxt.config.ts`
+  extends `typescript.tsConfig`, `typescript.nodeTsConfig`, and `typescript.sharedTsConfig` with
+  matching `layer/*` globs only when marketing is enabled. Keep those globs in sync if the manual
+  layer path changes.
+- `types/optional-nuxt-content.d.ts` provides a minimal fallback declaration for `@nuxt/content`
+  so `content.config.ts` can still typecheck when marketing is disabled and the package is absent.
 - `nuxt.config.ts` defines `#shaders-vue` as a Vite alias to `node_modules/shaders/dist/vue` so the
   landing-page shader imports resolve to direct runtime modules instead of the package barrel.
 - `/` serves the public landing page. `/app` redirects to `/app/lists`.
@@ -40,6 +51,8 @@ The product app UI is namespaced under `/app`:
 - `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
 - Auth and future public/marketing pages remain outside `/app`; add explicit prerender route rules
   for marketing pages when they are introduced.
+- `app/composables/useTurnstile.ts` owns client-side Turnstile token state, retry, reset, and
+  error-toast handling for protected onboarding/auth flows.
 - Recipe overview favorites are local browser state keyed per user profile. They are incremented
   when a recipe is copied to a list and are not synchronized through the backend.
 
@@ -79,9 +92,13 @@ Production environment variables currently referenced:
 - `ENABLE_HOUSEHOLD_CREATION` (default `false`, lets logged-in users create households when
   multi-tenancy is enabled)
 - `ENABLE_PUBLIC_REGISTRATION` (default `false`, reserved for future public account registration)
+- `ENABLE_MARKETING` (default `false`, opt-in for the manual marketing layer/module/content setup)
+- `ENABLE_TURNSTILE` (default `false`)
 - Household mode flags are available in public runtime config for client UI and private runtime
   config for API logic. Server routes must read the private runtime config values.
 - `NUXT_SESSION_PASSWORD`
+- `TURNSTILE_SECRET_KEY`
+- `TURNSTILE_SITE_KEY`
 - optional `NUXT_PANTRY_*` values that are explicitly mapped to `runtimeConfig.pantry` in
   `nuxt.config.ts`
 
@@ -107,6 +124,14 @@ Expected production bindings:
 - `$production` switches Nuxt Image to the Cloudflare provider.
 - `GET /images/**` serves blob-backed raster images only.
 - SVG is intentionally not served from `/images/**`.
+
+## Marketing Content
+
+- `ENABLE_MARKETING=true` opt-ins the manual `layer/marketing` layer through `nuxt.config.ts`.
+- `layer/marketing/nuxt.config.ts` adds `@nuxt/content` only when that layer is active.
+- `content.config.ts` currently declares a `blog` page collection and a `faqs` data collection.
+- `modules/marketing/index.ts` adds a global route middleware when marketing is disabled so `/`
+  and `/blog/**` redirect to `/login`.
 
 ## Blob API Routes
 
@@ -248,9 +273,11 @@ Package scripts:
 - `pnpm db:migrate`
 - `pnpm seed:admin`
 
-`pnpm test:coverage` runs Vitest against TypeScript/JavaScript logic in `server/utils/**/*` and
-`scripts/**/*.mjs`. Coverage thresholds are 90% for statements, lines, and functions, and 80% for
-branches. Vue single-file components are intentionally excluded from coverage.
+`pnpm test:coverage` runs Vitest against source-mirrored tests under `tests/unit/**`. Coverage
+includes `app/**/*.{ts,js,mjs}`, `server/utils/**/*.{ts,js,mjs}`, `scripts/**/*.mjs`,
+`content.config.ts`, `modules/**/*.{ts,js,mjs}`, and `layer/**/*.{ts,js,mjs}`. Coverage
+thresholds are 90% for statements, lines, and functions, and 80% for branches. Vue single-file
+components are intentionally excluded from this coverage scope.
 
 `pnpm lint`, `pnpm test:coverage`, and `pnpm typecheck` are the required baseline checks for
 meaningful changes.

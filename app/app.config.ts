@@ -82,6 +82,12 @@ export default defineAppConfig({
 					}
 				}
 			]
+		},
+		breadcrumb: {
+			slots: {
+				linkLeadingIcon: 'size-4!',
+				separatorIcon: 'size-3.5'
+			}
 		}
 	}
 })

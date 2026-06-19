@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ListItem } from '#shared/utils/schemas/domain'
 import type { CategorySection } from '~/utils/listItemGrid'
+import { getIcon } from '#shared/utils/icons'
 
 import {
 	DEFAULT_CATEGORY_KEY,
@@ -11,7 +12,6 @@ import Sortable from 'sortablejs'
 
 const MAX_CATEGORY_POSITION = Number.MAX_SAFE_INTEGER
 
-const { getIcon } = useIcon()
 
 const props = defineProps<{
 	items: ListItem[]
@@ -418,7 +418,7 @@ function openCreateItemDrawer() {
 						:aria-label="`Versleep ${section.label}`"
 						tabindex="-1"
 					>
-						<UIcon name="i-lucide-grip-vertical" class="size-4 shrink-0" />
+						<UIcon :name="getIcon('gripVertical')" class="size-4 shrink-0" />
 					</button>
 
 					<button
@@ -444,8 +444,8 @@ function openCreateItemDrawer() {
 							<UIcon
 								:name="
 									isSectionCollapsed(section)
-										? 'i-lucide-chevron-down'
-										: 'i-lucide-chevron-up'
+										? getIcon('chevronDown')
+										: getIcon('chevronUp')
 								"
 								class="size-4 shrink-0"
 							/>
@@ -485,7 +485,7 @@ function openCreateItemDrawer() {
 		</section>
 		<UEmpty
 			v-if="!props.items.length"
-			icon="i-lucide-list-plus"
+			:icon="getIcon('listPlus')"
 			title="Deze lijst is leeg"
 			description="Voeg nu je eerste item toe aan deze lijst"
 		>

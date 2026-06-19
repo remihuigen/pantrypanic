@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RecipeItem } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 import { moveArrayElement, useSortable } from '@vueuse/integrations/useSortable'
 
@@ -75,13 +76,13 @@ useSortable(itemGridRef, sortableItemIds, {
 
 		<UEmpty
 			v-if="!props.items.length"
-			icon="i-lucide-list-plus"
+			:icon="getIcon('listPlus')"
 			title="Nog geen ingredienten"
 			description="Voeg ingredienten toe voordat je dit recept naar een lijst kopieert."
 			variant="subtle"
 		>
 			<template #actions>
-				<UButton color="primary" icon="i-lucide-plus" @click="emit('add')">
+				<UButton color="primary" :icon="getIcon('plus')" @click="emit('add')">
 					Ingredient toevoegen
 				</UButton>
 			</template>
@@ -93,7 +94,7 @@ useSortable(itemGridRef, sortableItemIds, {
 			color="primary"
 			variant="soft"
 			size="lg"
-			icon="i-lucide-plus"
+			:icon="getIcon('plus')"
 			class="justify-center text-base"
 			@click="emit('add')"
 		>

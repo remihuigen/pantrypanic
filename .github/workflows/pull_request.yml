@@ -3,8 +3,6 @@ name: Pull Request
 on:
   pull_request:
     branches: [main]
-  repository_dispatch:
-    types: [retrigger-workflows]
 
 permissions:
   id-token: write
@@ -19,8 +17,6 @@ concurrency:
 
 jobs:
   code-quality:
-    if:
-      ${{ github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'content' }}
     uses: ./.github/workflows/code_quality.yml
     with:
       runner: ubuntu-latest

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
 import { z } from 'zod'
 
@@ -87,12 +88,14 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 			title: 'Ongeldig e-mailadres of wachtwoord.',
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		loading.value = false
 	}
 }
+
+const { enablePublicRegistration } = useRuntimeConfig().public
 </script>
 
 <template>
@@ -112,6 +115,14 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 					<AppLogo class="mx-auto h-12 w-auto shrink-0" />
 				</template>
 			</UAuthForm>
+			<UButton
+				v-if="enablePublicRegistration"
+				color="neutral"
+				variant="link"
+				class="mx-auto mt-4 mb-3"
+				to="/register"
+				>Of registreer je huishouden</UButton
+			>
 		</UPageCard>
 	</UContainer>
 </template>

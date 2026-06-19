@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RecipeItem } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 const props = defineProps<{
 	item: RecipeItem
@@ -34,7 +35,7 @@ const amountLabel = computed(() =>
 		>
 			<div class="flex min-w-0 items-center gap-3">
 				<UIcon
-					name="i-lucide-grip-vertical"
+					:name="getIcon('gripVertical')"
 					class="recipe-item-card__drag-handle text-muted size-4 shrink-0 cursor-grab touch-none"
 					@click.stop
 				/>

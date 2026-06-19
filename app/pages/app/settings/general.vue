@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { getIcon } from '#shared/utils/icons'
+
 const settingsStore = useSettingsStore()
 const toast = useToast()
 
@@ -12,7 +14,7 @@ onMounted(async () => {
 					? String((error as { message?: string }).message)
 					: 'Instellingen konden niet worden geladen.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 })

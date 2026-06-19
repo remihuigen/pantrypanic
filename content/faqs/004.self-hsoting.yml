@@ -1,0 +1,3 @@
+category: marketing
+label: How does self-hosting work for Pantry Panic?
+content: Pantry Panic's source code is available on GitHub. The easiest route is deploying it to Cloudflare, without writing a single line of code. Other deployment targets should work too, but Cloudflare is the setup we actively use and test.

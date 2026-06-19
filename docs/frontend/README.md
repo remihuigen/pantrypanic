@@ -20,6 +20,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - `app/composables/useStoreRefresh.ts`: the single route-aware refresh scheduler plus the shared
   interval primitive. Refresh timing comes from runtime config and the household-settings override
   loaded by the settings store.
+- `app/composables/useTurnstile.ts`: client-side Turnstile token lifecycle helper for protected
+  auth/onboarding flows.
 - `app/plugins/data-hydration.client.ts`: only hydrates authenticated product-app state when the
   active route is under `/app`, then starts the route-aware refresh scheduler after session and
   household membership context are available.
@@ -44,8 +46,11 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   before the user applies the update.
 - The custom install flow is enabled through `pwa.client.installPrompt`; the module captures the
   browser `beforeinstallprompt` event and exposes it through `$pwa.showInstallPrompt`.
-- PWA install and update toasts are handled in `app/app.vue` so prompt state is observed globally,
-  independent of the active route layout.
+- PWA install and update toasts are handled in `app/app.vue`, while
+  `app/composables/usePwaInstallPrompt.ts` derives whether an install toast is actually allowed.
+- The install toast is suppressed when the current context is already standalone/fullscreen or when
+  this browser profile has previously launched the installed app, so regular browser tabs do not
+  keep prompting after installation.
 - The service worker is registered with `scope: '/app/'`, so it only controls `/app/**` and leaves
   `/`, `/login`, `/logout`, and other public/auth routes outside service-worker control.
 - Workbox navigation fallback is explicitly denied for `/app/**`, so installed PWAs still fetch app

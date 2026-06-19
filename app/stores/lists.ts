@@ -1046,6 +1046,22 @@ export const useListsStore = defineStore(
 			await fetchList(activeListId.value)
 		}
 
+		function resetHouseholdState() {
+			listsById.value = {}
+			activeListIds.value = []
+			archivedListIds.value = []
+			listItemsById.value = {}
+			listItemIdsByListId.value = {}
+			itemsById.value = {}
+			categoriesById.value = {}
+			categoryIds.value = []
+			suggestionItemIds.value = []
+			activeListId.value = null
+			error.value = null
+			isLoading.value = false
+			isSaving.value = false
+		}
+
 		return {
 			listsById,
 			activeListIds,
@@ -1092,7 +1108,8 @@ export const useListsStore = defineStore(
 			startOverviewRefresh,
 			stopOverviewRefresh,
 			refreshOverviewNow,
-			refreshActiveListNow
+			refreshActiveListNow,
+			resetHouseholdState
 		}
 	},
 	{

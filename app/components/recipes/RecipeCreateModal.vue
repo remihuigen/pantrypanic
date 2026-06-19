@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { CreateRecipeInput, UpdateRecipeInput } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 import { createRecipeBodySchema } from '#shared/utils/schemas/domain'
 import { z } from 'zod'
@@ -50,7 +51,7 @@ const modalDescription = computed(() =>
 	isEditing.value ? 'Werk de receptinstellingen bij.' : 'Maak een recept aan.'
 )
 const submitLabel = computed(() => (isEditing.value ? 'Opslaan' : 'Aanmaken'))
-const submitIcon = computed(() => (isEditing.value ? 'i-lucide-save' : 'i-lucide-plus'))
+const submitIcon = computed(() => (isEditing.value ? getIcon('save') : getIcon('plus')))
 const currentFormValue = computed(() => normalizeRecipeFormValue(state))
 const { isDirty, resetInitialValue } = useFormState(initialFormValue, currentFormValue)
 const canSubmit = computed(
@@ -100,7 +101,7 @@ async function submitRecipe(event: FormSubmitEvent<RecipeFormData>) {
 			),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -228,7 +229,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 							v-model="state.sourceUrl"
 							type="url"
 							placeholder="https://..."
-							icon="i-lucide-link"
+							:icon="getIcon('link')"
 						/>
 					</UFormField>
 				</div>

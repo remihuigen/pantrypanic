@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { moveArrayElement, useSortable } from '@vueuse/integrations/useSortable'
+import { getIcon } from '#shared/utils/icons'
 
 definePageMeta({ layout: 'app' })
 
@@ -11,6 +12,10 @@ const listGridRef = ref<HTMLElement | null>(null)
 const sortableListIds = toRef(listsStore, 'activeListIds')
 
 const isLoadingLists = ref(false)
+const showListsSkeleton = computed(
+	() =>
+		(isLoadingLists.value || listsStore.isLoading) && listsStore.activeListIds.length === 0
+)
 
 function getErrorMessage(error: unknown, fallback: string) {
 	if (error && typeof error === 'object' && 'message' in error) {
@@ -59,7 +64,7 @@ async function refreshLists() {
 			title: getErrorMessage(error, 'Lijsten konden niet worden geladen.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		isLoadingLists.value = false
@@ -92,7 +97,7 @@ async function handleListReorder(event: SortableUpdateEvent) {
 			title: getErrorMessage(error, 'Volgorde kon niet worden opgeslagen.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 
 		await refreshLists()
@@ -118,9 +123,15 @@ onMounted(() => {
 		<template #header>
 			<PageHeader :badge="listsStore.activeListIds.length"> Lijsten </PageHeader>
 		</template>
+		<div v-if="showListsSkeleton" class="grid gap-4">
+			<USkeleton class="h-30 w-full rounded-2xl" />
+			<USkeleton class="h-30 w-full rounded-2xl" />
+			<USkeleton class="h-30 w-full rounded-2xl" />
+		</div>
+
 		<UEmpty
-			v-if="!isLoadingLists && listsStore.activeListIds.length === 0"
-			icon="i-lucide-list-plus"
+			v-else-if="listsStore.activeListIds.length === 0"
+			:icon="getIcon('listPlus')"
 			title="Nog geen lijsten"
 			description="Maak je eerste lijst aan om items te verzamelen."
 		>
@@ -129,7 +140,7 @@ onMounted(() => {
 			</template>
 		</UEmpty>
 
-		<div ref="listGridRef" class="grid gap-4">
+		<div v-else ref="listGridRef" class="grid gap-4">
 			<ListCard
 				v-for="listId in listsStore.activeListIds"
 				:key="listId"

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const searchQuery = defineModel<string>('searchQuery', { default: '' })
 
 const emit = defineEmits<{
@@ -10,7 +12,7 @@ const emit = defineEmits<{
 	<div class="flex items-stretch gap-2">
 		<UInput
 			v-model="searchQuery"
-			icon="i-lucide-search"
+			:icon="getIcon('search')"
 			placeholder="Zoek recepten"
 			size="xl"
 			class="min-w-0 flex-1"
@@ -20,7 +22,7 @@ const emit = defineEmits<{
 			color="primary"
 			size="xl"
 			variant="subtle"
-			icon="i-lucide-plus"
+			:icon="getIcon('plus')"
 			class="text-sm"
 			:ui="{ leadingIcon: 'size-4' }"
 			@click="emit('create')"

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const settingsStore = useSettingsStore()
 const confirm = useConfirmDialog()
 const toast = useToast()
@@ -21,7 +23,7 @@ async function deleteAccount() {
 		toast.add({
 			title: getErrorMessage(error, 'Account kon niet worden verwijderd.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -45,13 +47,13 @@ function getErrorMessage(error: unknown, fallback: string) {
 			<div class="flex flex-wrap gap-2">
 				<UButton
 					v-if="settingsStore.enableHouseholdCreation"
-					icon="i-lucide-plus"
+					:icon="getIcon('plus')"
 					@click="showCreateHousehold = true"
 				>
 					Nieuw huishouden maken
 				</UButton>
 				<UButton
-					icon="i-lucide-trash-2"
+					:icon="getIcon('trash')"
 					color="error"
 					variant="outline"
 					@click="deleteAccount"

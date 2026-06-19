@@ -2,6 +2,7 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { EditItemDrawerSubmitData } from '~/composables/useEditItemDrawer'
 
+import { getIcon } from '#shared/utils/icons'
 import { createOccurrenceBodySchema, domainIdSchema } from '#shared/utils/schemas/domain'
 import { useEditItemDrawer, useEditItemDrawerForm } from '~/composables/useEditItemDrawer'
 import { ref, watch } from 'vue'
@@ -9,7 +10,6 @@ import { z } from 'zod'
 
 const editItemDrawer = useEditItemDrawer()
 const editItemDrawerFormId = 'edit-item-drawer-form'
-const { getIcon } = useIcon()
 const {
 	formState,
 	nameSearchTerm,
@@ -37,7 +37,7 @@ const drawerDescription = computed(() =>
 )
 const submitLabel = computed(() => (editItemDrawer.mode.value === 'edit' ? 'Opslaan' : 'Toevoegen'))
 const submitIcon = computed(() =>
-	editItemDrawer.mode.value === 'edit' ? 'i-lucide-save' : getIcon('plus')
+	editItemDrawer.mode.value === 'edit' ? getIcon('save') : getIcon('plus')
 )
 const isCategoryModalOpen = ref(false)
 const categoryDraft = ref('')
@@ -185,7 +185,7 @@ watch(
 							value-key="value"
 							label-key="label"
 							placeholder="Categorie"
-							icon="i-lucide-tags"
+							:icon="getIcon('tags')"
 							:disabled="isSubmitting"
 							size="xl"
 							clearable
@@ -197,7 +197,7 @@ watch(
 							color="neutral"
 							variant="soft"
 							size="xl"
-							icon="i-lucide-plus"
+							:icon="getIcon('plus')"
 							:disabled="isSubmitting"
 							class="grid aspect-square place-items-center"
 							aria-label="Categorie toevoegen"
@@ -207,7 +207,7 @@ watch(
 					</div>
 				</UFormField>
 
-				<FieldRow>
+				<div class="grid grid-cols-2 gap-3">
 					<UFormField name="amount" size="xl">
 						<UInputNumber
 							v-model="formState.amount"
@@ -225,7 +225,7 @@ watch(
 							:disabled="isSubmitting"
 						/>
 					</UFormField>
-				</FieldRow>
+				</div>
 
 				<UFormField name="note">
 					<UTextarea
@@ -239,14 +239,14 @@ watch(
 		</template>
 
 		<template #footer>
-			<div class="flex w-full items-center justify-between gap-2 p-4">
+			<div class="flex w-full items-center justify-between gap-2 py-4">
 				<UButton
 					v-if="editItemDrawer.mode.value === 'edit'"
 					variant="soft"
 					color="error"
 					:loading="isDeleting"
 					:disabled="isSubmitting"
-					icon="i-lucide-trash-2"
+					:icon="getIcon('trash')"
 					@click="deleteExistingListItem"
 				/>
 				<span v-else />
@@ -297,7 +297,7 @@ watch(
 					Annuleren
 				</UButton>
 				<UButton
-					icon="i-lucide-plus"
+					:icon="getIcon('plus')"
 					:loading="isCreatingCategory"
 					:disabled="!categoryDraft.trim()"
 					@click="handleCreateCategory"

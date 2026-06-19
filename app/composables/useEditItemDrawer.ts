@@ -1,4 +1,5 @@
 import type { OccurrenceInput, UpdateListItemInput } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 import { useFormState } from '~/composables/useFormState'
 import { useListsStore } from '~/stores/lists'
@@ -336,7 +337,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 							: 'Item kon niet worden toegevoegd.',
 				color: 'error',
 				duration: 8000,
-				icon: 'i-lucide-circle-alert'
+				icon: getIcon('error')
 			})
 		} finally {
 			isSubmitting.value = false
@@ -405,7 +406,7 @@ export function useEditItemDrawerForm(options: UseEditItemDrawerFormOptions = {}
 				title: error instanceof Error ? error.message : 'Item kon niet worden verwijderd.',
 				color: 'error',
 				duration: 8000,
-				icon: 'i-lucide-circle-alert'
+				icon: getIcon('error')
 			})
 		} finally {
 			isDeleting.value = false

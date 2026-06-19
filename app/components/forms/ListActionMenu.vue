@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const props = defineProps<{
 	listId: string
 	canDelete: boolean
@@ -12,12 +14,12 @@ const menuItems = computed(() => [
 	[
 		{
 			label: 'Wijzig instellingen',
-			icon: 'i-lucide-settings',
+			icon: getIcon('settings'),
 			onSelect: () => openEditListDrawer()
 		},
 		{
 			label: 'Verwijderen',
-			icon: 'i-lucide-trash-2',
+			icon: getIcon('trash'),
 			disabled: !props.canDelete,
 			onSelect: async () => await handleDeleteList(props.listId)
 		}
@@ -57,7 +59,7 @@ async function refreshLists() {
 			title: getErrorMessage(error, 'Lijsten konden niet worden geladen.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -83,7 +85,7 @@ async function handleDeleteList(listId: string) {
 				color: 'error',
 				variant: 'solid',
 				mode: 'confirm',
-				icon: 'i-lucide-trash-2'
+				icon: getIcon('trash')
 			}
 		]
 	})
@@ -99,7 +101,7 @@ async function handleDeleteList(listId: string) {
 			title: getErrorMessage(error, 'Lijst kon niet worden verwijderd.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 
 		await refreshLists()
@@ -122,7 +124,7 @@ function openEditListDrawer() {
 			color="neutral"
 			square
 			size="sm"
-			icon="i-lucide-ellipsis-vertical"
+			:icon="getIcon('ellipsis')"
 			aria-label="Acties"
 			@click.stop
 		/>

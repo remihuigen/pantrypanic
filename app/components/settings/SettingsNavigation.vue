@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
 const links = [
 	[
-		{ label: 'Algemeen', icon: 'i-lucide-settings', to: '/app/settings/general' },
-		{ label: 'Huishouden', icon: 'i-lucide-users', to: '/app/settings/household' },
-		{ label: 'Itemkluis', icon: 'i-lucide-archive', to: '/app/settings/item-vault' },
-		{ label: 'Categorieen', icon: 'i-lucide-tags', to: '/app/settings/categories' },
-		{ label: 'Statistieken', icon: 'i-lucide-chart-column', to: '/app/settings/stats' }
+		{ label: 'Algemeen', icon: getIcon('settings'), to: '/app/settings/general' },
+		{ label: 'Huishouden', icon: getIcon('users'), to: '/app/settings/household' },
+		{ label: 'Itemkluis', icon: getIcon('archive'), to: '/app/settings/item-vault' },
+		{ label: 'Categorieen', icon: getIcon('tags'), to: '/app/settings/categories' },
+		{ label: 'Statistieken', icon: getIcon('chartColumn'), to: '/app/settings/stats' }
 	]
 ] satisfies NavigationMenuItem[][]
 </script>

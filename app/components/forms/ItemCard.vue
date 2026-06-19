@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ListItem } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 import { useGesture } from '@vueuse/gesture'
 
@@ -148,7 +149,7 @@ useGesture(
 		>
 			<div class="flex min-w-0 items-center gap-3">
 				<UIcon
-					name="i-lucide-grip-vertical"
+					:name="getIcon('gripVertical')"
 					class="item-card__drag-handle text-muted size-4 shrink-0 cursor-grab touch-none"
 					@click.stop
 				/>
@@ -160,7 +161,7 @@ useGesture(
 				</span>
 				<UIcon
 					v-if="hasNote"
-					name="i-lucide-info"
+					:name="getIcon('info')"
 					class="text-muted size-3.5 shrink-0"
 					aria-label="Heeft notitie"
 				/>

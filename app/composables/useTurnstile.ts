@@ -1,4 +1,5 @@
 import { SECURITY_HEADERS, TURNSTILE_ACTIONS } from '#shared/utils/constants'
+import { getIcon } from '#shared/utils/icons'
 import { turnstileErrorDataSchema } from '#shared/utils/schemas/turnstile'
 
 /**
@@ -17,7 +18,6 @@ export function useTurnstile() {
 	const token = ref<string | undefined>(undefined)
 
 	const toast = useToast()
-	const { getIcon } = useIcon()
 
 	const isEnabled = computed(() => {
 		return (

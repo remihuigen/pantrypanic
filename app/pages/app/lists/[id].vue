@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useGesture } from '@vueuse/gesture'
+import { getIcon } from '#shared/utils/icons'
 
 definePageMeta({ layout: 'app' })
 
@@ -20,6 +21,9 @@ const pageTitle = computed(
 )
 const items = computed(() => (id.value ? store.listItemsForList(id.value) : []))
 const listIcon = computed(() => list.value?.icon)
+const showListSkeleton = computed(
+	() => isLoadingList.value && !list.value && items.value.length === 0
+)
 let listLoadRequestId = 0
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -77,7 +81,7 @@ async function refreshList(options: { notifyOnError?: boolean } = {}) {
 				title: message,
 				color: 'error',
 				duration: 8000,
-				icon: 'i-lucide-circle-alert'
+				icon: getIcon('error')
 			})
 		}
 	} finally {
@@ -95,7 +99,7 @@ async function handleItemReorder(orderedIds: string[]) {
 			title: getErrorMessage(error, 'Volgorde kon niet worden opgeslagen.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 
 		await refreshList()
@@ -112,7 +116,7 @@ async function handleCategorizedItemReorder(
 			title: getErrorMessage(error, 'Volgorde kon niet worden opgeslagen.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 
 		await refreshList()
@@ -137,7 +141,7 @@ async function handleToggleChecked(listItemId: string) {
 			title: getErrorMessage(error, 'Item kon niet worden bijgewerkt.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -159,7 +163,7 @@ async function handleClearList() {
 				color: 'error',
 				variant: 'solid',
 				mode: 'confirm',
-				icon: 'i-lucide-archive'
+				icon: getIcon('archive')
 			}
 		]
 	})
@@ -175,7 +179,7 @@ async function handleClearList() {
 			title: getErrorMessage(error, 'Lijst kon niet worden geleegd.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 
 		await refreshList()
@@ -190,7 +194,7 @@ async function handleClearChecked() {
 			title: getErrorMessage(error, 'Afgeronde items konden niet worden verwijderd.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 
 		await refreshList()
@@ -257,10 +261,25 @@ watch(
 				v-if="listLoadError"
 				color="error"
 				variant="soft"
-				icon="i-lucide-circle-alert"
+				:icon="getIcon('error')"
 				title="Lijst kon niet worden geladen"
 				:description="listLoadError"
 			/>
+
+			<div v-else-if="showListSkeleton" class="space-y-4">
+				<UPageCard variant="subtle" :ui="{ body: 'space-y-3' }">
+					<div class="flex items-center justify-between gap-3">
+						<USkeleton class="h-6 w-40" />
+						<USkeleton class="h-8 w-24 rounded-full" />
+					</div>
+					<USkeleton class="h-22 w-full rounded-xl" />
+				</UPageCard>
+				<div class="grid gap-3">
+					<USkeleton class="h-28 w-full rounded-xl" />
+					<USkeleton class="h-28 w-full rounded-xl" />
+					<USkeleton class="h-28 w-full rounded-xl" />
+				</div>
+			</div>
 
 			<ListItemGrid
 				v-else
