@@ -1,0 +1,111 @@
+---
+title: Subprocessors
+description: The providers Pantry Panic uses to keep the app running.
+---
+
+# Subprocessors
+
+Last updated: 20 June 2026
+
+Pantry Panic uses a small number of providers to keep the app running.
+
+We do not sell personal data. We do not use ad networks. We do not use tracking pixels. The providers listed below are used for boring but necessary things like hosting, email delivery, payments, and keeping bots out.
+
+## What is a subprocessor?
+
+A subprocessor is a provider that may process personal data for us so Pantry Panic can work.
+
+That does not mean they can use your data for whatever they want. It means they help us provide the service. Less exciting, more useful.
+
+## Hosted service only
+
+This page applies to the hosted Pantry Panic service at **pantrypanic.app**.
+
+It does not apply to self-hosted Pantry Panic installations. If you self-host Pantry Panic, your data stays with your own setup and is not shared with us.
+
+## Current subprocessors
+
+| Provider | Purpose | Data involved |
+| --- | --- | --- |
+| Cloudflare | Hosting, database, file storage, cache, bot protection, and operational logs | Account data, household data, app data, uploaded avatars, technical logs |
+| Resend | Transactional email | Email address, email content, delivery metadata |
+| Mollie | Payments | Payment status, transaction references, billing or invoice data where required |
+| GitHub | Source code hosting and deployment automation | Deployment metadata and technical configuration, not regular user app data |
+| Proton | Email inbox and password/secret management | Emails you send us, privacy/support requests, operational secrets |
+
+## Provider details
+
+### Cloudflare
+
+We use Cloudflare to host Pantry Panic and run the core infrastructure.
+
+Cloudflare may process data through:
+
+- Cloudflare Workers;
+- Cloudflare D1;
+- Cloudflare R2;
+- Cloudflare KV;
+- Cloudflare Turnstile;
+- Cloudflare Workers Logs.
+
+This includes account data, household data, grocery lists, recipes, meal-planning data, uploaded avatars, and technical logs.
+
+Cloudflare is the main infrastructure provider. Without it, Pantry Panic would mostly be a nice idea and a sad repository.
+
+### Resend
+
+We use Resend to send transactional emails.
+
+This may include:
+
+- login or magic link emails;
+- account verification emails;
+- password reset emails;
+- household invitation emails;
+- payment confirmation emails.
+
+Resend may process your email address, email content, and delivery metadata.
+
+We do not use Resend for marketing email unless we explicitly add that later.
+
+### Mollie
+
+We use Mollie to process payments.
+
+Mollie may process payment-related data, such as:
+
+- payment status;
+- payment method;
+- transaction reference;
+- payment timestamps;
+- billing or invoice details where required.
+
+We do not store your full card details ourselves. Payment processing is handled by Mollie.
+
+### GitHub
+
+We use GitHub to host the Pantry Panic source code and run deployment automation.
+
+GitHub does not process regular Pantry Panic user app data as part of normal app usage.
+
+It may process technical project data, deployment metadata, repository configuration, and secrets or variables used for deployment.
+
+### Proton
+
+We use Proton for email and password/secret management.
+
+If you email us, Proton may process the content of your message, your email address, and related email metadata.
+
+We also use Proton to manage certain operational secrets. Those secrets are not meant to contain regular user app data.
+
+## Changes to subprocessors
+
+We may update this page when we add, replace, or remove providers.
+
+If we make a significant change that affects how your personal data is processed, we will update this page and, where appropriate, notify users in the app or by email.
+
+## Questions
+
+Questions about subprocessors can be sent to:
+
+[remihuigen@proton.me](mailto:remihuigen@proton.me)
