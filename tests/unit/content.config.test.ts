@@ -26,7 +26,27 @@ describe('content.config.ts', () => {
 			type: 'data',
 			source: 'faqs/**.yml'
 		})
-		expect(config.collections.blog.schema.parse({ date: new Date() })).toBeTruthy()
+		expect(
+			config.collections.blog.schema.parse({
+				title: 'Pantry Panic launch',
+				shortTitle: 'Launch',
+				description: 'How the project structure supports marketing content.',
+				date: new Date(),
+				tags: ['nuxt', 'content'],
+				authors: [
+					{
+						name: 'Remi',
+						avatar: '/authors/remi.jpg',
+						to: 'https://example.com/authors/remi'
+					}
+				]
+			})
+		).toMatchObject({
+			title: 'Pantry Panic launch',
+			shortTitle: 'Launch',
+			description: 'How the project structure supports marketing content.',
+			tags: ['nuxt', 'content']
+		})
 		expect(
 			config.collections.faqs.schema.parse({
 				category: 'marketing',
