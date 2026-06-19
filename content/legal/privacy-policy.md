@@ -18,7 +18,7 @@ We keep this as simple as possible. No ads. No tracking pixels. No selling your 
 Pantry Panic is operated by:
 
 **Remi Huigen**  
-*Address upon request*
+*Address upon request*   
 The Netherlands  
 Email: [remihuigen@proton.me](mailto:remihuigen@proton.me)
 
