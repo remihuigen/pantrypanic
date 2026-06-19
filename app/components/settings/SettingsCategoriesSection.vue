@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const settingsStore = useSettingsStore()
 const toast = useToast()
-const { getIcon } = useIcon()
 const confirm = useConfirmDialog()
 const query = ref('')
 const newCategoryName = ref('')
@@ -37,7 +38,7 @@ async function createCategory() {
 
 	await settingsStore.createCategory({ name })
 	newCategoryName.value = ''
-	toast.add({ title: 'Categorie toegevoegd.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Categorie toegevoegd.', color: 'success', icon: getIcon('check') })
 }
 
 async function saveCategory(categoryId: string) {
@@ -45,7 +46,7 @@ async function saveCategory(categoryId: string) {
 
 	await settingsStore.updateCategory(categoryId, { name: draft.name })
 	editingId.value = null
-	toast.add({ title: 'Categorie opgeslagen.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Categorie opgeslagen.', color: 'success', icon: getIcon('check') })
 }
 
 async function mergeCategory(categoryId: string) {
@@ -53,7 +54,7 @@ async function mergeCategory(categoryId: string) {
 	if (!targetCategoryId) return
 
 	await settingsStore.mergeCategory(categoryId, targetCategoryId)
-	toast.add({ title: 'Categorieën samengevoegd.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Categorieën samengevoegd.', color: 'success', icon: getIcon('check') })
 }
 
 async function deleteCategory(category: (typeof settingsStore.categories)[number]) {
@@ -68,7 +69,7 @@ async function deleteCategory(category: (typeof settingsStore.categories)[number
 	}
 
 	await settingsStore.deleteCategory(category.id)
-	toast.add({ title: 'Categorie verwijderd.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Categorie verwijderd.', color: 'success', icon: getIcon('check') })
 }
 
 function normalizeDraft(value: { name: string }) {
@@ -101,7 +102,7 @@ function normalizeDraft(value: { name: string }) {
 				@submit.prevent="createCategory"
 			>
 				<UInput v-model="newCategoryName" placeholder="Nieuwe categorie" />
-				<UButton icon="i-lucide-plus" :disabled="!newCategoryName.trim()" type="submit">
+				<UButton :icon="getIcon('plus')" :disabled="!newCategoryName.trim()" type="submit">
 					Toevoegen
 				</UButton>
 			</UForm>
@@ -117,7 +118,7 @@ function normalizeDraft(value: { name: string }) {
 					<UInput v-model="draft.name" />
 					<div class="flex gap-2">
 						<UButton
-							icon="i-lucide-save"
+							:icon="getIcon('save')"
 							:disabled="!isDraftDirty"
 							@click="saveCategory(category.id)"
 						>
@@ -139,12 +140,12 @@ function normalizeDraft(value: { name: string }) {
 						</div>
 						<div class="flex gap-1">
 							<UButton
-								icon="i-lucide-pencil"
+								:icon="getIcon('pencil')"
 								variant="ghost"
 								@click="startEdit(category)"
 							/>
 							<UButton
-								icon="i-lucide-trash-2"
+								:icon="getIcon('trash')"
 								color="error"
 								variant="ghost"
 								@click="deleteCategory(category)"
@@ -166,7 +167,7 @@ function normalizeDraft(value: { name: string }) {
 							placeholder="Samenvoegen met"
 						/>
 						<UButton
-							icon="i-lucide-git-merge"
+							:icon="getIcon('merge')"
 							color="neutral"
 							:disabled="!mergeTargets[category.id]"
 							@click="mergeCategory(category.id)"
@@ -179,7 +180,7 @@ function normalizeDraft(value: { name: string }) {
 				v-if="!settingsStore.categories.length"
 				title="Er zijn nog geen categorieën aangemaakt"
 				variant="naked"
-				icon="i-lucide-tags"
+				:icon="getIcon('tags')"
 			/>
 		</UPageCard>
 	</div>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 definePageMeta({ layout: 'base' })
 
 const route = useRoute()
@@ -23,7 +25,7 @@ onMounted(async () => {
 		toast.add({
 			title: 'Toegangslink ontbreekt.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 		return
 	}
@@ -42,7 +44,7 @@ onMounted(async () => {
 					? String((error as { message?: string }).message)
 					: 'Toegangslink kon niet worden gebruikt.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		loading.value = false

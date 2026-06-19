@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
 import { z } from 'zod'
 
@@ -87,7 +88,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 			title: 'Ongeldig e-mailadres of wachtwoord.',
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		loading.value = false

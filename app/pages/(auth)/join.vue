@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
 import { z } from 'zod'
 
@@ -53,7 +54,7 @@ async function submit(event: FormSubmitEvent<Schema>) {
 		toast.add({
 			title: 'Uitnodigingslink ontbreekt.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 		return
 	}
@@ -89,7 +90,7 @@ async function submit(event: FormSubmitEvent<Schema>) {
 					? String((error as { message?: string }).message)
 					: 'Uitnodiging kon niet worden gebruikt.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		loading.value = false

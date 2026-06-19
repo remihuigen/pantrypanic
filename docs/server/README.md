@@ -22,6 +22,11 @@ Requests are authenticated when either:
 Public server paths are `/api/auth/login`, invite/reset access-link acceptance, and
 `/api/_auth/session`.
 
+Invite acceptance is additionally protected by Turnstile when `ENABLE_TURNSTILE=true`.
+`server/utils/turnstile.ts` reads the client token from `x-turnstile-token`, verifies the expected
+action, and allows `x-api-token: ADMIN_API_KEY` requests to bypass Turnstile for trusted
+server-to-server flows.
+
 ## Household Context
 
 Domain APIs are household-scoped. `server/utils/domains/households.ts` resolves the active

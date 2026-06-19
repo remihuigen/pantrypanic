@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { ButtonProps, NavigationMenuItem } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
 import { useEditItemDrawer } from '~/composables/useEditItemDrawer'
 
 const route = useRoute()
 const editItemDrawer = useEditItemDrawer()
-const { getIcon } = useIcon()
 
 type MenuItem = Pick<ButtonProps, 'name' | 'to' | 'icon'>
 

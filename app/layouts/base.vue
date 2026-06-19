@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-withDefaults(defineProps<{ useShaders: boolean }>(), { useShaders: true })
+import { getIcon } from '#shared/utils/icons'
+
+withDefaults(defineProps<{ useShaders?: boolean }>(), { useShaders: true })
 
 const { staggerMotion } = useMotion()
 
@@ -7,7 +9,6 @@ const { loggedIn } = useUserSession()
 
 const { enableBetaPeriod, enableMarketing } = useRuntimeConfig().public
 
-const { getIcon } = useIcon()
 </script>
 
 <template>

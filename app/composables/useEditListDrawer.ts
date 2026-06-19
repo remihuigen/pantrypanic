@@ -1,5 +1,6 @@
 import type { CreateListInput, UpdateListInput } from '#shared/utils/schemas/domain'
 import type { MaybeRefOrGetter } from 'vue'
+import { getIcon } from '#shared/utils/icons'
 
 import { useFormState } from '~/composables/useFormState'
 import { useListsStore } from '~/stores/lists'
@@ -235,7 +236,7 @@ export function useEditListDrawerForm(options: UseEditListDrawerFormOptions = {}
 							: 'Lijst kon niet worden toegevoegd.',
 				color: 'error',
 				duration: 8000,
-				icon: 'i-lucide-circle-alert'
+				icon: getIcon('error')
 			})
 		} finally {
 			isSubmitting.value = false

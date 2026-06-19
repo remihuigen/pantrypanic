@@ -48,6 +48,16 @@ const enableMarketing = process.env.ENABLE_MARKETING === 'true'
 const { turnstileSiteKey, turnstileSecretKey, turnstileEnabled } = resolveTurnstile()
 
 const layers: string[] = []
+const manualLayerTypeGlobs = {
+	app: [join(layerDir, '*/app/**/*'), join(layerDir, '*/modules/*/runtime/**/*')],
+	node: [
+		join(layerDir, '*/nuxt.config.*'),
+		join(layerDir, '*/.config/nuxt.*'),
+		join(layerDir, '*/modules/**/*')
+	],
+	shared: [join(layerDir, '*/shared/**/*')],
+	declarations: [join(layerDir, '*/*.d.ts'), join(layerDir, '*/shared/**/*.d.ts')]
+}
 
 if (enableMarketing) {
 	layers.push('./layer/marketing')
@@ -207,8 +217,21 @@ export default defineNuxtConfig({
 				'@tiptap/markdown',
 				'@tiptap/**',
 				'sortablejs',
-				'workbox-window'
+				'workbox-window',
+				'@vueuse/integrations/useSortable',
+				'@vueuse/gesture'
 			]
+		}
+	},
+	typescript: {
+		tsConfig: {
+			include: [...manualLayerTypeGlobs.app, ...manualLayerTypeGlobs.declarations]
+		},
+		nodeTsConfig: {
+			include: [...manualLayerTypeGlobs.node]
+		},
+		sharedTsConfig: {
+			include: [...manualLayerTypeGlobs.shared, ...manualLayerTypeGlobs.declarations]
 		}
 	},
 
@@ -223,6 +246,9 @@ export default defineNuxtConfig({
 
 	image: {
 		provider: 'none'
+	},
+	marketing: {
+		enabled: enableMarketing
 	},
 
 	pwa: {
@@ -281,8 +307,5 @@ export default defineNuxtConfig({
 
 	turnstile: {
 		siteKey: turnstileSiteKey
-	},
-	marketing: {
-		enabled: enableMarketing
 	}
 })

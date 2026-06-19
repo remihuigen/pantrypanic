@@ -2,6 +2,7 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { EditListDrawerSubmitData } from '~/composables/useEditListDrawer'
 import type { z } from 'zod'
+import { getIcon } from '#shared/utils/icons'
 
 import { createListBodySchema } from '#shared/utils/schemas/domain'
 import { useEditListDrawer, useEditListDrawerForm } from '~/composables/useEditListDrawer'
@@ -9,7 +10,6 @@ import { ref, watch } from 'vue'
 
 const editListDrawer = useEditListDrawer()
 const editListDrawerFormId = 'edit-list-drawer-form'
-const { getIcon } = useIcon()
 const { formState, isSubmitting, canSubmit, submitForm, closeAndReset } = useEditListDrawerForm({
 	drawer: editListDrawer
 })
@@ -24,7 +24,7 @@ const drawerDescription = computed(() =>
 )
 const submitLabel = computed(() => (editListDrawer.mode.value === 'edit' ? 'Opslaan' : 'Toevoegen'))
 const submitIcon = computed(() =>
-	editListDrawer.mode.value === 'edit' ? 'i-lucide-save' : getIcon('plus')
+	editListDrawer.mode.value === 'edit' ? getIcon('save') : getIcon('plus')
 )
 
 type EditListFormSchema = z.output<typeof createListBodySchema>

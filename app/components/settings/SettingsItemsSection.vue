@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const settingsStore = useSettingsStore()
 const toast = useToast()
-const { getIcon } = useIcon()
 const confirm = useConfirmDialog()
 const query = ref('')
 const editingId = ref<string | null>(null)
@@ -44,7 +45,7 @@ async function saveItem(itemId: string) {
 		categoryId: draft.categoryId || null
 	})
 	editingId.value = null
-	toast.add({ title: 'Item opgeslagen.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Item opgeslagen.', color: 'success', icon: getIcon('check') })
 }
 
 async function mergeItem(itemId: string) {
@@ -52,7 +53,7 @@ async function mergeItem(itemId: string) {
 	if (!targetItemId) return
 
 	await settingsStore.mergeItem(itemId, targetItemId)
-	toast.add({ title: 'Items samengevoegd.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Items samengevoegd.', color: 'success', icon: getIcon('check') })
 }
 
 async function deleteItem(item: (typeof settingsStore.items)[number]) {
@@ -68,7 +69,7 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 	}
 
 	await settingsStore.deleteItem(item.id)
-	toast.add({ title: 'Item verwijderd.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Item verwijderd.', color: 'success', icon: getIcon('check') })
 }
 
 function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: string }) {
@@ -122,7 +123,7 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 					/>
 					<div class="flex gap-2">
 						<UButton
-							icon="i-lucide-save"
+							:icon="getIcon('save')"
 							:disabled="!isDraftDirty"
 							@click="saveItem(item.id)"
 						>
@@ -145,12 +146,12 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 						</div>
 						<div class="flex gap-1">
 							<UButton
-								icon="i-lucide-pencil"
+								:icon="getIcon('pencil')"
 								variant="ghost"
 								@click="startEdit(item)"
 							/>
 							<UButton
-								icon="i-lucide-trash-2"
+								:icon="getIcon('trash')"
 								color="error"
 								variant="ghost"
 								@click="deleteItem(item)"
@@ -172,7 +173,7 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 							placeholder="Samenvoegen met"
 						/>
 						<UButton
-							icon="i-lucide-git-merge"
+							:icon="getIcon('merge')"
 							color="neutral"
 							@click="mergeItem(item.id)"
 						/>
@@ -184,7 +185,7 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 				v-if="!settingsStore.items.length"
 				title="Er zijn nog geen items aangemaakt"
 				variant="naked"
-				icon="lucide:list-check"
+				:icon="getIcon('listCheck')"
 			/>
 		</UPageCard>
 	</div>

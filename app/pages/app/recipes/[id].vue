@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useGesture } from '@vueuse/gesture'
+import { getIcon } from '#shared/utils/icons'
 
 definePageMeta({ layout: 'app' })
 
@@ -7,9 +8,10 @@ const route = useRoute()
 const recipesStore = useRecipesStore()
 const listsStore = useListsStore()
 const toast = useToast()
-const { incrementUsage } = useRecipeUsage()
 const gestureTarget = useTemplateRef<HTMLElement>('gestureTarget')
 const id = computed(() => route.params.id?.toString() ?? '')
+const { canAddToList, disabledReason, hasLists, isAddingToList, targetListItems } =
+	useRecipeAddToList(id)
 const recipe = computed(() => (id.value ? recipesStore.recipesById[id.value] : null))
 const items = computed(() => (id.value ? recipesStore.getRecipeItems(id.value) : []))
 const pageTitle = computed(
@@ -20,24 +22,16 @@ const recipeSourceUrl = computed(() => recipe.value?.sourceUrl)
 const recipeServings = computed(() => recipe.value?.servings)
 const recipeLoadError = shallowRef<string | null>(null)
 const isLoadingRecipe = shallowRef(false)
+const showRecipeSkeleton = computed(() => isLoadingRecipe.value && !recipe.value)
 const showRecipeItemModal = shallowRef(false)
 const showRecipeSettingsModal = shallowRef(false)
 const selectedRecipeItemId = shallowRef<string | null>(null)
-const isAddingToList = shallowRef(false)
 let recipeLoadRequestId = 0
 const selectedRecipeItem = computed(() =>
 	selectedRecipeItemId.value
 		? (recipesStore.recipeItemsById[selectedRecipeItemId.value] ?? null)
 		: null
 )
-
-const addToListMenuItems = computed(() => [
-	listsStore.activeLists.map((list) => ({
-		label: list.name,
-		icon: 'i-lucide-list-plus',
-		onSelect: async () => await addRecipeToList(list.id)
-	}))
-])
 
 async function refreshRecipe(options: { notifyOnError?: boolean } = {}) {
 	const currentRecipeId = id.value
@@ -70,7 +64,7 @@ async function refreshRecipe(options: { notifyOnError?: boolean } = {}) {
 				title: message,
 				color: 'error',
 				duration: 8000,
-				icon: 'i-lucide-circle-alert'
+				icon: getIcon('error')
 			})
 		}
 	} finally {
@@ -88,7 +82,7 @@ async function refreshLists() {
 			title: getErrorMessage(error, 'Lijsten konden niet worden geladen.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -107,39 +101,10 @@ async function reorderRecipeItems(orderedIds: string[]) {
 			title: getErrorMessage(error, 'Volgorde kon niet worden opgeslagen.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 
 		await refreshRecipe()
-	}
-}
-
-async function addRecipeToList(listId: string) {
-	const currentRecipeId = id.value
-
-	if (!currentRecipeId || isAddingToList.value) {
-		return
-	}
-
-	isAddingToList.value = true
-
-	try {
-		await listsStore.addRecipeToList(currentRecipeId, listId)
-		incrementUsage(currentRecipeId)
-		toast.add({
-			title: 'Recept toegevoegd aan lijst.',
-			color: 'success',
-			icon: 'i-lucide-check'
-		})
-	} catch (error) {
-		toast.add({
-			title: getErrorMessage(error, 'Recept kon niet aan de lijst worden toegevoegd.'),
-			color: 'error',
-			duration: 8000,
-			icon: 'i-lucide-circle-alert'
-		})
-	} finally {
-		isAddingToList.value = false
 	}
 }
 
@@ -238,28 +203,13 @@ onUnmounted(() => {
 						<UButton
 							color="primary"
 							variant="soft"
-							icon="i-lucide-plus"
+							:icon="getIcon('plus')"
 							size="md"
 							square
 							class="aspect-square"
 							aria-label="Ingredient toevoegen"
 							@click="openCreateRecipeItemModal"
 						/>
-						<UDropdownMenu :items="addToListMenuItems" :content="{ align: 'end' }">
-							<UButton
-								color="neutral"
-								variant="soft"
-								icon="i-lucide-list-plus"
-								size="md"
-								square
-								class="aspect-square"
-								aria-label="Recept op lijst zetten"
-								:loading="isAddingToList"
-								:disabled="
-									listsStore.activeLists.length === 0 || items.length === 0
-								"
-							/>
-						</UDropdownMenu>
 						<RecipeActionMenu
 							v-if="id"
 							:recipe-id="id"
@@ -274,24 +224,52 @@ onUnmounted(() => {
 				v-if="recipeLoadError"
 				color="error"
 				variant="soft"
-				icon="i-lucide-circle-alert"
+				:icon="getIcon('error')"
 				title="Recept kon niet worden geladen"
 				:description="recipeLoadError"
 			/>
 
-			<div v-else-if="isLoadingRecipe && !recipe" class="grid min-h-60 place-items-center">
-				<AppIcon class="w-16 animate-pulse" />
+			<div v-else-if="showRecipeSkeleton" class="space-y-4">
+				<UPageCard variant="subtle" :ui="{ body: 'space-y-4' }">
+					<USkeleton class="h-6 w-3/4 max-w-72" />
+					<USkeleton class="h-4 w-full" />
+					<USkeleton class="h-4 w-5/6" />
+					<div class="flex flex-wrap gap-2">
+						<USkeleton class="h-7 w-28 rounded-full" />
+						<USkeleton class="h-7 w-36 rounded-full" />
+						<USkeleton class="h-9 w-44 rounded-lg" />
+					</div>
+				</UPageCard>
+
+				<div class="grid gap-3">
+					<USkeleton class="h-24 w-full rounded-xl" />
+					<USkeleton class="h-24 w-full rounded-xl" />
+					<USkeleton class="h-24 w-full rounded-xl" />
+				</div>
+
+				<UPageCard
+					variant="subtle"
+					:ui="{
+						body: 'space-y-3 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:space-y-0'
+					}"
+				>
+					<div class="space-y-2">
+						<USkeleton class="h-5 w-48" />
+						<USkeleton class="h-4 w-full max-w-96" />
+					</div>
+					<USkeleton class="h-10 w-full rounded-lg sm:w-52" />
+				</UPageCard>
 			</div>
 
 			<UEmpty
 				v-else-if="!recipe"
-				icon="i-lucide-book-x"
+				:icon="getIcon('bookX')"
 				title="Recept niet gevonden"
 				description="Dit recept bestaat niet meer of is niet beschikbaar."
 				variant="subtle"
 			>
 				<template #actions>
-					<UButton to="/app/recipes" color="primary" icon="i-lucide-arrow-left">
+					<UButton to="/app/recipes" color="primary" :icon="getIcon('arrowLeft')">
 						Terug naar recepten
 					</UButton>
 				</template>
@@ -308,11 +286,11 @@ onUnmounted(() => {
 							v-if="recipeServings"
 							color="neutral"
 							variant="soft"
-							icon="i-lucide-users"
+							:icon="getIcon('users')"
 						>
 							{{ recipeServings }} porties
 						</UBadge>
-						<UBadge color="neutral" variant="soft" icon="i-lucide-list">
+						<UBadge color="neutral" variant="soft" :icon="getIcon('list')">
 							{{ items.length }} ingredienten
 						</UBadge>
 						<UButton
@@ -323,7 +301,7 @@ onUnmounted(() => {
 							color="primary"
 							variant="solid"
 							size="sm"
-							icon="i-lucide-external-link"
+							:icon="getIcon('externalLink')"
 							class="font-semibold shadow-sm"
 						>
 							Naar origineel recept
@@ -341,6 +319,38 @@ onUnmounted(() => {
 					@edit="openEditRecipeItemModal"
 					@reorder="reorderRecipeItems"
 				/>
+
+				<UPageCard
+					variant="subtle"
+					:ui="{
+						body: 'space-y-3 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:space-y-0'
+					}"
+				>
+					<div class="space-y-1">
+						<p class="text-highlighted text-sm font-semibold">
+							Zet dit recept direct op een lijst
+						</p>
+						<p class="text-muted text-sm leading-relaxed">
+							{{
+								disabledReason ??
+								'Voeg alle ingredienten van dit recept in een keer toe aan een actieve lijst.'
+							}}
+						</p>
+					</div>
+
+					<UDropdownMenu :items="[targetListItems]" :content="{ align: 'end' }">
+						<UButton
+							color="primary"
+							variant="solid"
+							:icon="getIcon('listPlus')"
+							:loading="isAddingToList"
+							:disabled="!canAddToList"
+							class="w-full justify-center sm:w-auto"
+						>
+							{{ hasLists ? 'Aan lijst toevoegen' : 'Geen lijst beschikbaar' }}
+						</UButton>
+					</UDropdownMenu>
+				</UPageCard>
 
 				<RecipeItemModal
 					v-if="id"

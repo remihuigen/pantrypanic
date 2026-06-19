@@ -21,7 +21,8 @@ Do not edit anything under `.agents/skills/**` unless the user explicitly asks f
 - Current backend: session auth, user CRUD, blob CRUD/validation, Pantry Panic domain APIs, image serving, and HTTP admin-user seeding.
 - Current deployment: GitHub Actions deploys Cloudflare Workers after applying D1 migrations.
 - Current database: `users` plus Pantry Panic domain tables for lists, items, recipes, list items, and meal planner data.
-- Current tests: Vitest covers TypeScript/JavaScript logic under `server/utils` and `scripts` with coverage thresholds.
+- Current tests: Vitest mirrors the source tree under `tests/unit/**` and covers app logic,
+  `server/utils`, `scripts`, `content.config.ts`, `modules`, and `layer` config/runtime files.
 
 ## Structure
 

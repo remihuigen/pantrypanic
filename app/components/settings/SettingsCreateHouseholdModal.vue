@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const open = defineModel<boolean>('open', { default: false })
 
 const settingsStore = useSettingsStore()
@@ -16,12 +18,12 @@ async function createHousehold() {
 		await settingsStore.createHousehold({ name: householdName })
 		name.value = ''
 		open.value = false
-		toast.add({ title: 'Huishouden aangemaakt.', color: 'success', icon: 'i-lucide-check' })
+		toast.add({ title: 'Huishouden aangemaakt.', color: 'success', icon: getIcon('check') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Huishouden kon niet worden aangemaakt.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		isCreating.value = false
@@ -63,7 +65,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 					Annuleren
 				</UButton>
 				<UButton
-					icon="i-lucide-plus"
+					:icon="getIcon('plus')"
 					:disabled="!name.trim()"
 					:loading="isCreating"
 					@click="createHousehold"

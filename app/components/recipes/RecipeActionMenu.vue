@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 const props = defineProps<{
 	recipeId: string
+	showAddToList?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -11,17 +14,31 @@ const emit = defineEmits<{
 const recipesStore = useRecipesStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
+const { canAddToList, disabledReason, isAddingToList, targetListItems } = useRecipeAddToList(
+	computed(() => props.recipeId)
+)
 
 const menuItems = computed(() => [
 	[
+		...(props.showAddToList
+			? [
+					{
+						label: 'Aan lijst toevoegen',
+						description: disabledReason.value,
+						icon: getIcon('listPlus'),
+						disabled: !canAddToList.value,
+						children: targetListItems.value
+					}
+				]
+			: []),
 		{
 			label: 'Wijzig instellingen',
-			icon: 'i-lucide-settings',
+			icon: getIcon('settings'),
 			onSelect: () => emit('edit')
 		},
 		{
 			label: 'Verwijderen',
-			icon: 'i-lucide-trash-2',
+			icon: getIcon('trash'),
 			color: 'error' as const,
 			onSelect: async () => await handleDeleteRecipe()
 		}
@@ -47,7 +64,7 @@ async function handleDeleteRecipe() {
 				color: 'error',
 				variant: 'solid',
 				mode: 'confirm',
-				icon: 'i-lucide-trash-2'
+				icon: getIcon('trash')
 			}
 		]
 	})
@@ -64,7 +81,7 @@ async function handleDeleteRecipe() {
 			title: getErrorMessage(error, 'Recept kon niet worden verwijderd.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -93,7 +110,8 @@ function getErrorMessage(error: unknown, fallback: string) {
 			color="neutral"
 			square
 			size="sm"
-			icon="i-lucide-ellipsis-vertical"
+			:loading="isAddingToList"
+			:icon="getIcon('ellipsis')"
 			aria-label="Receptacties"
 			@click.stop
 		/>

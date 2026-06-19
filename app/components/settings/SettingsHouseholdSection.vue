@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
 import { manageHousehold } from '#shared/utils/abilities'
+import { getIcon } from '#shared/utils/icons'
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
-const { getIcon } = useIcon()
 const createHouseholdValue = '__create_household__'
 
 const householdOptions = computed(() => [
@@ -26,12 +26,12 @@ const { copy: copyReset } = useClipboard({ source: resetLink })
 
 function handleCopyInvite() {
 	copyInvite()
-	toast.add({ title: 'Uitnodigingslink gekopieerd.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Uitnodigingslink gekopieerd.', color: 'success', icon: getIcon('check') })
 }
 
 function handleCopyReset() {
 	copyReset()
-	toast.add({ title: 'Toegangslink gekopieerd.', color: 'success', icon: 'i-lucide-check' })
+	toast.add({ title: 'Toegangslink gekopieerd.', color: 'success', icon: getIcon('check') })
 }
 
 async function switchHousehold(householdId: string) {
@@ -42,12 +42,12 @@ async function switchHousehold(householdId: string) {
 
 	try {
 		await settingsStore.switchHousehold(householdId)
-		toast.add({ title: 'Huishouden gewisseld.', color: 'success', icon: 'i-lucide-check' })
+		toast.add({ title: 'Huishouden gewisseld.', color: 'success', icon: getIcon('check') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Huishouden kon niet worden gewisseld.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -58,12 +58,12 @@ async function createInvite() {
 		inviteLink.value = url
 		copyInvite()
 		// await navigator.clipboard?.writeText(url).catch(() => undefined)
-		toast.add({ title: 'Uitnodigingslink gemaakt.', color: 'success', icon: 'i-lucide-link' })
+		toast.add({ title: 'Uitnodigingslink gemaakt.', color: 'success', icon: getIcon('link') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Uitnodigingslink kon niet worden gemaakt.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -74,12 +74,12 @@ async function createResetLink(userId: number) {
 		resetLink.value = url
 		copyReset()
 		// await navigator.clipboard?.writeText(url).catch(() => undefined)
-		toast.add({ title: 'Toegangslink gemaakt.', color: 'success', icon: 'i-lucide-key-round' })
+		toast.add({ title: 'Toegangslink gemaakt.', color: 'success', icon: getIcon('keyRound') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Toegangslink kon niet worden gemaakt.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -105,12 +105,12 @@ async function removeMember(userId: number) {
 
 	try {
 		await settingsStore.removeMember(userId)
-		toast.add({ title: 'Gezinslid verwijderd.', color: 'success', icon: 'i-lucide-check' })
+		toast.add({ title: 'Gezinslid verwijderd.', color: 'success', icon: getIcon('check') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Gezinslid kon niet worden verwijderd.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -118,12 +118,12 @@ async function removeMember(userId: number) {
 async function assignOwner(userId: number) {
 	try {
 		await settingsStore.assignOwner(userId)
-		toast.add({ title: 'Eigenaar toegevoegd.', color: 'success', icon: 'i-lucide-crown' })
+		toast.add({ title: 'Eigenaar toegevoegd.', color: 'success', icon: getIcon('crown') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Eigenaar kon niet worden toegevoegd.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -158,7 +158,7 @@ function isOnlyHouseholdOwner(userId: number) {
 		>
 			<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
 				<UButton
-					icon="i-lucide-link"
+					:icon="getIcon('link')"
 					size="sm"
 					class="w-fit lg:ms-auto"
 					@click="createInvite"
@@ -198,7 +198,7 @@ function isOnlyHouseholdOwner(userId: number) {
 
 			<UButton
 				v-if="settingsStore.enableHouseholdCreation && !settingsStore.activeHouseholdId"
-				icon="i-lucide-plus"
+				:icon="getIcon('plus')"
 				color="neutral"
 				variant="outline"
 				class="w-fit"
@@ -233,19 +233,19 @@ function isOnlyHouseholdOwner(userId: number) {
 							<div class="flex gap-1">
 								<UButton
 									v-if="member.role !== 'householdOwner'"
-									icon="i-lucide-crown"
+									:icon="getIcon('crown')"
 									color="neutral"
 									variant="ghost"
 									@click="assignOwner(member.id)"
 								/>
 								<UButton
-									icon="i-lucide-key-round"
+									:icon="getIcon('keyRound')"
 									color="neutral"
 									variant="ghost"
 									@click="createResetLink(member.id)"
 								/>
 								<UButton
-									icon="i-lucide-trash-2"
+									:icon="getIcon('trash')"
 									color="error"
 									variant="ghost"
 									@click="removeMember(member.id)"

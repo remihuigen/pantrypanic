@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RecipeSummary } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 const props = defineProps<{
 	recipe: RecipeSummary & {
@@ -39,12 +40,13 @@ const hasSourceUrl = computed(() => Boolean(props.recipe.sourceUrl))
 				variant="ghost"
 				size="sm"
 				square
-				icon="i-lucide-external-link"
+				:icon="getIcon('externalLink')"
 				aria-label="Naar origineel recept"
 				@click.stop
 			/>
 			<RecipeActionMenu
 				:recipe-id="props.recipe.id"
+				show-add-to-list
 				@edit="emit('edit', props.recipe.id)"
 				@deleted="emit('deleted', props.recipe.id)"
 			/>
@@ -61,14 +63,14 @@ const hasSourceUrl = computed(() => Boolean(props.recipe.sourceUrl))
 				{{ props.recipe.name }}
 			</p>
 			<div class="text-muted flex flex-wrap items-center gap-2 text-xs">
-				<UBadge color="neutral" variant="soft" icon="i-lucide-list">
+				<UBadge color="neutral" variant="soft" :icon="getIcon('list')">
 					{{ props.itemCount }} {{ itemLabel }}
 				</UBadge>
 				<UBadge
 					v-if="typeof props.usageCount === 'number'"
 					color="primary"
 					variant="soft"
-					icon="i-lucide-heart"
+					:icon="getIcon('heart')"
 				>
 					{{ props.usageCount }}x
 				</UBadge>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { RecipeItem } from '#shared/utils/schemas/domain'
+import { getIcon } from '#shared/utils/icons'
 
 import { createOccurrenceBodySchema } from '#shared/utils/schemas/domain'
 
@@ -52,7 +53,7 @@ const modalDescription = computed(() =>
 		: 'Voeg een ingredient toe aan dit recept.'
 )
 const submitLabel = computed(() => (isEditing.value ? 'Opslaan' : 'Toevoegen'))
-const submitIcon = computed(() => (isEditing.value ? 'i-lucide-save' : 'i-lucide-plus'))
+const submitIcon = computed(() => (isEditing.value ? getIcon('save') : getIcon('plus')))
 const currentFormValue = computed(() => normalizeRecipeItemFormValue(state))
 const { isDirty, resetInitialValue } = useFormState(initialFormValue, currentFormValue)
 const canSubmit = computed(
@@ -107,7 +108,7 @@ async function submitItem(event: FormSubmitEvent<RecipeItemFormState>) {
 			),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -133,7 +134,7 @@ async function deleteItem() {
 				color: 'error',
 				variant: 'solid',
 				mode: 'confirm',
-				icon: 'i-lucide-trash-2'
+				icon: getIcon('trash')
 			}
 		]
 	})
@@ -151,7 +152,7 @@ async function deleteItem() {
 			title: getErrorMessage(error, 'Ingredient kon niet worden verwijderd.'),
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -237,7 +238,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 						v-if="isEditing"
 						color="error"
 						variant="soft"
-						icon="i-lucide-trash-2"
+						:icon="getIcon('trash')"
 						square
 						aria-label="Ingredient verwijderen"
 						:loading="recipesStore.isSaving"

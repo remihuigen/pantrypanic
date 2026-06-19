@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { FormSubmitEvent, RadioGroupItem } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
 import { z } from 'zod'
 
@@ -27,7 +28,6 @@ if (!enablePublicRegistration) {
 		fatal: true
 	})
 }
-const { getIcon } = useIcon()
 
 const schema = z
 	.object({
@@ -120,7 +120,7 @@ async function onSubmit(_payload: FormSubmitEvent<Schema>) {
 					</p>
 					<UAlert
 						v-else
-						icon="lucide:badge-check"
+						:icon="getIcon('badgeCheck')"
 						color="success"
 						variant="subtle"
 						title="Beta periode"

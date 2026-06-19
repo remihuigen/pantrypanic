@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ButtonProps } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
-const { getIcon } = useIcon()
 const { loggedIn } = useUserSession()
 const { enablePublicRegistration } = useRuntimeConfig().public
 

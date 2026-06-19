@@ -7,7 +7,7 @@ export default defineNuxtModule<{ enabled?: boolean }>({
 		name: MODULE,
 		configKey: MODULE
 	},
-	setup(options, nuxt) {
+	setup(options, _nuxt) {
 		const logger = useLogger(MODULE)
 		const resolver = createResolver(import.meta.url)
 		if (!options.enabled) {

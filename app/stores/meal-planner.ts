@@ -521,6 +521,16 @@ export const useMealPlannerStore = defineStore(
 			).filter((id) => id !== dayItemId)
 		}
 
+		function resetHouseholdState() {
+			mealPlannerDaysById.value = {}
+			mealPlannerDayIds.value = []
+			mealPlannerDayItemIdsByDayId.value = {}
+			mealPlannerDayItemsById.value = {}
+			error.value = null
+			isLoading.value = false
+			isSaving.value = false
+		}
+
 		return {
 			mealPlannerDaysById,
 			mealPlannerDayIds,
@@ -541,7 +551,8 @@ export const useMealPlannerStore = defineStore(
 			clearMealPlanner,
 			startRefresh,
 			stopRefresh,
-			refreshNow: fetchMealPlanner
+			refreshNow: fetchMealPlanner,
+			resetHouseholdState
 		}
 	},
 	{

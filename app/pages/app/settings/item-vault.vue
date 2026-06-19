@@ -1,9 +1,10 @@
 <script lang="ts" setup>
+import { getIcon } from '#shared/utils/icons'
+
 definePageMeta({ layout: 'app' })
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
-const hasResolvedInitialLoad = ref(false)
 
 const itemVaultRequest = useLazyAsyncData(
 	'settings-item-vault',
@@ -20,18 +21,10 @@ const itemVaultRequest = useLazyAsyncData(
 	}
 )
 
-const isInitialLoadPending = computed(
-	() => itemVaultRequest.status.value === 'pending' && !hasResolvedInitialLoad.value
-)
-
-watch(
-	() => itemVaultRequest.status.value,
-	(status) => {
-		if (status === 'success' || status === 'error') {
-			hasResolvedInitialLoad.value = true
-		}
-	},
-	{ immediate: true }
+const showItemVaultSkeleton = computed(
+	() =>
+		(itemVaultRequest.status.value === 'pending' || settingsStore.isLoading) &&
+		settingsStore.items.length === 0
 )
 
 watch(
@@ -47,7 +40,7 @@ watch(
 					? String((error as { message?: string }).message)
 					: 'Items konden niet worden geladen.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 )
@@ -55,7 +48,7 @@ watch(
 
 <template>
 	<div class="space-y-4">
-		<div v-if="isInitialLoadPending" class="space-y-4">
+		<div v-if="showItemVaultSkeleton" class="space-y-4">
 			<USkeleton class="h-9 w-56" />
 			<USkeleton class="h-11 w-full max-w-120" />
 			<div class="grid gap-3">

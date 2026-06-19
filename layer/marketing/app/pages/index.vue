@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { PricingPlanProps } from '@nuxt/ui'
+import { getIcon } from '#shared/utils/icons'
 
 definePageMeta({
 	layout: 'base'
 })
 
 const { title, description } = useRuntimeConfig().public.identity
-const { getIcon } = useIcon()
 const { enableBetaPeriod } = useRuntimeConfig().public
 
 useSeoMeta({
@@ -24,37 +24,37 @@ const page = {
 			'Another grocery app? Technically, yes. Except this one actually understands what needs to happen before anyone is already standing in aisle seven.',
 		items: [
 			{
-				icon: 'i-lucide-list-checks',
+				icon: getIcon('listChecks'),
 				title: 'Shared lists',
 				description:
 					'One list for everyone. Add, edit, and check off groceries without creating three versions of the same shopping chaos.'
 			},
 			{
-				icon: 'i-lucide-refresh-cw',
+				icon: getIcon('refreshCw'),
 				title: 'Live updates',
 				description:
 					'Checked items and new groceries sync quickly across devices, so last-minute additions stop living in chat.'
 			},
 			{
-				icon: 'i-lucide-utensils',
+				icon: getIcon('utensils'),
 				title: 'Recipe-based shopping',
 				description:
 					'Save the meals you actually cook and send their ingredients straight to the right shopping list.'
 			},
 			{
-				icon: 'i-lucide-calendar-days',
+				icon: getIcon('calendarDays'),
 				title: 'Meal planning',
 				description:
 					'Plan the week, park leftovers, and turn dinner ideas into groceries before the fridge is empty.'
 			},
 			{
-				icon: 'i-lucide-archive',
+				icon: getIcon('archive'),
 				title: 'Item memory',
 				description:
 					'Pantry Panic remembers common items, units, and categories, so building your list gets faster every time.'
 			},
 			{
-				icon: 'lucide:home',
+				icon: getIcon('home'),
 				title: 'For the whole household',
 				description:
 					'Invite everyone who shops, cooks, forgets things, or mysteriously finishes the good snacks.'

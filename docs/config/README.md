@@ -33,6 +33,29 @@ NUXT_SESSION_PASSWORD=<at-least-32-characters>
 - `NUXT_SESSION_PASSWORD` signs/encrypts session cookies. Development can auto-generate it, but production must set a stable value.
 - Auth sessions expire after 30 days via `runtimeConfig.session.maxAge`.
 
+## Turnstile
+
+Turnstile is configured through `runtimeConfig.turnstile` and `runtimeConfig.public.turnstile` in
+`nuxt.config.ts`.
+
+Relevant environment variables:
+
+```bash
+ENABLE_TURNSTILE=false
+TURNSTILE_SECRET_KEY=<secret-key>
+TURNSTILE_SITE_KEY=<site-key>
+```
+
+- `ENABLE_TURNSTILE=true` enables both client-side token collection and server-side verification.
+- `TURNSTILE_SECRET_KEY` is private server runtime config and is used by
+  `server/utils/turnstile.ts`.
+- `TURNSTILE_SITE_KEY` is exposed through public runtime config and consumed by
+  `app/composables/useTurnstile.ts`.
+- In local and test workflows, server validation is bypassed when Turnstile is enabled but no
+  secret key is configured. Production requires a configured secret key.
+- Invite-link acceptance currently uses Turnstile verification before a household join can be
+  completed.
+
 ## Pantry Runtime Defaults
 
 Editable Pantry defaults are declared in `runtimeConfig.pantry` in `nuxt.config.ts`.
@@ -75,6 +98,20 @@ and does not take over `/`, `/login`, `/logout`, or other public/auth pages. `nu
 still adds `^\/app(?:\/.*)?$` to `pwa.workbox.navigateFallbackDenylist` so Cloudflare/Nitro
 remains the source of truth for SSR app routes instead of Workbox serving the `/app` entry
 document for deep links.
+
+The optional marketing layer lives under `layer/marketing` instead of `layers/marketing` so Nuxt
+does not auto-discover it. `nuxt.config.ts` only extends that layer when `ENABLE_MARKETING=true`.
+Because Nuxt's generated app/node/shared tsconfigs only auto-include `layers/*`, `nuxt.config.ts`
+extends `typescript.tsConfig`, `typescript.nodeTsConfig`, and `typescript.sharedTsConfig` with
+matching `layer/*` globs as well. That keeps IDE type resolution and `pnpm typecheck` coverage
+intact for the manual layer path without changing the runtime opt-in behavior.
+
+When the marketing layer is enabled, `layer/marketing/nuxt.config.ts` adds `@nuxt/content`.
+`content.config.ts` defines the current Nuxt Content collections:
+
+- `blog`: page collection sourced from `content/blog/*.md` with a required `date`.
+- `faqs`: data collection sourced from `content/faqs/**.yml` with `marketing` and `support`
+  categories.
 
 `nuxt.config.ts` also defines the local Vite alias `#shaders-vue` to
 `node_modules/shaders/dist/vue`. Landing-page shader components import through that alias so Vite

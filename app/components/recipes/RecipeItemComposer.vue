@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 type RecipeItemDraft = {
 	name: string
 	amount?: number
@@ -66,7 +68,7 @@ function normalizeOptionalText(value: string | undefined) {
 			<UButton color="neutral" variant="soft" @click="emit('cancel')">Annuleren</UButton>
 			<UButton
 				color="primary"
-				icon="i-lucide-plus"
+				:icon="getIcon('plus')"
 				:loading="props.isSaving"
 				:disabled="!canSubmit"
 				@click="submitDraft"

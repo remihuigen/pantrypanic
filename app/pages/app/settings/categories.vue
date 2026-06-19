@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
+
 definePageMeta({ layout: 'app' })
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
-const hasResolvedInitialLoad = ref(false)
 
 const categoriesRequest = useLazyAsyncData(
 	'settings-categories',
@@ -21,18 +22,10 @@ const categoriesRequest = useLazyAsyncData(
 	}
 )
 
-const isInitialLoadPending = computed(
-	() => categoriesRequest.status.value === 'pending' && !hasResolvedInitialLoad.value
-)
-
-watch(
-	() => categoriesRequest.status.value,
-	(status) => {
-		if (status === 'success' || status === 'error') {
-			hasResolvedInitialLoad.value = true
-		}
-	},
-	{ immediate: true }
+const showCategoriesSkeleton = computed(
+	() =>
+		(categoriesRequest.status.value === 'pending' || settingsStore.isLoading) &&
+		settingsStore.categories.length === 0
 )
 
 watch(
@@ -48,7 +41,7 @@ watch(
 					? String((error as { message?: string }).message)
 					: 'Categorieën konden niet worden geladen.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 )
@@ -56,7 +49,7 @@ watch(
 
 <template>
 	<div class="space-y-4">
-		<div v-if="isInitialLoadPending" class="space-y-4">
+		<div v-if="showCategoriesSkeleton" class="space-y-4">
 			<USkeleton class="h-9 w-56" />
 			<USkeleton class="h-11 w-full max-w-120" />
 			<USkeleton class="h-24 w-full rounded-xl" />

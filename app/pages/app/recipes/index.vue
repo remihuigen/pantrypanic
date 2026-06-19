@@ -1,7 +1,10 @@
 <script lang="ts" setup>
+import { getIcon } from '#shared/utils/icons'
+
 definePageMeta({ layout: 'app' })
 
 const recipesStore = useRecipesStore()
+const listsStore = useListsStore()
 const toast = useToast()
 const { getUsageCount } = useRecipeUsage()
 
@@ -11,6 +14,12 @@ const showEditRecipeModal = shallowRef(false)
 const editRecipeId = shallowRef<string | null>(null)
 const isLoadingRecipes = shallowRef(false)
 const recipeLoadError = shallowRef<string | null>(null)
+const showRecipesSkeleton = computed(
+	() =>
+		(isLoadingRecipes.value || recipesStore.isLoading) &&
+		recipesStore.activeRecipes.length === 0 &&
+		!recipeLoadError.value
+)
 
 const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase())
 const hasSearchQuery = computed(() => normalizedSearchQuery.value.length > 0)
@@ -59,10 +68,23 @@ async function refreshRecipes() {
 			title: message,
 			color: 'error',
 			duration: 8000,
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		isLoadingRecipes.value = false
+	}
+}
+
+async function refreshLists() {
+	try {
+		await listsStore.fetchLists('active')
+	} catch (error) {
+		toast.add({
+			title: getErrorMessage(error, 'Lijsten konden niet worden geladen.'),
+			color: 'error',
+			duration: 8000,
+			icon: getIcon('error')
+		})
 	}
 }
 
@@ -101,7 +123,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 onMounted(() => {
-	void refreshRecipes()
+	void Promise.all([refreshRecipes(), refreshLists()])
 })
 </script>
 
@@ -121,10 +143,19 @@ onMounted(() => {
 				v-if="recipeLoadError"
 				color="error"
 				variant="soft"
-				icon="i-lucide-circle-alert"
+				:icon="getIcon('error')"
 				title="Recepten konden niet worden geladen"
 				:description="recipeLoadError"
 			/>
+
+			<div v-else-if="showRecipesSkeleton" class="space-y-4">
+				<USkeleton class="h-34 w-full rounded-2xl" />
+				<div class="grid gap-4">
+					<USkeleton class="h-32 w-full rounded-2xl" />
+					<USkeleton class="h-32 w-full rounded-2xl" />
+					<USkeleton class="h-32 w-full rounded-2xl" />
+				</div>
+			</div>
 
 			<template v-else>
 				<Transition name="recipe-favorites">

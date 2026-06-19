@@ -1,35 +1,77 @@
+import { getIcon } from '#shared/utils/icons'
+
 export type ListIconOption = {
 	label: string
-	value: `lucide:${string}`
-	icon: `lucide:${string}`
+	value: string
+	icon: string
 }
 
 export const LIST_ICON_OPTIONS: ListIconOption[] = [
-	{ label: 'Lijst', value: 'lucide:list', icon: 'lucide:list' },
-	{ label: 'Afgevinkte lijst', value: 'lucide:list-check', icon: 'lucide:list-check' },
-	{ label: 'Klembordlijst', value: 'lucide:clipboard-list', icon: 'lucide:clipboard-list' },
-	{ label: 'Winkelwagen', value: 'lucide:shopping-cart', icon: 'lucide:shopping-cart' },
-	{ label: 'Winkelmand', value: 'lucide:shopping-basket', icon: 'lucide:shopping-basket' },
-	{ label: 'Winkel', value: 'lucide:store', icon: 'lucide:store' },
-	{ label: 'Voorraad', value: 'lucide:package', icon: 'lucide:package' },
-	{ label: 'Label', value: 'lucide:tag', icon: 'lucide:tag' },
-	{ label: 'Receptenboek', value: 'lucide:book', icon: 'lucide:book' },
-	{ label: 'Open kookboek', value: 'lucide:book-open', icon: 'lucide:book-open' },
-	{ label: 'Bestek', value: 'lucide:utensils', icon: 'lucide:utensils' },
-	{ label: 'Koksmuts', value: 'lucide:chef-hat', icon: 'lucide:chef-hat' },
-	{ label: 'Appel', value: 'lucide:apple', icon: 'lucide:apple' },
-	{ label: 'Wortel', value: 'lucide:carrot', icon: 'lucide:carrot' },
-	{ label: 'Vlees', value: 'lucide:beef', icon: 'lucide:beef' },
-	{ label: 'Vis', value: 'lucide:fish', icon: 'lucide:fish' },
-	{ label: 'Melk', value: 'lucide:milk', icon: 'lucide:milk' },
-	{ label: 'Ei', value: 'lucide:egg', icon: 'lucide:egg' },
-	{ label: 'Graan', value: 'lucide:wheat', icon: 'lucide:wheat' },
-	{ label: 'Broodjes', value: 'lucide:croissant', icon: 'lucide:croissant' },
-	{ label: 'Sandwich', value: 'lucide:sandwich', icon: 'lucide:sandwich' },
-	{ label: 'Pizza', value: 'lucide:pizza', icon: 'lucide:pizza' },
-	{ label: 'Salade', value: 'lucide:salad', icon: 'lucide:salad' },
-	{ label: 'Soep', value: 'lucide:soup', icon: 'lucide:soup' },
-	{ label: 'Koffie', value: 'lucide:coffee', icon: 'lucide:coffee' },
-	{ label: 'Zon', value: 'lucide:cloud-sun', icon: 'lucide:cloud-sun' },
-	{ label: 'Medicatie', value: 'lucide:pill', icon: 'lucide:pill' }
+	{ label: 'Lijst', value: getIcon('optionList'), icon: getIcon('optionList') },
+	{
+		label: 'Afgevinkte lijst',
+		value: getIcon('optionListCheck'),
+		icon: getIcon('optionListCheck')
+	},
+	{
+		label: 'Klembordlijst',
+		value: getIcon('optionClipboardList'),
+		icon: getIcon('optionClipboardList')
+	},
+	{
+		label: 'Winkelwagen',
+		value: getIcon('optionShoppingCart'),
+		icon: getIcon('optionShoppingCart')
+	},
+	{
+		label: 'Winkelmand',
+		value: getIcon('optionShoppingBasket'),
+		icon: getIcon('optionShoppingBasket')
+	},
+	{ label: 'Winkel', value: getIcon('optionStore'), icon: getIcon('optionStore') },
+	{ label: 'Voorraad', value: getIcon('optionPackage'), icon: getIcon('optionPackage') },
+	{ label: 'Label', value: getIcon('optionTag'), icon: getIcon('optionTag') },
+	{ label: 'Receptenboek', value: getIcon('optionBook'), icon: getIcon('optionBook') },
+	{
+		label: 'Open kookboek',
+		value: getIcon('optionBookOpen'),
+		icon: getIcon('optionBookOpen')
+	},
+	{
+		label: 'Bestek',
+		value: getIcon('optionUtensils'),
+		icon: getIcon('optionUtensils')
+	},
+	{
+		label: 'Koksmuts',
+		value: getIcon('optionChefHat'),
+		icon: getIcon('optionChefHat')
+	},
+	{ label: 'Appel', value: getIcon('optionApple'), icon: getIcon('optionApple') },
+	{ label: 'Wortel', value: getIcon('optionCarrot'), icon: getIcon('optionCarrot') },
+	{ label: 'Vlees', value: getIcon('optionBeef'), icon: getIcon('optionBeef') },
+	{ label: 'Vis', value: getIcon('optionFish'), icon: getIcon('optionFish') },
+	{ label: 'Melk', value: getIcon('optionMilk'), icon: getIcon('optionMilk') },
+	{ label: 'Ei', value: getIcon('optionEgg'), icon: getIcon('optionEgg') },
+	{ label: 'Graan', value: getIcon('optionWheat'), icon: getIcon('optionWheat') },
+	{
+		label: 'Broodjes',
+		value: getIcon('optionCroissant'),
+		icon: getIcon('optionCroissant')
+	},
+	{
+		label: 'Sandwich',
+		value: getIcon('optionSandwich'),
+		icon: getIcon('optionSandwich')
+	},
+	{ label: 'Pizza', value: getIcon('optionPizza'), icon: getIcon('optionPizza') },
+	{ label: 'Salade', value: getIcon('optionSalad'), icon: getIcon('optionSalad') },
+	{ label: 'Soep', value: getIcon('optionSoup'), icon: getIcon('optionSoup') },
+	{ label: 'Koffie', value: getIcon('optionCoffee'), icon: getIcon('optionCoffee') },
+	{
+		label: 'Zon',
+		value: getIcon('optionCloudSun'),
+		icon: getIcon('optionCloudSun')
+	},
+	{ label: 'Medicatie', value: getIcon('optionPill'), icon: getIcon('optionPill') }
 ]

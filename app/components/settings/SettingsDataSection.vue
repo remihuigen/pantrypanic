@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { clearHouseholdAppData, destroyHousehold } from '#shared/utils/abilities'
+import { getIcon } from '#shared/utils/icons'
 
 const settingsStore = useSettingsStore()
 const confirm = useConfirmDialog()
 const toast = useToast()
-const { getIcon } = useIcon()
 
 const leaveHouseholdDestroysHousehold = computed(
 	() => settingsStore.enableMultiTenancy && settingsStore.members.length <= 1
@@ -27,12 +27,12 @@ async function clearData() {
 
 	try {
 		await settingsStore.clearData()
-		toast.add({ title: 'Appdata verwijderd.', color: 'success', icon: 'i-lucide-check' })
+		toast.add({ title: 'Appdata verwijderd.', color: 'success', icon: getIcon('check') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Appdata kon niet worden verwijderd.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -74,13 +74,13 @@ async function leaveHousehold() {
 		toast.add({
 			title: 'Je hebt het huishouden verlaten.',
 			color: 'success',
-			icon: 'i-lucide-check'
+			icon: getIcon('check')
 		})
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Huishouden kon niet worden verlaten.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -124,7 +124,7 @@ async function deleteAccount() {
 		toast.add({
 			title: getErrorMessage(error, 'Account kon niet worden verwijderd.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -156,12 +156,12 @@ async function destroyCurrentHousehold() {
 
 	try {
 		await settingsStore.destroyHousehold()
-		toast.add({ title: 'Huishouden verwijderd.', color: 'success', icon: 'i-lucide-check' })
+		toast.add({ title: 'Huishouden verwijderd.', color: 'success', icon: getIcon('check') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Huishouden kon niet worden verwijderd.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -178,7 +178,7 @@ async function destroyCurrentHousehold() {
 			v-if="!settingsStore.activeHouseholdId"
 			color="neutral"
 			variant="subtle"
-			icon="i-lucide-house"
+			:icon="getIcon('house')"
 			title="Je zit nog niet in een huishouden"
 			description="Vraag een gezinslid om je opnieuw uit te nodigen voor hun huishouden."
 		/>

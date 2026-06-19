@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { getIcon } from '#shared/utils/icons'
 import type { ListIconOption } from '~/utils/listIconOptions'
 
 import { LIST_ICON_OPTIONS } from '~/utils/listIconOptions'
 
-const ICON_PICKER_PLACEHOLDER_ICON = 'lucide:smile'
+const ICON_PICKER_PLACEHOLDER_ICON = getIcon('smile')
 const model = defineModel<string | undefined>()
 
 const { disabled = false } = defineProps<{

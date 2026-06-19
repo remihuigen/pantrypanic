@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { passwordSchema, userSchema } from '#shared/utils/schemas/domain'
 import { z } from 'zod'
+import { getIcon } from '#shared/utils/icons'
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
@@ -62,7 +63,7 @@ async function saveProfile() {
 		toast.add({
 			title: 'Wachtwoorden komen niet overeen.',
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 		return
 	}
@@ -74,12 +75,12 @@ async function saveProfile() {
 			...(state.password ? { password: state.password } : {})
 		})
 		syncProfileForm(profile)
-		toast.add({ title: 'Profiel opgeslagen.', color: 'success', icon: 'i-lucide-check' })
+		toast.add({ title: 'Profiel opgeslagen.', color: 'success', icon: getIcon('check') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Profiel kon niet worden opgeslagen.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	}
 }
@@ -90,12 +91,12 @@ async function uploadAvatar(file: File) {
 		await settingsStore.uploadAvatar(file)
 		avatarVersion.value += 1
 		selectedAvatar.value = null
-		toast.add({ title: 'Avatar opgeslagen.', color: 'success', icon: 'i-lucide-check' })
+		toast.add({ title: 'Avatar opgeslagen.', color: 'success', icon: getIcon('check') })
 	} catch (error) {
 		toast.add({
 			title: getErrorMessage(error, 'Avatar kon niet worden opgeslagen.'),
 			color: 'error',
-			icon: 'i-lucide-circle-alert'
+			icon: getIcon('error')
 		})
 	} finally {
 		isUploadingAvatar.value = false
@@ -151,7 +152,7 @@ function imageUrl(pathname: string) {
 						<UAvatar
 							:src="avatarSrc"
 							:alt="settingsStore.profile?.name"
-							icon="i-lucide-image"
+							:icon="getIcon('image')"
 							size="lg"
 						/>
 
@@ -206,7 +207,7 @@ function imageUrl(pathname: string) {
 				<div>
 					<UButton
 						type="submit"
-						icon="i-lucide-save"
+						:icon="getIcon('save')"
 						:loading="settingsStore.isSaving"
 						:disabled="!canSaveProfile"
 					>
