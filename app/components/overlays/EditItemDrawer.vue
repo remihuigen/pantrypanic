@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { EditItemDrawerSubmitData } from '~/composables/useEditItemDrawer'
-import { getIcon } from '#shared/utils/icons'
 
+import { getIcon } from '#shared/utils/icons'
 import { createOccurrenceBodySchema, domainIdSchema } from '#shared/utils/schemas/domain'
 import { useEditItemDrawer, useEditItemDrawerForm } from '~/composables/useEditItemDrawer'
 import { ref, watch } from 'vue'
@@ -207,7 +207,7 @@ watch(
 					</div>
 				</UFormField>
 
-				<FieldRow>
+				<div class="grid grid-cols-2 gap-3">
 					<UFormField name="amount" size="xl">
 						<UInputNumber
 							v-model="formState.amount"
@@ -225,7 +225,7 @@ watch(
 							:disabled="isSubmitting"
 						/>
 					</UFormField>
-				</FieldRow>
+				</div>
 
 				<UFormField name="note">
 					<UTextarea
@@ -239,7 +239,7 @@ watch(
 		</template>
 
 		<template #footer>
-			<div class="flex w-full items-center justify-between gap-2 p-4">
+			<div class="flex w-full items-center justify-between gap-2 py-4">
 				<UButton
 					v-if="editItemDrawer.mode.value === 'edit'"
 					variant="soft"

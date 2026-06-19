@@ -219,15 +219,15 @@ function isOnlyHouseholdOwner(userId: number) {
 								}"
 								:name="member.name"
 								:description="member.email"
+								:ui="{ description: 'truncate' }"
 							/>
 							<UBadge
 								v-if="member.role === 'householdOwner'"
 								color="secondary"
 								variant="subtle"
-								size="sm"
-							>
-								Eigenaar
-							</UBadge>
+								size="md"
+								:icon="getIcon('crown')"
+							/>
 						</div>
 						<Can :ability="manageHousehold" :args="[settingsStore.currentMemberRole]">
 							<div class="flex gap-1">

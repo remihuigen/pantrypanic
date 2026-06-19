@@ -5,8 +5,6 @@ import { getIcon } from '#shared/utils/icons'
 
 withDefaults(defineProps<{ useShaders?: boolean }>(), { useShaders: true })
 
-const { staggerMotion } = useMotion()
-
 const { loggedIn } = useUserSession()
 
 const { enableBetaPeriod, enableMarketing } = useRuntimeConfig().public
@@ -87,13 +85,9 @@ const items = computed<NavigationMenuItem[]>(() => {
 		</UHeader>
 
 		<UMain class="flex min-h-auto grow flex-col justify-center">
-			<Motion
-				as="div"
-				v-bind="staggerMotion(0)"
-				class="absolute inset-x-0 top-0 max-h-screen overflow-hidden"
-			>
+			<div class="absolute inset-x-0 top-0 max-h-screen overflow-hidden">
 				<HeroShaders v-if="useShaders" class="h-[130vh] opacity-30 dark:opacity-25" />
-			</Motion>
+			</div>
 
 			<NuxtPage />
 		</UMain>
