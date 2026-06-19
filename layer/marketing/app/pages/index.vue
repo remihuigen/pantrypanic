@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PricingPlanProps } from '@nuxt/ui'
+
 import { getIcon } from '#shared/utils/icons'
 
 definePageMeta({
@@ -176,7 +177,11 @@ const { enterMotion, scrollMotion, staggerMotion } = useMotion()
 				</UBadge>
 			</Motion>
 			<Motion as="span" v-bind="enterMotion(0.35)" class="inline-block">
-				<LandingHeroHeadline />
+				<HeroHeadline>
+					For <strong class="font-black">calm</strong>
+					<br />
+					grocery runs
+				</HeroHeadline>
 			</Motion>
 		</UContainer>
 		<Motion as="div" v-bind="enterMotion(0.3)" class="block">

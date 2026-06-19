@@ -21,7 +21,8 @@ useSeoMeta({
 	ogDescription: description,
 	twitterCard: 'summary_large_image',
 	robots: 'noindex, nofollow',
-	ogImage: '/meta.jpg'
+	ogImage: '/meta.jpg',
+	titleTemplate: '%s - Pantry Panic'
 })
 </script>
 

@@ -14,9 +14,7 @@ const colorMode = useColorMode()
 				animationDuration: '10s'
 			}"
 		>
-			For <strong class="font-black">calm</strong>
-			<br />
-			grocery runs
+			<slot />
 		</span>
 	</h1>
 </template>

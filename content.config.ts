@@ -8,7 +8,18 @@ export default defineContentConfig({
 			source: 'blog/*.md',
 			// Define custom schema for blog collection
 			schema: z.object({
-				date: z.date()
+				title: z.string(),
+				description: z.string(),
+				image: z.string().nullable(),
+				date: z.date(),
+				tags: z.array(z.string()),
+				authors: z.array(
+					z.object({
+						name: z.string(),
+						avatar: z.string(),
+						to: z.url()
+					})
+				)
 			})
 		}),
 		faqs: defineCollection({
