@@ -42,7 +42,7 @@ const items = computed<NavigationMenuItem[]>(() => {
 	<div class="flex min-h-screen grow flex-col">
 		<UHeader :ui="{ right: 'space-x-2' }">
 			<template #left>
-				<NuxtLink to="/" class="relative -top-0.75">
+				<NuxtLink :to="enableMarketing ? '/' : '/app'" class="relative -top-0.75">
 					<AppLogo class="h-9 w-auto shrink-0" />
 				</NuxtLink>
 				<UBadge

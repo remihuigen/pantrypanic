@@ -103,8 +103,12 @@ The optional marketing layer lives under `layer/marketing` instead of `layers/ma
 does not auto-discover it. `nuxt.config.ts` only extends that layer when `ENABLE_MARKETING=true`.
 Because Nuxt's generated app/node/shared tsconfigs only auto-include `layers/*`, `nuxt.config.ts`
 extends `typescript.tsConfig`, `typescript.nodeTsConfig`, and `typescript.sharedTsConfig` with
-matching `layer/*` globs as well. That keeps IDE type resolution and `pnpm typecheck` coverage
-intact for the manual layer path without changing the runtime opt-in behavior.
+matching `layer/*` globs only when `ENABLE_MARKETING=true`. That keeps IDE type resolution and
+`pnpm typecheck` coverage intact for the manual layer path without forcing marketing-only files
+into non-marketing builds.
+`types/optional-nuxt-content.d.ts` provides a minimal local fallback for `@nuxt/content` so
+`content.config.ts` can still typecheck when the content package is absent and marketing is
+disabled.
 
 When the marketing layer is enabled, `layer/marketing/nuxt.config.ts` adds `@nuxt/content`.
 `content.config.ts` defines the current Nuxt Content collections:

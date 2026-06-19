@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { defineOrganization } from 'nuxt-schema-org/schema'
 import { join } from 'pathe'
 
+const rootDir = fileURLToPath(new URL('./', import.meta.url))
 const layerDir = fileURLToPath(new URL('./layer', import.meta.url))
 
 const pantryDefaultListName = process.env.NUXT_PANTRY_DEFAULT_LIST_NAME ?? 'Boodschappen'
@@ -49,16 +50,24 @@ const enableMarketing = process.env.ENABLE_MARKETING === 'true'
 const { turnstileSiteKey, turnstileSecretKey, turnstileEnabled } = resolveTurnstile()
 
 const layers: string[] = []
-const manualLayerTypeGlobs = {
-	app: [join(layerDir, '*/app/**/*'), join(layerDir, '*/modules/*/runtime/**/*')],
-	node: [
-		join(layerDir, '*/nuxt.config.*'),
-		join(layerDir, '*/.config/nuxt.*'),
-		join(layerDir, '*/modules/**/*')
-	],
-	shared: [join(layerDir, '*/shared/**/*')],
-	declarations: [join(layerDir, '*/*.d.ts'), join(layerDir, '*/shared/**/*.d.ts')]
-}
+const marketingLayerTypeGlobs = enableMarketing
+	? {
+			app: [join(layerDir, '*/app/**/*'), join(layerDir, '*/modules/*/runtime/**/*')],
+			node: [
+				join(layerDir, '*/nuxt.config.*'),
+				join(layerDir, '*/.config/nuxt.*'),
+				join(layerDir, '*/modules/**/*')
+			],
+			shared: [join(layerDir, '*/shared/**/*')],
+			declarations: [join(layerDir, '*/*.d.ts'), join(layerDir, '*/shared/**/*.d.ts')]
+		}
+	: {
+			app: [],
+			node: [],
+			shared: [],
+			declarations: []
+		}
+const optionalModuleDeclarationGlobs = [join(rootDir, 'types/**/*.d.ts')]
 
 if (enableMarketing) {
 	layers.push('./layer/marketing')
@@ -227,13 +236,17 @@ export default defineNuxtConfig({
 	},
 	typescript: {
 		tsConfig: {
-			include: [...manualLayerTypeGlobs.app, ...manualLayerTypeGlobs.declarations]
+			include: [...marketingLayerTypeGlobs.app, ...marketingLayerTypeGlobs.declarations]
 		},
 		nodeTsConfig: {
-			include: [...manualLayerTypeGlobs.node]
+			include: [...marketingLayerTypeGlobs.node, ...optionalModuleDeclarationGlobs]
 		},
 		sharedTsConfig: {
-			include: [...manualLayerTypeGlobs.shared, ...manualLayerTypeGlobs.declarations]
+			include: [
+				...marketingLayerTypeGlobs.shared,
+				...marketingLayerTypeGlobs.declarations,
+				...optionalModuleDeclarationGlobs
+			]
 		}
 	},
 

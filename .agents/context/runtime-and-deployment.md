@@ -40,7 +40,10 @@ The product app UI is namespaced under `/app`:
   `ENABLE_MARKETING=true`.
 - Because Nuxt's generated app/node/shared tsconfigs only include `layers/*`, `nuxt.config.ts`
   extends `typescript.tsConfig`, `typescript.nodeTsConfig`, and `typescript.sharedTsConfig` with
-  matching `layer/*` globs too. Keep those globs in sync if the manual layer path changes.
+  matching `layer/*` globs only when marketing is enabled. Keep those globs in sync if the manual
+  layer path changes.
+- `types/optional-nuxt-content.d.ts` provides a minimal fallback declaration for `@nuxt/content`
+  so `content.config.ts` can still typecheck when marketing is disabled and the package is absent.
 - `nuxt.config.ts` defines `#shaders-vue` as a Vite alias to `node_modules/shaders/dist/vue` so the
   landing-page shader imports resolve to direct runtime modules instead of the package barrel.
 - `/` serves the public landing page. `/app` redirects to `/app/lists`.

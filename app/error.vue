@@ -14,6 +14,8 @@ useHead({
 defineProps<{
 	error: NuxtError
 }>()
+
+const { enableMarketing } = useRuntimeConfig().public
 </script>
 
 <template>
@@ -21,7 +23,7 @@ defineProps<{
 		<div class="flex min-h-screen grow flex-col">
 			<UHeader :toggle="false">
 				<template #left>
-					<NuxtLink to="/">
+					<NuxtLink :to="enableMarketing ? '/' : '/app'">
 						<AppLogo class="h-9 w-auto shrink-0" />
 					</NuxtLink>
 				</template>

@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import type { ButtonProps, NavigationMenuItem } from '@nuxt/ui'
-import { getIcon } from '#shared/utils/icons'
 
+import { getIcon } from '#shared/utils/icons'
 import { useEditItemDrawer } from '~/composables/useEditItemDrawer'
 
 const route = useRoute()
 const editItemDrawer = useEditItemDrawer()
+const { enableMarketing } = useRuntimeConfig().public
 
 type MenuItem = Pick<ButtonProps, 'name' | 'to' | 'icon'>
 
@@ -54,7 +55,7 @@ const desktopNavigation: NavigationMenuItem[][] = [
 <template>
 	<UHeader :toggle="false" class="hidden lg:flex">
 		<template #left>
-			<NuxtLink to="/">
+			<NuxtLink :to="enableMarketing ? '/' : '/app'">
 				<AppLogo class="h-9 w-auto shrink-0" />
 			</NuxtLink>
 		</template>
