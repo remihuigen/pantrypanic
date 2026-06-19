@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { nl } from '@nuxt/ui/locale'
-import { getIcon } from '#shared/utils/icons'
 
 useHead({
 	meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
