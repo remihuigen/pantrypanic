@@ -70,7 +70,12 @@ const items = computed<NavigationMenuItem[]>(() => {
 					class="hidden lg:flex"
 					:ui="{ list: 'space-x-2' }"
 				/>
-				<UButton label="Free trial" to="/register" class="hidden md:flex" />
+				<UButton
+					v-if="!loggedIn"
+					label="Free trial"
+					to="/register"
+					class="hidden md:flex"
+				/>
 				<UColorModeButton />
 			</template>
 
