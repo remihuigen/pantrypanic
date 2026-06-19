@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { defineOrganization } from 'nuxt-schema-org/schema'
 import { join } from 'pathe'
 
 const layerDir = fileURLToPath(new URL('./layer', import.meta.url))
@@ -79,7 +80,8 @@ export default defineNuxtConfig({
 		'@vite-pwa/nuxt',
 		'nuxt-authorization',
 		'motion-v/nuxt',
-		'@nuxtjs/turnstile'
+		'@nuxtjs/turnstile',
+		'@nuxtjs/seo'
 	],
 
 	$production: {
@@ -307,5 +309,17 @@ export default defineNuxtConfig({
 
 	turnstile: {
 		siteKey: turnstileSiteKey
-	}
+	},
+
+	schemaOrg: {
+		identity: defineOrganization({
+			name: 'Pantry Panic',
+
+			// Profile Information, if applicable
+			image: '/logo-1200.png',
+			description: "The grocery list manager that doesn't suck.",
+			url: 'https://pantrypanic.com'
+		})
+	},
+	ogImage: false
 })

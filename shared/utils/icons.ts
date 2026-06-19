@@ -8,6 +8,7 @@ const ICONS = {
 	check: 'i-lucide-check',
 	new: 'lucide:sparkles',
 	download: 'lucide:download',
+	login: 'lucide:log-in',
 	trash: 'i-lucide-trash-2',
 	leave: 'i-lucide-log-out',
 	copy: 'i-lucide-copy',

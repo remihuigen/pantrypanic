@@ -1,6 +1,9 @@
 <script setup lang="ts">
 definePageMeta({
-	layout: 'base'
+	layout: 'base',
+	breadcrumb: {
+		icon: getIcon('blog')
+	}
 })
 
 const { data: posts } = await useAsyncData('posts', () =>
@@ -15,14 +18,6 @@ useSeoMeta({
 	ogDescription:
 		'Where we share thoughts, observations and occasional rants about human behavior, technology, and everything in between.'
 })
-
-function formatDate(date: string) {
-	return new Date(date).toLocaleDateString('en-US', {
-		year: 'numeric',
-		month: 'short',
-		day: 'numeric'
-	})
-}
 
 const { enterMotion } = useMotion()
 </script>

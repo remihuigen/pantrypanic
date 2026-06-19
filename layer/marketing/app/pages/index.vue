@@ -4,7 +4,10 @@ import type { PricingPlanProps } from '@nuxt/ui'
 import { getIcon } from '#shared/utils/icons'
 
 definePageMeta({
-	layout: 'base'
+	layout: 'base',
+	breadcrumb: {
+		icon: getIcon('home')
+	}
 })
 
 const { title, description } = useRuntimeConfig().public.identity

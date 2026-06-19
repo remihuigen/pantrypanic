@@ -9,8 +9,8 @@ export default defineContentConfig({
 			// Define custom schema for blog collection
 			schema: z.object({
 				title: z.string(),
+				shortTitle: z.string(),
 				description: z.string(),
-				image: z.string().nullable(),
 				date: z.date(),
 				tags: z.array(z.string()),
 				authors: z.array(

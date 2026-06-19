@@ -1,4 +1,6 @@
 <script setup lang="ts">
+useRobotsRule({ noindex: true, nofollow: true })
+
 const settingsStore = useSettingsStore()
 const resolvedHouseholdState = ref(false)
 

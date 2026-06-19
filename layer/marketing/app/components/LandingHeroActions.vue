@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ButtonProps } from '@nuxt/ui'
+
 import { getIcon } from '#shared/utils/icons'
 
 const { loggedIn } = useUserSession()
@@ -28,7 +29,7 @@ const actions = computed(() => {
 			color: 'neutral',
 			variant: 'link',
 			to: '/login',
-			label: 'Login with account'
+			label: 'Sign in'
 		})
 	}
 

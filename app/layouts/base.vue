@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { NavigationMenuItem } from '@nuxt/ui'
+
 import { getIcon } from '#shared/utils/icons'
 
 withDefaults(defineProps<{ useShaders?: boolean }>(), { useShaders: true })
@@ -9,11 +11,38 @@ const { loggedIn } = useUserSession()
 
 const { enableBetaPeriod, enableMarketing } = useRuntimeConfig().public
 
+const items = computed<NavigationMenuItem[]>(() => {
+	const menu: NavigationMenuItem[] = []
+
+	if (enableMarketing) {
+		menu.push({
+			label: 'Blog',
+			to: '/blog',
+			icon: getIcon('blog')
+		})
+	}
+
+	if (loggedIn.value) {
+		menu.push({
+			label: 'Open app',
+			to: '/app',
+			icon: getIcon('login')
+		})
+	} else {
+		menu.push({
+			label: 'Sign in',
+			to: '/login',
+			icon: getIcon('login')
+		})
+	}
+
+	return menu
+})
 </script>
 
 <template>
 	<div class="flex min-h-screen grow flex-col">
-		<UHeader :toggle="false" :ui="{ right: 'space-x-4' }">
+		<UHeader :ui="{ right: 'space-x-2' }">
 			<template #left>
 				<NuxtLink to="/" class="relative -top-0.75">
 					<AppLogo class="h-9 w-auto shrink-0" />
@@ -38,25 +67,22 @@ const { enableBetaPeriod, enableMarketing } = useRuntimeConfig().public
 			</template>
 
 			<template #right>
-				<UButton
-					v-if="enableMarketing"
-					label="Blog"
-					color="neutral"
-					variant="ghost"
-					size="lg"
-					to="/blog"
-					class="font-bold"
-					:icon="getIcon('blog')"
-					:ui="{ leadingIcon: 'size-4' }"
+				<UNavigationMenu
+					:items="items"
+					class="hidden lg:flex"
+					:ui="{ list: 'space-x-2' }"
 				/>
-				<UButton
-					:label="loggedIn ? 'Open app' : 'Sign in'"
-					color="primary"
-					:to="loggedIn ? '/app' : '/login'"
-					size="lg"
-					class="font-bold"
-				/>
+				<UButton label="Free trial" to="/register" class="hidden md:flex" />
 				<UColorModeButton />
+			</template>
+
+			<template #body>
+				<UNavigationMenu
+					:items="items"
+					orientation="vertical"
+					:ui="{ list: 'space-y-2' }"
+				/>
+				<UButton label="Free trial" to="/register" block class="mt-5" />
 			</template>
 		</UHeader>
 
