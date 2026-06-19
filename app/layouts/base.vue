@@ -1,16 +1,20 @@
 <script lang="ts" setup>
+withDefaults(defineProps<{ useShaders: boolean }>(), { useShaders: true })
+
 const { staggerMotion } = useMotion()
 
 const { loggedIn } = useUserSession()
 
-const { enableBetaPeriod } = useRuntimeConfig().public
+const { enableBetaPeriod, enableMarketing } = useRuntimeConfig().public
+
+const { getIcon } = useIcon()
 </script>
 
 <template>
 	<div class="flex min-h-screen grow flex-col">
 		<UHeader :toggle="false" :ui="{ right: 'space-x-4' }">
 			<template #left>
-				<NuxtLink to="/">
+				<NuxtLink to="/" class="relative -top-0.75">
 					<AppLogo class="h-9 w-auto shrink-0" />
 				</NuxtLink>
 				<UBadge
@@ -19,7 +23,7 @@ const { enableBetaPeriod } = useRuntimeConfig().public
 					variant="soft"
 					label="beta"
 					size="sm"
-					class="bg-success-50! relative top-1 ml-3 gap-1.5 rounded-full bg-white/5 px-2 py-1 backdrop-blur select-none dark:bg-neutral-800!"
+					class="bg-success-50! relative top-0.5 ml-3 gap-1.5 rounded-full bg-white/5 px-2 py-1 backdrop-blur select-none dark:bg-neutral-800!"
 				>
 					<template #leading>
 						<UChip
@@ -33,8 +37,25 @@ const { enableBetaPeriod } = useRuntimeConfig().public
 			</template>
 
 			<template #right>
+				<UButton
+					v-if="enableMarketing"
+					label="Blog"
+					color="neutral"
+					variant="ghost"
+					size="lg"
+					to="/blog"
+					class="font-bold"
+					:icon="getIcon('blog')"
+					:ui="{ leadingIcon: 'size-4' }"
+				/>
+				<UButton
+					:label="loggedIn ? 'Open app' : 'Sign in'"
+					color="primary"
+					:to="loggedIn ? '/app' : '/login'"
+					size="lg"
+					class="font-bold"
+				/>
 				<UColorModeButton />
-				<UButton v-if="loggedIn" label="Open app" color="primary" to="/app" />
 			</template>
 		</UHeader>
 
@@ -44,7 +65,7 @@ const { enableBetaPeriod } = useRuntimeConfig().public
 				v-bind="staggerMotion(0)"
 				class="absolute inset-x-0 top-0 max-h-screen overflow-hidden"
 			>
-				<HeroShaders class="h-[130vh] opacity-30 dark:opacity-25" />
+				<HeroShaders v-if="useShaders" class="h-[130vh] opacity-30 dark:opacity-25" />
 			</Motion>
 
 			<NuxtPage />

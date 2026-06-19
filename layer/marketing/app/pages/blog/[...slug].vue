@@ -1,4 +1,13 @@
 <script setup lang="ts">
+definePageMeta({
+	layout: {
+		name: 'base',
+		props: {
+			useShaders: false
+		}
+	}
+})
+
 const route = useRoute()
 
 const { data: page } = await useAsyncData(route.path, () =>
@@ -12,7 +21,7 @@ if (!page.value) {
 </script>
 
 <template>
-	<div v-if="page">
+	<UContainer v-if="page" class="relative grow py-12">
 		<ContentRenderer :value="page" />
-	</div>
+	</UContainer>
 </template>

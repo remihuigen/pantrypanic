@@ -12,6 +12,7 @@
 		"dev": "nuxt dev",
 		"preview": "nuxt preview",
 		"postinstall": "nuxt prepare",
+		"prepare": "nuxt prepare",
 		"lint": "eslint .",
 		"test": "vitest",
 		"test:run": "vitest run",

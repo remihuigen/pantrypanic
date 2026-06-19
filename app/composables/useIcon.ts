@@ -21,7 +21,8 @@ export const useIcon = () => {
 		right: 'i-lucide-chevron-right',
 		cloud: 'i-lucide-cloud',
 		warn: 'lucide:triangle-alert',
-		error: 'lucide:circle-alert'
+		error: 'lucide:circle-alert',
+		blog: 'lucide:newspaper'
 	} as const
 
 	/**
