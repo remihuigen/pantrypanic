@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
-import { getIcon } from '#shared/utils/icons'
 
+import { getIcon } from '#shared/utils/icons'
 import { z } from 'zod'
 
 definePageMeta({
@@ -99,7 +99,7 @@ const { enablePublicRegistration } = useRuntimeConfig().public
 </script>
 
 <template>
-	<UContainer>
+	<UContainer class="py-12 sm:py-16 md:py-24">
 		<UPageCard class="mx-auto w-full max-w-md">
 			<UAuthForm
 				:schema="loginSchema"

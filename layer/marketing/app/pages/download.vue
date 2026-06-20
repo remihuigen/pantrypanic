@@ -20,7 +20,6 @@ type InstallStep = {
 	value: number
 	title: string
 	description: string
-	content: string
 	icon: string
 }
 
@@ -150,6 +149,20 @@ const steps = computed<InstallStep[]>(() => {
 				separator: 'end-[calc(-100%+28px)]',
 				title: 'mb-2 text-md font-bold'
 			}"
+			class="hidden lg:block"
+		>
+		</UStepper>
+
+		<UStepper
+			:items="steps"
+			orientation="vertical"
+			disabled
+			:default-value="steps[steps.length - 1]?.value"
+			:ui="{
+				title: 'mb-2 text-md font-bold',
+				description: 'mb-2'
+			}"
+			class="mx-auto max-w-md lg:hidden"
 		>
 		</UStepper>
 	</UContainer>

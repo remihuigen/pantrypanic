@@ -8,7 +8,7 @@ const PUBLIC_PATHS = new Set([
 	'/api/access-links/invite/accept',
 	'/api/access-links/reset/accept'
 ])
-const PUBLIC_PATH_PREFIXES = ['/api/_nuxt', '/api/_auth', '/images/']
+const PUBLIC_PATH_PREFIXES = ['/api/_nuxt', '/api/_auth', '/images/', '/api/content']
 
 /**
  * Protects server API and blob image routes with session or admin API key authentication.

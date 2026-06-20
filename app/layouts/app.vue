@@ -45,7 +45,6 @@ watch(
 		immediate: true
 	}
 )
-
 </script>
 
 <template>
@@ -57,6 +56,6 @@ watch(
 			<AppHouseholdGate v-if="resolvedHouseholdState && settingsStore.hasNoHousehold" />
 			<slot v-else />
 		</UContainer>
-		<Footer />
+		<AppFooter />
 	</div>
 </template>
