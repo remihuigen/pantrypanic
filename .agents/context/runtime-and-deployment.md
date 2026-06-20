@@ -29,15 +29,19 @@ The product app UI is namespaced under `/app`:
   `/app/**` and stays off `/`, `/login`, `/logout`, and other public/auth routes.
 - `nuxt.config.ts` also denies Workbox navigation fallback for `/app/**`, so installed PWAs keep
   routing deep links through Cloudflare/Nitro SSR instead of serving the `/app` entry document.
-- `app/composables/usePwaInstallPrompt.ts` treats standalone/fullscreen launches and the
-  `appinstalled` event as a persisted install signal, so browser tabs stop surfacing the custom
-  install toast after the installed app has been opened in the same profile.
+- `app/layouts/app.vue` only surfaces the service-worker update toast.
+- `app/pages/download.vue` owns the manual install flow through a `UPageHero` action and
+  `UStepper` guidance, while `app/composables/usePwaInstallPrompt.ts` only exposes standalone
+  detection plus an explicit `installApp()` action for that page.
 - `app/plugins/data-hydration.client.ts` only boots authenticated store hydration and the refresh
   scheduler when the current route lives under `/app`, so public landing/auth routes do not fetch
   product-app profile or household state during client startup.
 - The optional marketing layer is stored at `layer/marketing`, not `layers/marketing`, so Nuxt
   does not auto-discover it. `nuxt.config.ts` only adds it to `extends` when
   `ENABLE_MARKETING=true`.
+- When marketing is enabled, `$production.nitro.prerender` seeds `/`, `/blog`, and `/legal` and
+  enables `crawlLinks`, so the full marketing layer is prerendered from those entry routes in
+  production builds.
 - Because Nuxt's generated app/node/shared tsconfigs only include `layers/*`, `nuxt.config.ts`
   extends `typescript.tsConfig`, `typescript.nodeTsConfig`, and `typescript.sharedTsConfig` with
   matching `layer/*` globs only when marketing is enabled. Keep those globs in sync if the manual
@@ -46,7 +50,8 @@ The product app UI is namespaced under `/app`:
   so `content.config.ts` can still typecheck when marketing is disabled and the package is absent.
 - `nuxt.config.ts` defines `#shaders-vue` as a Vite alias to `node_modules/shaders/dist/vue` so the
   landing-page shader imports resolve to direct runtime modules instead of the package barrel.
-- `/` serves the public landing page. `/app` redirects to `/app/lists`.
+- `/` serves the public landing page. `/download` serves the public PWA install page. `/app`
+  redirects to `/app/lists`.
 - `app/pages/(auth)/login.vue` contains the email/password sign-in form at `/login`.
 - `app/pages/(auth)/logout.vue` clears the session and redirects to login at `/logout`.
 - Auth and future public/marketing pages remain outside `/app`; add explicit prerender route rules
@@ -129,9 +134,12 @@ Expected production bindings:
 
 - `ENABLE_MARKETING=true` opt-ins the manual `layer/marketing` layer through `nuxt.config.ts`.
 - `layer/marketing/nuxt.config.ts` adds `@nuxt/content` only when that layer is active.
-- `content.config.ts` currently declares a `blog` page collection and a `faqs` data collection.
+- `content.config.ts` currently declares `blog` and `legal` page collections plus the `faqs` data
+  collection.
+- `/blog/**` and `/legal/**` share the same editorial list/detail components in the marketing
+  layer; the route entries only choose the section config and breadcrumb icon.
 - `modules/marketing/index.ts` adds a global route middleware when marketing is disabled so `/`
-  and `/blog/**` redirect to `/login`.
+  plus `/blog/**` and `/legal/**` redirect to `/login`.
 
 ## Blob API Routes
 

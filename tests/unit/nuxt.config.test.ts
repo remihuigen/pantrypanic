@@ -21,6 +21,10 @@ describe('nuxt.config.ts', () => {
 		const config = (await import('../../nuxt.config')).default
 
 		expect(config.extends).toEqual(['./layer/marketing'])
+		expect(config.$production.nitro.prerender).toEqual({
+			routes: ['/', '/blog', '/legal'],
+			crawlLinks: true
+		})
 		expect(config.typescript.tsConfig.include).toEqual([
 			expect.stringContaining('/layer/*/app/**/*'),
 			expect.stringContaining('/layer/*/modules/*/runtime/**/*'),
@@ -38,6 +42,10 @@ describe('nuxt.config.ts', () => {
 		const config = (await import('../../nuxt.config')).default
 
 		expect(config.extends).toEqual([])
+		expect(config.$production.nitro.prerender).toEqual({
+			routes: [],
+			crawlLinks: false
+		})
 		expect(config.typescript.tsConfig.include).toEqual([])
 		expect(config.typescript.nodeTsConfig.include).toEqual(
 			expect.arrayContaining([expect.stringContaining('/types/**/*.d.ts')])

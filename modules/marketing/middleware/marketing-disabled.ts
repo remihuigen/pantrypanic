@@ -1,6 +1,6 @@
 const MARKETING_ROUTES = new Set<string>(['/'])
 
-const MARKETING_PATH_PREFIXES = ['/blog']
+const MARKETING_PATH_PREFIXES = ['/blog', '/legal']
 
 export default defineNuxtRouteMiddleware((to, _from) => {
 	// if marketing route, redirect to /login

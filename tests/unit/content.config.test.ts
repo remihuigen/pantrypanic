@@ -14,13 +14,17 @@ describe('content.config.ts', () => {
 		vi.clearAllMocks()
 	})
 
-	it('defines blog and faq collections with the expected schemas', async () => {
+	it('defines blog, legal, and faq collections with the expected schemas', async () => {
 		const config = (await import('../../content.config')).default
 
-		expect(Object.keys(config.collections)).toEqual(['blog', 'faqs'])
+		expect(Object.keys(config.collections)).toEqual(['blog', 'legal', 'faqs'])
 		expect(config.collections.blog).toMatchObject({
 			type: 'page',
 			source: 'blog/*.md'
+		})
+		expect(config.collections.legal).toMatchObject({
+			type: 'page',
+			source: 'legal/*.md'
 		})
 		expect(config.collections.faqs).toMatchObject({
 			type: 'data',
@@ -31,7 +35,8 @@ describe('content.config.ts', () => {
 				title: 'Pantry Panic launch',
 				shortTitle: 'Launch',
 				description: 'How the project structure supports marketing content.',
-				date: new Date(),
+				dateCreated: new Date(),
+				dateUpdated: new Date(),
 				tags: ['nuxt', 'content'],
 				authors: [
 					{
@@ -45,7 +50,22 @@ describe('content.config.ts', () => {
 			title: 'Pantry Panic launch',
 			shortTitle: 'Launch',
 			description: 'How the project structure supports marketing content.',
+			dateCreated: expect.any(Date),
+			dateUpdated: expect.any(Date),
 			tags: ['nuxt', 'content']
+		})
+		expect(
+			config.collections.legal.schema.parse({
+				title: 'Privacy Policy',
+				description: 'How Pantry Panic handles your data.',
+				dateCreated: new Date(),
+				dateUpdated: new Date()
+			})
+		).toMatchObject({
+			title: 'Privacy Policy',
+			description: 'How Pantry Panic handles your data.',
+			dateCreated: expect.any(Date),
+			dateUpdated: expect.any(Date)
 		})
 		expect(
 			config.collections.faqs.schema.parse({

@@ -10,7 +10,6 @@
 
 <style lang="postcss" scoped>
 .shimmer-text {
-	animation-duration: 0ms;
 	background-image: linear-gradient(
 		135deg,
 		var(--ui-text-highlighted),

@@ -1,5 +1,3 @@
-const PWA_INSTALLED_STORAGE_KEY = 'pantrypanic:pwa-installed'
-
 type NavigatorWithStandalone = Navigator & {
 	standalone?: boolean
 }
@@ -21,38 +19,25 @@ export function detectStandalonePwaContext(
 }
 
 /**
- * Tracks whether the current browser profile has already installed or launched the app and derives
- * whether the custom install prompt should still be shown in browser tabs.
+ * Tracks whether the current browsing context already runs as an installed PWA and exposes an
+ * explicit install action for manual install UI.
  *
- * @returns Prompt visibility state plus install/dismiss helpers for the app shell.
+ * @returns Install availability state plus an explicit install action for manual UI.
  */
 export function usePwaInstallPrompt() {
 	const { $pwa } = useNuxtApp()
-	const hasInstalledApp = useLocalStorage<boolean>(PWA_INSTALLED_STORAGE_KEY, false)
 	const isStandaloneContext = shallowRef(false)
 	let standaloneMediaQuery: MediaQueryList | null = null
 	let fullscreenMediaQuery: MediaQueryList | null = null
 
-	const canShowInstallPrompt = computed(
-		() => Boolean($pwa?.showInstallPrompt) && !hasInstalledApp.value && !isStandaloneContext.value
-	)
+	const canShowInstallPrompt = computed(() => Boolean($pwa?.showInstallPrompt) && !isStandaloneContext.value)
 
 	function syncInstalledState() {
 		if (typeof window === 'undefined') {
 			return
 		}
 
-		const isStandalone = detectStandalonePwaContext(window)
-
-		isStandaloneContext.value = isStandalone
-
-		if (isStandalone) {
-			hasInstalledApp.value = true
-		}
-	}
-
-	function markInstalled() {
-		hasInstalledApp.value = true
+		isStandaloneContext.value = detectStandalonePwaContext(window)
 	}
 
 	async function installApp(): Promise<void> {
@@ -63,12 +48,7 @@ export function usePwaInstallPrompt() {
 		await $pwa.install()
 	}
 
-	function dismissInstallPrompt(): void {
-		$pwa?.cancelInstall()
-	}
-
 	function handleAppInstalled() {
-		markInstalled()
 		syncInstalledState()
 	}
 
@@ -104,11 +84,8 @@ export function usePwaInstallPrompt() {
 
 	return {
 		canShowInstallPrompt,
-		dismissInstallPrompt,
-		hasInstalledApp,
 		installApp,
 		isStandaloneContext,
-		markInstalled,
 		syncInstalledState
 	}
 }

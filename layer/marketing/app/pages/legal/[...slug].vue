@@ -5,10 +5,13 @@ definePageMeta({
 		props: {
 			useShaders: false
 		}
+	},
+	breadcrumb: {
+		icon: getIcon('legal')
 	}
 })
 </script>
 
 <template>
-	<EditorialCollectionPage section="blog" />
+	<EditorialCollectionPage section="legal" />
 </template>

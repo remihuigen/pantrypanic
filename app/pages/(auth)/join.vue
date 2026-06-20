@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
-import { getIcon } from '#shared/utils/icons'
 
+import { getIcon } from '#shared/utils/icons'
 import { z } from 'zod'
 
 definePageMeta({ layout: 'base' })
@@ -100,7 +100,7 @@ async function submit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-	<UContainer>
+	<UContainer class="py-12 sm:py-16 md:py-24">
 		<UPageCard class="mx-auto w-full max-w-md">
 			<UForm :schema="schema" :state="state" class="space-y-4" @submit="submit">
 				<AppLogo class="mx-auto h-12 w-auto shrink-0" />

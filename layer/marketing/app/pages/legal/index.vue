@@ -2,11 +2,11 @@
 definePageMeta({
 	layout: 'base',
 	breadcrumb: {
-		icon: getIcon('blog')
+		icon: getIcon('legal')
 	}
 })
 </script>
 
 <template>
-	<EditorialCollectionIndex section="blog" />
+	<EditorialCollectionIndex section="legal" />
 </template>
