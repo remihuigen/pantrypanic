@@ -38,9 +38,6 @@ on:
         required: false
         default: ubuntu-latest
         type: string
-    secrets:
-      GH_PACKAGES_TOKEN:
-        description: 'GitHub Packages token for installing private packages.'
 
 jobs:
   lint:
