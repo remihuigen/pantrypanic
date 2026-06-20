@@ -1,6 +1,8 @@
 ---
 title: Refund and Withdrawal Policy
 description: How refunds and withdrawal work for Pantry Panic purchases.
+date_created: 2026-06-20
+date_updated: 2026-06-20
 ---
 
 # Refund and Withdrawal Policy

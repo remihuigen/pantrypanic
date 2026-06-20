@@ -1,6 +1,8 @@
 ---
 title: Subprocessors
 description: The providers Pantry Panic uses to keep the app running.
+date_created: 2026-06-20
+date_updated: 2026-06-20
 ---
 
 # Subprocessors

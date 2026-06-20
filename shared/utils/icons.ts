@@ -18,6 +18,7 @@ const ICONS = {
 	warn: 'lucide:triangle-alert',
 	error: 'lucide:circle-alert',
 	blog: 'lucide:newspaper',
+	legal: 'i-lucide-scale',
 	save: 'i-lucide-save',
 	link: 'i-lucide-link',
 	listPlus: 'i-lucide-list-plus',

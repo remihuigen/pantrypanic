@@ -41,14 +41,14 @@ Implemented:
   updates, and one route-aware polling refresh scheduler
 - public-route startup keeps product-store hydration off `/` and other non-`/app` routes
 - Pantry Panic grocery-list UI for lists and list items
-- prompt-based PWA update and Chromium-style install prompt handling, with install prompts
-  suppressed once the browser profile has launched the installed app or the current context is
-  already standalone
+- prompt-based PWA update handling plus a manual `/download` install page that triggers the native
+  install prompt on demand instead of auto-showing install toasts
 - service worker registration scoped to `/app/**` so landing/auth routes stay outside SW control
 - landing-page shader imports routed through a local `#shaders-vue` alias to direct runtime modules
 - optional Turnstile client/server flow for protected invite acceptance
 - optional marketing layer under `layer/marketing` with a local marketing module and Nuxt Content
-  collections declared in `content.config.ts`
+  collections declared in `content.config.ts`, including shared editorial rendering for `/blog/**`
+  and `/legal/**`
 - human docs under `docs/`
 
 Not implemented yet:

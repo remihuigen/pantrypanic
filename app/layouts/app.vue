@@ -14,8 +14,6 @@ onMounted(async () => {
 
 const { $pwa } = useNuxtApp()
 const toast = useToast()
-const installToastShown = shallowRef<boolean>(false)
-const { canShowInstallPrompt, dismissInstallPrompt, installApp } = usePwaInstallPrompt()
 
 watch(
 	() => $pwa?.needRefresh,
@@ -48,38 +46,6 @@ watch(
 	}
 )
 
-watch(
-	canShowInstallPrompt,
-	(canShowPrompt) => {
-		if (!canShowPrompt || installToastShown.value) return
-
-		installToastShown.value = true
-
-		toast.add({
-			icon: getIcon('download'),
-			title: 'Installeer Pantry Panic',
-			color: 'primary',
-			duration: 12000,
-			actions: [
-				{
-					label: 'Installeren',
-					color: 'primary',
-					icon: getIcon('download'),
-					onClick: installApp
-				},
-				{
-					label: 'Niet nu',
-					color: 'neutral',
-					variant: 'ghost',
-					onClick: dismissInstallPrompt
-				}
-			]
-		})
-	},
-	{
-		immediate: true
-	}
-)
 </script>
 
 <template>

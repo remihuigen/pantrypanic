@@ -48,9 +48,7 @@ describe('usePwaInstallPrompt', () => {
 	})
 
 	it('suppresses the install prompt once the app is known to be installed', () => {
-		const storage = shallowRef(false)
 		const pwa = {
-			cancelInstall: vi.fn(),
 			install: vi.fn(),
 			showInstallPrompt: true
 		}
@@ -74,7 +72,6 @@ describe('usePwaInstallPrompt', () => {
 		])
 
 		vi.stubGlobal('useNuxtApp', () => ({ $pwa: pwa }))
-		vi.stubGlobal('useLocalStorage', vi.fn(() => storage))
 		vi.stubGlobal(
 			'window',
 			{
@@ -94,15 +91,12 @@ describe('usePwaInstallPrompt', () => {
 
 		const installPrompt = usePwaInstallPrompt()
 
-		expect(storage.value).toBe(true)
 		expect(installPrompt.isStandaloneContext.value).toBe(true)
 		expect(installPrompt.canShowInstallPrompt.value).toBe(false)
 	})
 
 	it('only calls install when the prompt is actually allowed', async () => {
-		const storage = shallowRef(false)
 		const pwa = {
-			cancelInstall: vi.fn(),
 			install: vi.fn().mockResolvedValue(undefined),
 			showInstallPrompt: true
 		}
@@ -126,7 +120,6 @@ describe('usePwaInstallPrompt', () => {
 		])
 
 		vi.stubGlobal('useNuxtApp', () => ({ $pwa: pwa }))
-		vi.stubGlobal('useLocalStorage', vi.fn(() => storage))
 		vi.stubGlobal(
 			'window',
 			{
@@ -150,7 +143,8 @@ describe('usePwaInstallPrompt', () => {
 
 		expect(pwa.install).toHaveBeenCalledTimes(1)
 
-		installPrompt.markInstalled()
+		mediaQueries.get('(display-mode: standalone)')!.matches = true
+		installPrompt.syncInstalledState()
 		await installPrompt.installApp()
 
 		expect(pwa.install).toHaveBeenCalledTimes(1)

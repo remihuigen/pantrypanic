@@ -1,6 +1,8 @@
 ---
 title: Terms of Use
 description: The rules for using Pantry Panic without turning grocery planning into a legal hostage situation.
+date_created: 2026-06-20
+date_updated: 2026-06-20
 ---
 
 # Terms of Use

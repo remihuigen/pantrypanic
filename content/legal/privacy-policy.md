@@ -1,6 +1,8 @@
 ---
 title: Privacy Policy
 description: How Pantry Panic handles your data. Spoiler: we try to keep it boring.
+date_created: 2026-06-19
+date_updated: 2026-06-19
 ---
 
 # Privacy Policy

@@ -113,7 +113,11 @@ disabled.
 When the marketing layer is enabled, `layer/marketing/nuxt.config.ts` adds `@nuxt/content`.
 `content.config.ts` defines the current Nuxt Content collections:
 
-- `blog`: page collection sourced from `content/blog/*.md` with a required `date`.
+- `blog`: page collection sourced from `content/blog/*.md` with required `date_created` and
+  `date_updated` frontmatter plus blog-specific metadata such as `shortTitle`, `tags`, and
+  `authors`.
+- `legal`: page collection sourced from `content/legal/*.md` with required `date_created` and
+  `date_updated` frontmatter.
 - `faqs`: data collection sourced from `content/faqs/**.yml` with `marketing` and `support`
   categories.
 

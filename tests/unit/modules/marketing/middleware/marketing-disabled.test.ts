@@ -16,6 +16,9 @@ describe('modules/marketing/middleware/marketing-disabled.ts', () => {
 
 		expect(middleware({ path: '/' }, { path: '/from' })).toEqual({ to: '/login' })
 		expect(middleware({ path: '/blog/post' }, { path: '/from' })).toEqual({ to: '/login' })
+		expect(middleware({ path: '/legal/privacy-policy' }, { path: '/from' })).toEqual({
+			to: '/login'
+		})
 	})
 
 	it('allows non-marketing routes to continue', async () => {

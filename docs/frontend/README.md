@@ -32,7 +32,8 @@ The frontend data access layer is implemented with Pinia stores and shared API h
 - Current app routes include `/app/lists`, `/app/lists/:id`, `/app/recipes`, `/app/recipes/:id`,
   `/app/meal-planner`, `/app/settings`, `/app/settings/household`, `/app/settings/item-vault`,
   `/app/settings/categories`, and `/app/settings/stats`.
-- `/` serves the public landing page. `/app` redirects to `/app/lists`.
+- `/` serves the public landing page, `/download` serves the public PWA install page, and `/app`
+  redirects to `/app/lists`.
 - `nuxt.config.ts` sets `routeRules` with `ssr: true` for `/app` and `/app/**` so product app pages
   render through Nuxt's normal SSR path.
 - `/login` and `/logout` remain outside the `/app` namespace and keep normal server rendering so
@@ -46,11 +47,13 @@ The frontend data access layer is implemented with Pinia stores and shared API h
   before the user applies the update.
 - The custom install flow is enabled through `pwa.client.installPrompt`; the module captures the
   browser `beforeinstallprompt` event and exposes it through `$pwa.showInstallPrompt`.
-- PWA install and update toasts are handled in `app/app.vue`, while
-  `app/composables/usePwaInstallPrompt.ts` derives whether an install toast is actually allowed.
-- The install toast is suppressed when the current context is already standalone/fullscreen or when
-  this browser profile has previously launched the installed app, so regular browser tabs do not
-  keep prompting after installation.
+- Service-worker update toasts are handled in `app/layouts/app.vue`.
+- PWA installation is now explicit through `app/pages/download.vue`, where `UPageHero` exposes the
+  install action and `UStepper` explains both the native prompt path and the manual browser-menu
+  fallback.
+- `app/composables/usePwaInstallPrompt.ts` now only derives explicit install availability plus
+  standalone/fullscreen detection for manual UI; it no longer auto-surfaces install prompts from
+  the app shell.
 - The service worker is registered with `scope: '/app/'`, so it only controls `/app/**` and leaves
   `/`, `/login`, `/logout`, and other public/auth routes outside service-worker control.
 - Workbox navigation fallback is explicitly denied for `/app/**`, so installed PWAs still fetch app

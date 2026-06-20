@@ -1,6 +1,8 @@
 ---
 title: Security
 description: How Pantry Panic protects your data and what to do if something looks wrong.
+date_created: 2026-06-20
+date_updated: 2026-06-20
 ---
 
 # Security
