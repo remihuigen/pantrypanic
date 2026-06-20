@@ -39,6 +39,9 @@ The product app UI is namespaced under `/app`:
 - The optional marketing layer is stored at `layer/marketing`, not `layers/marketing`, so Nuxt
   does not auto-discover it. `nuxt.config.ts` only adds it to `extends` when
   `ENABLE_MARKETING=true`.
+- When marketing is enabled, `$production.nitro.prerender` seeds `/`, `/blog`, and `/legal` and
+  enables `crawlLinks`, so the full marketing layer is prerendered from those entry routes in
+  production builds.
 - Because Nuxt's generated app/node/shared tsconfigs only include `layers/*`, `nuxt.config.ts`
   extends `typescript.tsConfig`, `typescript.nodeTsConfig`, and `typescript.sharedTsConfig` with
   matching `layer/*` globs only when marketing is enabled. Keep those globs in sync if the manual

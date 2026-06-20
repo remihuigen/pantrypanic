@@ -145,8 +145,8 @@ watch(
 					v-if="!hasLists"
 					color="warning"
 					variant="soft"
-					title="Geen actieve lijsten beschikbaar"
-					description="Maak eerst een nieuwe lijst aan voordat je items toevoegt."
+					title="Geen lijsten beschikbaar"
+					description="Maak eerst een lijst aan voordat je items toevoegt."
 				/>
 
 				<UFormField name="name" size="xl" required>

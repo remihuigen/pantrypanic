@@ -10,8 +10,6 @@
 
 <style lang="postcss" scoped>
 .shimmer-text {
-	--animate-shimmer: shimmer 8s ease-in-out infinite alternate;
-	animation-duration: 0ms;
 	background-image: linear-gradient(
 		135deg,
 		var(--ui-text-highlighted),
@@ -33,15 +31,6 @@
 			var(--color-primary-200),
 			var(--color-primary-300)
 		);
-	}
-}
-
-@keyframes shimmer {
-	0% {
-		background-position: 0% center;
-	}
-	100% {
-		background-position: 200% center;
 	}
 }
 </style>

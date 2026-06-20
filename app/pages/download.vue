@@ -58,13 +58,6 @@ const installLinks = computed<ButtonProps[]>(() => {
 					}
 				: undefined,
 			to: canShowInstallPrompt.value ? undefined : '#installatie-stappen'
-		},
-		{
-			label: 'Open de app',
-			to: '/app',
-			icon: getIcon('arrowLeft'),
-			color: 'neutral' as const,
-			variant: 'subtle' as const
 		}
 	]
 })
@@ -76,16 +69,12 @@ const steps = computed<InstallStep[]>(() => {
 				value: 1,
 				title: 'Pantry Panic staat al op dit apparaat',
 				description: 'Je hoeft niets meer te installeren.',
-				content:
-					'Open Pantry Panic vanaf je beginscherm, dock of appstarter. Je gebruikt al een standalone app-context.',
 				icon: getIcon('badgeCheck')
 			},
 			{
 				value: 2,
 				title: 'Gebruik dezelfde lijsten en recepten',
 				description: 'Je account en gegevens blijven hetzelfde.',
-				content:
-					'De geinstalleerde app opent direct in de app-shell zonder browserbalken, met dezelfde lijsten, recepten en weekplanner.',
 				icon: getIcon('listChecks')
 			}
 		]
@@ -95,9 +84,8 @@ const steps = computed<InstallStep[]>(() => {
 		{
 			value: 1,
 			title: 'Open deze pagina op het juiste apparaat',
-			description: 'Gebruik de telefoon, tablet of computer waarop je Pantry Panic wilt installeren.',
-			content:
-				'De downloadknop hierboven probeert de native browserprompt te openen zodra de browser die ondersteunt voor deze sessie.',
+			description:
+				'Gebruik de telefoon, tablet of computer waarop je Pantry Panic wilt installeren.',
 			icon: getIcon('download')
 		},
 		{
@@ -108,17 +96,13 @@ const steps = computed<InstallStep[]>(() => {
 			description: canShowInstallPrompt.value
 				? 'Accepteer de installatie wanneer de browser daarom vraagt.'
 				: 'Niet elke browser toont direct een native installatieprompt.',
-			content: canShowInstallPrompt.value
-				? 'Na bevestiging voegt je browser Pantry Panic toe aan je beginscherm, dock of apps-overzicht.'
-				: 'Zoek in het browsermenu naar een optie zoals "Install app", "Add to Home Screen" of "Toevoegen aan beginscherm" en rond daar de installatie af.',
 			icon: canShowInstallPrompt.value ? getIcon('check') : getIcon('externalLink')
 		},
 		{
 			value: 3,
 			title: 'Open Pantry Panic als losse app',
-			description: 'Start daarna Pantry Panic vanaf je apparaat in plaats van vanuit een tabblad.',
-			content:
-				'Je krijgt dan de app-ervaring zonder normale browserbalken, terwijl je gewoon dezelfde accountgegevens en inhoud blijft gebruiken.',
+			description:
+				'Start daarna Pantry Panic vanaf je apparaat in plaats van vanuit een tabblad.',
 			icon: getIcon('home')
 		}
 	]
@@ -126,52 +110,47 @@ const steps = computed<InstallStep[]>(() => {
 </script>
 
 <template>
-	<UContainer class="py-10 sm:py-14 lg:py-20">
+	<UContainer class="pb-12 sm:pb-16 lg:pb-24">
 		<div class="mx-auto flex w-full max-w-4xl flex-col gap-10">
 			<UPageHero
-				:title="
-					isStandaloneContext
-						? 'Pantry Panic staat al op dit apparaat.'
-						: 'Download Pantry Panic als app.'
-				"
-				:description="
-					isStandaloneContext
-						? 'Je gebruikt al een geinstalleerde of standalone versie van Pantry Panic. Open de app direct vanaf je apparaat wanneer je boodschappen wilt beheren.'
-						: 'Installeer Pantry Panic op je telefoon, tablet of computer zodat je sneller bij je lijsten, recepten en weekplanner zit.'
-				"
+				:description="`Install Pantry Panic on your phone, tablet, desktop or airplane board computer.${isStandaloneContext ? ' Though it seems like you already did.' : ''}`"
 				:links="installLinks"
-				:ui="{ container: 'relative overflow-hidden rounded-3xl border border-default px-6 py-10 sm:px-8 lg:px-10' }"
+				:ui="{ container: 'py-20 sm:py-24 lg:py-28' }"
 			>
 				<template #headline>
-					<UBadge color="neutral" variant="soft" class="rounded-full px-3 py-1">
-						PWA download
+					<UBadge
+						color="neutral"
+						variant="soft"
+						label="Compatible with any device"
+						class="gap-1.5 rounded-full bg-white/5 px-3 py-1.5 backdrop-blur"
+					>
+						<template #leading>
+							<UChip
+								inset
+								standalone
+								color="primary"
+								:ui="{ base: 'animate-pulse ring-0' }"
+							/>
+						</template>
 					</UBadge>
 				</template>
+				<template #title>
+					<HeroHeadline> Download Pantry Panic App </HeroHeadline>
+				</template>
 			</UPageHero>
-
-			<UCard id="installatie-stappen" :ui="{ body: 'space-y-6 p-6 sm:p-8' }">
-				<div class="space-y-2">
-					<h2 class="text-highlighted text-lg font-semibold">Installatie in stappen</h2>
-					<p class="text-muted text-sm leading-6 sm:text-base">
-						De knop hierboven opent de native prompt wanneer je browser die beschikbaar
-						maakt. Als dat niet gebeurt, volg je dezelfde installatie hieronder handmatig.
-					</p>
-				</div>
-
-				<UStepper
-					:items="steps"
-					orientation="vertical"
-					:default-value="steps[0]?.value"
-					disabled
-					class="w-full"
-				>
-					<template #content="{ item }">
-						<p class="text-muted text-sm leading-6 sm:text-base">
-							{{ item.content }}
-						</p>
-					</template>
-				</UStepper>
-			</UCard>
 		</div>
+		<UStepper
+			:items="steps"
+			orientation="horizontal"
+			disabled
+			:default-value="steps[steps.length - 1]?.value"
+			:ui="{
+				item: 'max-w-xs',
+				header: 'justify-between',
+				separator: 'end-[calc(-100%+28px)]',
+				title: 'mb-2 text-md font-bold'
+			}"
+		>
+		</UStepper>
 	</UContainer>
 </template>

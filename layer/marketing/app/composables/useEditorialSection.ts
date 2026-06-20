@@ -14,8 +14,8 @@ export type EditorialPage = {
 	description: string
 	shortTitle?: string
 	authors?: EditorialAuthor[]
-	date_created: string | Date
-	date_updated: string | Date
+	dateCreated: string | Date
+	dateUpdated: string | Date
 	body?: unknown
 }
 
@@ -25,8 +25,8 @@ type EditorialSectionConfig = {
 	heroTitle: string
 	heroDescription: string
 	breadcrumbIcon: string
-	displayDateField: 'date_created' | 'date_updated'
-	sortField: 'date_created' | 'date_updated'
+	displayDateField: 'dateCreated' | 'dateUpdated'
+	sortField?: 'dateCreated' | 'dateUpdated'
 	structuredDataType: 'blog' | 'none'
 }
 
@@ -38,8 +38,8 @@ const SECTION_CONFIG: Record<EditorialSectionKey, EditorialSectionConfig> = {
 		heroDescription:
 			'Dispatches on grocery chaos, overbuilt software, and the tiny domestic systems that keep a household from quietly collapsing.',
 		breadcrumbIcon: getIcon('blog'),
-		displayDateField: 'date_created',
-		sortField: 'date_created',
+		displayDateField: 'dateCreated',
+		sortField: 'dateCreated',
 		structuredDataType: 'blog'
 	},
 	legal: {
@@ -49,8 +49,7 @@ const SECTION_CONFIG: Record<EditorialSectionKey, EditorialSectionConfig> = {
 		heroDescription:
 			'Policies, terms, and the boring-but-important details behind Pantry Panic. Plain English, minimal legal theater.',
 		breadcrumbIcon: getIcon('legal'),
-		displayDateField: 'date_updated',
-		sortField: 'date_updated',
+		displayDateField: 'dateUpdated',
 		structuredDataType: 'none'
 	}
 }
@@ -83,7 +82,7 @@ export function getEditorialLabel(page: Pick<EditorialPage, 'shortTitle' | 'titl
  * @returns The date selected for display on cards and detail pages.
  */
 export function getEditorialDisplayDate(
-	page: Pick<EditorialPage, 'date_created' | 'date_updated'>,
+	page: Pick<EditorialPage, 'dateCreated' | 'dateUpdated'>,
 	section: Pick<EditorialSectionConfig, 'displayDateField'>
 ): string | Date {
 	return page[section.displayDateField]

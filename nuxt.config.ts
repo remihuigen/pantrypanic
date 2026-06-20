@@ -96,8 +96,8 @@ export default defineNuxtConfig({
 	$production: {
 		nitro: {
 			prerender: {
-				routes: enableMarketing ? ['/'] : [],
-				crawlLinks: false
+				routes: enableMarketing ? ['/', '/blog', '/legal'] : [],
+				crawlLinks: enableMarketing
 			},
 			preset: 'cloudflare_module',
 			cloudflare: {

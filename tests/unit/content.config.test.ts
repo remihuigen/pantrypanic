@@ -35,8 +35,8 @@ describe('content.config.ts', () => {
 				title: 'Pantry Panic launch',
 				shortTitle: 'Launch',
 				description: 'How the project structure supports marketing content.',
-				date_created: new Date(),
-				date_updated: new Date(),
+				dateCreated: new Date(),
+				dateUpdated: new Date(),
 				tags: ['nuxt', 'content'],
 				authors: [
 					{
@@ -50,22 +50,22 @@ describe('content.config.ts', () => {
 			title: 'Pantry Panic launch',
 			shortTitle: 'Launch',
 			description: 'How the project structure supports marketing content.',
-			date_created: expect.any(Date),
-			date_updated: expect.any(Date),
+			dateCreated: expect.any(Date),
+			dateUpdated: expect.any(Date),
 			tags: ['nuxt', 'content']
 		})
 		expect(
 			config.collections.legal.schema.parse({
 				title: 'Privacy Policy',
 				description: 'How Pantry Panic handles your data.',
-				date_created: new Date(),
-				date_updated: new Date()
+				dateCreated: new Date(),
+				dateUpdated: new Date()
 			})
 		).toMatchObject({
 			title: 'Privacy Policy',
 			description: 'How Pantry Panic handles your data.',
-			date_created: expect.any(Date),
-			date_updated: expect.any(Date)
+			dateCreated: expect.any(Date),
+			dateUpdated: expect.any(Date)
 		})
 		expect(
 			config.collections.faqs.schema.parse({

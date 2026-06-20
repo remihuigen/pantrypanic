@@ -18,7 +18,8 @@ ENABLE_PUBLIC_REGISTRATION=false
 NUXT_SESSION_PASSWORD=<at-least-32-characters>
 ```
 
-- `ADMIN_USER_EMAIL` and `ADMIN_USER_PASSWORD` seed the initial user during the Nuxt `build:done` hook.
+- `ADMIN_USER_EMAIL` and `ADMIN_USER_PASSWORD` seed the initial user during the Nuxt `build:done`
+  hook.
 - `ADMIN_API_KEY` authenticates server requests that send `x-api-token`.
 - `NUXT_PUBLIC_SITE_URL` is the instance base URL used by the HTTP seed script.
 - `NUXT_PUBLIC_REFRESH_INTERVAL` is the frontend polling interval in milliseconds.
@@ -30,7 +31,8 @@ NUXT_SESSION_PASSWORD=<at-least-32-characters>
   onboarding remains available because it is token-gated.
 - Household mode flags are written to public runtime config for client UI affordances and private
   runtime config for API decisions. Server routes must read the private runtime config values.
-- `NUXT_SESSION_PASSWORD` signs/encrypts session cookies. Development can auto-generate it, but production must set a stable value.
+- `NUXT_SESSION_PASSWORD` signs/encrypts session cookies. Development can auto-generate it, but
+  production must set a stable value.
 - Auth sessions expire after 30 days via `runtimeConfig.session.maxAge`.
 
 ## Turnstile
@@ -51,8 +53,8 @@ TURNSTILE_SITE_KEY=<site-key>
   `server/utils/turnstile.ts`.
 - `TURNSTILE_SITE_KEY` is exposed through public runtime config and consumed by
   `app/composables/useTurnstile.ts`.
-- In local and test workflows, server validation is bypassed when Turnstile is enabled but no
-  secret key is configured. Production requires a configured secret key.
+- In local and test workflows, server validation is bypassed when Turnstile is enabled but no secret
+  key is configured. Production requires a configured secret key.
 - Invite-link acceptance currently uses Turnstile verification before a household join can be
   completed.
 
@@ -75,8 +77,8 @@ NUXT_PANTRY_MANAGED_BLOB_MAX_UPLOAD_SIZE=32MB
 ```
 
 These values control seed data defaults, request-facing pagination/search defaults, blob listing
-limits, and the managed blob upload size. Domain invariants, such as the seven meal-planner days
-and status enum values, remain code/schema contracts rather than runtime configuration.
+limits, and the managed blob upload size. Domain invariants, such as the seven meal-planner days and
+status enum values, remain code/schema contracts rather than runtime configuration.
 
 ## Route Rendering
 
@@ -93,31 +95,34 @@ Keep `/login` and `/logout` outside these route rules so authentication pages re
 server-renderable. Future marketing routes should also stay outside `/app` and can opt into
 prerendering with their own route rules.
 
-The PWA service worker is registered with `scope: '/app/'`, so it only controls `/app/**` routes
-and does not take over `/`, `/login`, `/logout`, or other public/auth pages. `nuxt.config.ts`
-still adds `^\/app(?:\/.*)?$` to `pwa.workbox.navigateFallbackDenylist` so Cloudflare/Nitro
-remains the source of truth for SSR app routes instead of Workbox serving the `/app` entry
-document for deep links.
+When marketing is enabled, production builds prerender the marketing seed routes `/`, `/blog`, and
+`/legal`, with Nitro link crawling enabled so linked blog/legal detail pages are emitted as static
+HTML too.
+
+The PWA service worker is registered with `scope: '/app/'`, so it only controls `/app/**` routes and
+does not take over `/`, `/login`, `/logout`, or other public/auth pages. `nuxt.config.ts` still adds
+`^\/app(?:\/.*)?$` to `pwa.workbox.navigateFallbackDenylist` so Cloudflare/Nitro remains the source
+of truth for SSR app routes instead of Workbox serving the `/app` entry document for deep links.
 
 The optional marketing layer lives under `layer/marketing` instead of `layers/marketing` so Nuxt
 does not auto-discover it. `nuxt.config.ts` only extends that layer when `ENABLE_MARKETING=true`.
 Because Nuxt's generated app/node/shared tsconfigs only auto-include `layers/*`, `nuxt.config.ts`
 extends `typescript.tsConfig`, `typescript.nodeTsConfig`, and `typescript.sharedTsConfig` with
 matching `layer/*` globs only when `ENABLE_MARKETING=true`. That keeps IDE type resolution and
-`pnpm typecheck` coverage intact for the manual layer path without forcing marketing-only files
-into non-marketing builds.
-`types/optional-nuxt-content.d.ts` provides a minimal local fallback for `@nuxt/content` so
-`content.config.ts` can still typecheck when the content package is absent and marketing is
-disabled.
+`pnpm typecheck` coverage intact for the manual layer path without forcing marketing-only files into
+non-marketing builds. `types/optional-nuxt-content.d.ts` provides a minimal local fallback for
+`@nuxt/content` so `content.config.ts` can still typecheck when the content package is absent and
+marketing is disabled. `$production.nitro.prerender` seeds `/`, `/blog`, and `/legal` and enables
+`crawlLinks`, so all marketing-layer pages reachable from those indexes are prerendered in
+production builds.
 
 When the marketing layer is enabled, `layer/marketing/nuxt.config.ts` adds `@nuxt/content`.
 `content.config.ts` defines the current Nuxt Content collections:
 
-- `blog`: page collection sourced from `content/blog/*.md` with required `date_created` and
-  `date_updated` frontmatter plus blog-specific metadata such as `shortTitle`, `tags`, and
-  `authors`.
-- `legal`: page collection sourced from `content/legal/*.md` with required `date_created` and
-  `date_updated` frontmatter.
+- `blog`: page collection sourced from `content/blog/*.md` with required `dateCreated` and
+  `dateUpdated` frontmatter plus blog-specific metadata such as `shortTitle`, `tags`, and `authors`.
+- `legal`: page collection sourced from `content/legal/*.md` with required `dateCreated` and
+  `dateUpdated` frontmatter.
 - `faqs`: data collection sourced from `content/faqs/**.yml` with `marketing` and `support`
   categories.
 
@@ -138,7 +143,8 @@ Blob storage is configured through NuxtHub in `nuxt.config.ts`.
 - Development uses the filesystem driver at `.data/blob`.
 - Production uses Cloudflare R2 through the `BLOB` binding and `CLOUDFLARE_R2_BUCKET`.
 - Nuxt Image uses `provider: 'none'` outside production so `/images/**` blob routes work locally.
-- Production switches Nuxt Image to the Cloudflare provider, which can optimize `/images/**` URLs on Cloudflare.
+- Production switches Nuxt Image to the Cloudflare provider, which can optimize `/images/**` URLs on
+  Cloudflare.
 
 Expected production environment:
 

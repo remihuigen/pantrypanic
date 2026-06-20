@@ -25,10 +25,17 @@ if (!page) {
 
 const { data: surround } = await useAsyncData(
 	`${route.path}-surround`,
-	() =>
-		queryCollectionItemSurroundings(sectionConfig.collection, route.path, {
+	async () => {
+		if (sectionConfig.sortField) {
+			return await queryCollectionItemSurroundings(sectionConfig.collection, route.path, {
+				fields: ['title', 'shortTitle', 'description']
+			}).order(sectionConfig.sortField, 'DESC')
+		}
+
+		return await queryCollectionItemSurroundings(sectionConfig.collection, route.path, {
 			fields: ['title', 'shortTitle', 'description']
-		}).order(sectionConfig.sortField, 'DESC'),
+		})
+	},
 	{
 		transform: (items) =>
 			items.map((item) =>
@@ -64,14 +71,14 @@ if (sectionConfig.structuredDataType === 'blog') {
 		'@type': 'BlogPosting',
 		headline: page.title,
 		description: page.description,
-		datePublished: page.date_created,
-		dateModified: page.date_updated,
+		datePublished: page.dateCreated,
+		dateModified: page.dateUpdated,
 		...(page.authors?.length
 			? {
 					author: page.authors.map((author: EditorialAuthor) => ({
-							name: author.name,
-							url: author.to,
-							image: new URL(author.avatar, requestUrl.origin).toString()
+						name: author.name,
+						url: author.to,
+						image: new URL(author.avatar, requestUrl.origin).toString()
 					}))
 				}
 			: {})

@@ -333,7 +333,7 @@ onUnmounted(() => {
 						<p class="text-muted text-sm leading-relaxed">
 							{{
 								disabledReason ??
-								'Voeg alle ingredienten van dit recept in een keer toe aan een actieve lijst.'
+								'Voeg alle ingredienten van dit recept in een keer toe aan een lijst.'
 							}}
 						</p>
 					</div>

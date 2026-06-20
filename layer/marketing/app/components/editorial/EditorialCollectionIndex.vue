@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-	EditorialPage,
-	EditorialSectionKey
-} from '../../composables/useEditorialSection'
+import type { EditorialPage, EditorialSectionKey } from '../../composables/useEditorialSection'
 
 const props = defineProps<{
 	section: EditorialSectionKey
@@ -10,9 +7,14 @@ const props = defineProps<{
 
 const sectionConfig = useEditorialSection(props.section)
 
-const { data } = await useAsyncData(`${props.section}-index`, () =>
-	queryCollection(sectionConfig.collection).order(sectionConfig.sortField, 'DESC').all()
-)
+const { data } = await useAsyncData(`${props.section}-index`, async () => {
+	if (sectionConfig.sortField) {
+		return queryCollection(sectionConfig.collection)
+			.order(sectionConfig.sortField, 'DESC')
+			.all()
+	}
+	return queryCollection(sectionConfig.collection).all()
+})
 
 const entries = computed(() => (data.value ?? []) as EditorialPage[])
 
@@ -68,7 +70,9 @@ const { enterMotion } = useMotion()
 				:to="entry.path"
 				class="hover:bg-muted/30 flex flex-col justify-between gap-4 p-4 transition-all duration-200 sm:flex-row sm:items-center sm:gap-6 sm:p-6"
 			>
-				<div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+				<div
+					class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6"
+				>
 					<div class="min-w-0 flex-1">
 						<div class="text-muted mb-1 shrink-0 font-mono text-xs">
 							{{ formatDate(getEditorialDisplayDate(entry, sectionConfig)) }}
@@ -85,7 +89,9 @@ const { enterMotion } = useMotion()
 					</div>
 				</div>
 
-				<div class="flex shrink-0 items-center justify-between gap-3 sm:justify-end sm:gap-2">
+				<div
+					class="flex shrink-0 items-center justify-between gap-3 sm:justify-end sm:gap-2"
+				>
 					<UAvatarGroup v-if="entry.authors?.length" size="sm" class="sm:size-sm">
 						<UAvatar
 							v-for="author in entry.authors.slice(0, 3)"
@@ -95,6 +101,7 @@ const { enterMotion } = useMotion()
 							size="sm"
 						/>
 					</UAvatarGroup>
+					<div v-else />
 
 					<UIcon
 						name="i-lucide-chevron-right"

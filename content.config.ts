@@ -5,8 +5,8 @@ const editorialBaseSchema = z.object({
 	title: z.string(),
 	shortTitle: z.string().optional(),
 	description: z.string(),
-	date_created: z.coerce.date(),
-	date_updated: z.coerce.date()
+	dateCreated: z.coerce.date(),
+	dateUpdated: z.coerce.date()
 })
 
 export default defineContentConfig({
