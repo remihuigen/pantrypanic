@@ -141,6 +141,140 @@ describe('useRecipeAddToList', () => {
 		)
 		expect(recipeAddToList.isAddingToList.value).toBe(false)
 	})
+
+	it('exposes enabled menu items and no disabled reason when the recipe can be added', async () => {
+		const listsStore = useListsStore()
+		const recipesStore = useRecipesStore()
+
+		listsStore.listsById['list-1'] = createList({ id: 'list-1', name: 'Weekboodschappen' })
+		listsStore.activeListIds = ['list-1']
+		recipesStore.recipeItemsById['ri-1'] = {
+			id: 'ri-1',
+			recipeId: 'recipe-1',
+			itemId: 'item-1',
+			name: 'Tomaat',
+			position: 0
+		}
+		recipesStore.recipeItemIdsByRecipeId['recipe-1'] = ['ri-1']
+
+		vi.stubGlobal('useListsStore', () => listsStore)
+		vi.stubGlobal('useRecipesStore', () => recipesStore)
+		vi.stubGlobal('useToast', () => ({
+			add: mocks.toastAdd
+		}))
+
+		const { useRecipeAddToList } = await import('~/composables/useRecipeAddToList')
+		const recipeAddToList = useRecipeAddToList('recipe-1')
+
+		expect(recipeAddToList.disabledReason.value).toBeUndefined()
+		expect(recipeAddToList.targetListItems.value).toEqual([
+			expect.objectContaining({
+				label: 'Weekboodschappen',
+				disabled: false
+			})
+		])
+	})
+
+	it('does nothing when no recipe id is available or adding is disabled', async () => {
+		const listsStore = useListsStore()
+		const recipesStore = useRecipesStore()
+
+		listsStore.listsById['list-1'] = createList({ id: 'list-1' })
+		listsStore.activeListIds = ['list-1']
+
+		const addRecipeToList = vi.spyOn(listsStore, 'addRecipeToList')
+
+		vi.stubGlobal('useListsStore', () => listsStore)
+		vi.stubGlobal('useRecipesStore', () => recipesStore)
+		vi.stubGlobal('useToast', () => ({
+			add: mocks.toastAdd
+		}))
+
+		const { useRecipeAddToList } = await import('~/composables/useRecipeAddToList')
+		const missingId = useRecipeAddToList('   ')
+		const missingItems = useRecipeAddToList('recipe-1')
+
+		await missingId.addToList('list-1')
+		await missingItems.addToList('list-1')
+
+		expect(addRecipeToList).not.toHaveBeenCalled()
+		expect(mocks.incrementUsage).not.toHaveBeenCalled()
+		expect(mocks.toastAdd).not.toHaveBeenCalled()
+		expect(missingId.isAddingToList.value).toBe(false)
+		expect(missingItems.isAddingToList.value).toBe(false)
+	})
+
+	it('falls back to the default error message when the thrown value has no usable message', async () => {
+		const listsStore = useListsStore()
+		const recipesStore = useRecipesStore()
+
+		listsStore.listsById['list-1'] = createList({ id: 'list-1', name: 'Weekboodschappen' })
+		listsStore.activeListIds = ['list-1']
+		recipesStore.recipeItemsById['ri-1'] = {
+			id: 'ri-1',
+			recipeId: 'recipe-1',
+			itemId: 'item-1',
+			name: 'Tomaat',
+			position: 0
+		}
+		recipesStore.recipeItemIdsByRecipeId['recipe-1'] = ['ri-1']
+
+		vi.spyOn(listsStore, 'addRecipeToList').mockRejectedValueOnce({ message: '' })
+
+		vi.stubGlobal('useListsStore', () => listsStore)
+		vi.stubGlobal('useRecipesStore', () => recipesStore)
+		vi.stubGlobal('useToast', () => ({
+			add: mocks.toastAdd
+		}))
+
+		const { useRecipeAddToList } = await import('~/composables/useRecipeAddToList')
+		const recipeAddToList = useRecipeAddToList('recipe-1')
+
+		await recipeAddToList.addToList('list-1')
+
+		expect(mocks.toastAdd).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Recept kon niet aan de lijst worden toegevoegd.',
+				color: 'error'
+			})
+		)
+	})
+
+	it('uses the message from an Error instance when add-to-list fails', async () => {
+		const listsStore = useListsStore()
+		const recipesStore = useRecipesStore()
+
+		listsStore.listsById['list-1'] = createList({ id: 'list-1', name: 'Weekboodschappen' })
+		listsStore.activeListIds = ['list-1']
+		recipesStore.recipeItemsById['ri-1'] = {
+			id: 'ri-1',
+			recipeId: 'recipe-1',
+			itemId: 'item-1',
+			name: 'Tomaat',
+			position: 0
+		}
+		recipesStore.recipeItemIdsByRecipeId['recipe-1'] = ['ri-1']
+
+		vi.spyOn(listsStore, 'addRecipeToList').mockRejectedValueOnce(new Error('Netwerkfout'))
+
+		vi.stubGlobal('useListsStore', () => listsStore)
+		vi.stubGlobal('useRecipesStore', () => recipesStore)
+		vi.stubGlobal('useToast', () => ({
+			add: mocks.toastAdd
+		}))
+
+		const { useRecipeAddToList } = await import('~/composables/useRecipeAddToList')
+		const recipeAddToList = useRecipeAddToList('recipe-1')
+
+		await recipeAddToList.addToList('list-1')
+
+		expect(mocks.toastAdd).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Netwerkfout',
+				color: 'error'
+			})
+		)
+	})
 })
 
 function createList(overrides: Record<string, unknown> = {}) {

@@ -798,6 +798,90 @@ describe('pantry api domain helpers', () => {
 		await expect(deleteRecipeItem('ri-1')).resolves.toEqual({ ok: true })
 	})
 
+	it('updates recipe items through the category lookup and item rename path', async () => {
+		mocks.findOrCreateItem.mockResolvedValueOnce(
+			itemRow({
+				id: 'item-2',
+				name: 'Parmezaan',
+				normalizedName: 'parmezaan',
+				defaultUnit: 'g',
+				categoryId: 'produce'
+			})
+		)
+
+		vi.mocked(db.select)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					recipeItemRow({
+						id: 'ri-1',
+						recipeId: 'recipe-1',
+						itemId: 'item-1'
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					itemRow({
+						id: 'item-1',
+						name: 'Kaas',
+						defaultUnit: 'stuk',
+						categoryId: null
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					categoryRow({
+						id: 'produce',
+						householdId: 'household',
+						name: 'Groente'
+					})
+				]) as never
+			)
+
+		vi.mocked(db.update).mockReturnValueOnce(
+			createUpdateBuilder([
+				recipeItemRow({
+					id: 'ri-1',
+					itemId: 'item-2',
+					unit: 'g',
+					updatedAt: 60
+				})
+			]) as never
+		)
+
+		await expect(
+			updateRecipeItem('household', 'ri-1', { name: 'Parmezaan', categoryId: 'produce' }, 1)
+		).resolves.toMatchObject({
+			recipeItem: {
+				id: 'ri-1',
+				itemId: 'item-2',
+				name: 'Parmezaan',
+				categoryId: 'produce',
+				unit: 'g',
+				updatedAt: 60
+			}
+		})
+
+		expect(mocks.findOrCreateItem).toHaveBeenCalledWith({
+			householdId: 'household',
+			name: 'Parmezaan',
+			defaultUnit: 'stuk',
+			categoryId: 'produce',
+			auditUserId: 1
+		})
+		expect(mocks.applyAssignedUnitToItem).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'item-2' }),
+			undefined,
+			1
+		)
+		expect(mocks.applyAssignedCategoryToItem).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'item-2' }),
+			'produce',
+			1
+		)
+	})
+
 	it('handles meal planner workflows', async () => {
 		const days = [
 			mealPlannerDayRow({ id: 'day-1', dayOfWeek: 1, type: 'recipe', recipeId: 'recipe-1' }),
