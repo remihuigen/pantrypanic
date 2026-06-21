@@ -266,24 +266,6 @@ export async function orchestrateRefresh(
 		return
 	}
 
-	if (path === '/app/settings/item-vault') {
-		await settingsStore.fetchHouseholds()
-
-		if (settingsStore.activeHouseholdId) {
-			await Promise.all([settingsStore.fetchItems(), settingsStore.fetchCategories()])
-		}
-		return
-	}
-
-	if (path === '/app/settings/categories') {
-		await settingsStore.fetchHouseholds()
-
-		if (settingsStore.activeHouseholdId) {
-			await settingsStore.fetchCategories()
-		}
-		return
-	}
-
 	if (path === '/app/settings/stats') {
 		await settingsStore.fetchHouseholds()
 

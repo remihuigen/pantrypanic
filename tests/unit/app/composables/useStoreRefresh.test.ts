@@ -68,32 +68,13 @@ describe('useStoreRefresh', () => {
 		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(3, '/api/meal-planner')
 	})
 
-	it('orchestrates item-vault and category settings refreshes', async () => {
-		vi.spyOn(apiClient, 'apiFetch')
-			.mockResolvedValueOnce({
-				households: [{ id: 'household-1', name: 'Thuis', role: 'householdOwner', createdAt: 1 }],
-				activeHouseholdId: 'household-1',
-				enableMultiTenancy: false,
-				enableHouseholdCreation: false
-			})
-			.mockResolvedValueOnce({ items: [] })
-			.mockResolvedValueOnce({ categories: [] })
-			.mockResolvedValueOnce({
-				households: [{ id: 'household-1', name: 'Thuis', role: 'householdOwner', createdAt: 1 }],
-				activeHouseholdId: 'household-1',
-				enableMultiTenancy: false,
-				enableHouseholdCreation: false
-			})
-			.mockResolvedValueOnce({ categories: [] })
+	it('does not poll item-vault and category settings routes', async () => {
+		const apiFetch = vi.spyOn(apiClient, 'apiFetch')
 
 		await orchestrateRefresh(route('/app/settings/item-vault'))
 		await orchestrateRefresh(route('/app/settings/categories'))
 
-		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(1, '/api/households')
-		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(2, '/api/settings/items')
-		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(3, '/api/settings/categories')
-		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(4, '/api/households')
-		expect(apiClient.apiFetch).toHaveBeenNthCalledWith(5, '/api/settings/categories')
+		expect(apiFetch).not.toHaveBeenCalled()
 	})
 })
 

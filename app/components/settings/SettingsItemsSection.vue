@@ -4,19 +4,20 @@ import { getIcon } from '#shared/utils/icons'
 const settingsStore = useSettingsStore()
 const toast = useToast()
 const confirm = useConfirmDialog()
-const query = ref('')
-const editingId = ref<string | null>(null)
+const query = shallowRef('')
 const mergeTargets = ref<Record<string, string>>({})
-const draft = reactive({
-	name: '',
-	defaultUnit: '',
-	categoryId: ''
-})
-const initialDraft = shallowRef(normalizeDraft(draft))
-const currentDraft = computed(() => normalizeDraft(draft))
-const { isDirty: isDraftDirty, resetInitialValue: resetInitialDraft } = useFormState(
-	initialDraft,
-	currentDraft
+const isEditModalOpen = shallowRef(false)
+const selectedItemForEdit = shallowRef<{
+	id: string
+	name: string
+	defaultUnit?: string
+	categoryId?: string
+} | null>(null)
+const categoryOptions = computed(() =>
+	settingsStore.categories.map((category) => ({
+		label: category.name,
+		value: category.id
+	}))
 )
 
 watchDebounced(
@@ -28,24 +29,42 @@ watchDebounced(
 )
 
 function startEdit(item: (typeof settingsStore.items)[number]) {
-	editingId.value = item.id
-	draft.name = item.name
-	draft.defaultUnit = item.defaultUnit ?? ''
-	draft.categoryId = item.categoryId ?? ''
-	initialDraft.value = normalizeDraft(draft)
-	resetInitialDraft(initialDraft)
+	selectedItemForEdit.value = {
+		id: item.id,
+		name: item.name,
+		defaultUnit: item.defaultUnit,
+		categoryId: item.categoryId
+	}
+	isEditModalOpen.value = true
 }
 
-async function saveItem(itemId: string) {
-	if (!isDraftDirty.value) return
+function closeEditModal() {
+	isEditModalOpen.value = false
+	selectedItemForEdit.value = null
+}
 
-	await settingsStore.updateItem(itemId, {
-		name: draft.name,
-		defaultUnit: draft.defaultUnit || null,
-		categoryId: draft.categoryId || null
-	})
-	editingId.value = null
-	toast.add({ title: 'Item opgeslagen.', color: 'success', icon: getIcon('check') })
+async function saveItem(payload: {
+	itemId: string
+	input: {
+		name: string
+		defaultUnit: string | null
+		categoryId: string | null
+	}
+}) {
+	try {
+		await settingsStore.updateItem(payload.itemId, payload.input)
+		closeEditModal()
+		toast.add({ title: 'Item opgeslagen.', color: 'success', icon: getIcon('check') })
+	} catch (error) {
+		toast.add({
+			title:
+				error && typeof error === 'object' && 'message' in error
+					? String((error as { message?: string }).message)
+					: 'Item kon niet worden opgeslagen.',
+			color: 'error',
+			icon: getIcon('error')
+		})
+	}
 }
 
 async function mergeItem(itemId: string) {
@@ -71,14 +90,6 @@ async function deleteItem(item: (typeof settingsStore.items)[number]) {
 	await settingsStore.deleteItem(item.id)
 	toast.add({ title: 'Item verwijderd.', color: 'success', icon: getIcon('check') })
 }
-
-function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: string }) {
-	return {
-		name: value.name.trim(),
-		defaultUnit: value.defaultUnit.trim() || null,
-		categoryId: value.categoryId || null
-	}
-}
 </script>
 
 <template>
@@ -103,39 +114,7 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 				:key="item.id"
 				class="border-default rounded-md border"
 			>
-				<div v-if="editingId === item.id" class="grid gap-2">
-					<UInput v-model="draft.name" size="lg" />
-
-					<UInput v-model="draft.defaultUnit" placeholder="Eenheid" size="lg" />
-					<USelectMenu
-						v-model="draft.categoryId"
-						value-key="value"
-						:items="
-							settingsStore.categories.map((category) => ({
-								label: category.name,
-								value: category.id
-							}))
-						"
-						placeholder="Categorie"
-						clearable
-						:autofocus="false"
-						size="lg"
-					/>
-					<div class="flex gap-2">
-						<UButton
-							:icon="getIcon('save')"
-							:disabled="!isDraftDirty"
-							@click="saveItem(item.id)"
-						>
-							Opslaan
-						</UButton>
-						<UButton color="neutral" variant="ghost" @click="editingId = null"
-							>Annuleren</UButton
-						>
-					</div>
-				</div>
-
-				<div v-else class="space-y-3">
+				<div class="space-y-3">
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
 							<p class="truncate text-sm font-medium">{{ item.name }}</p>
@@ -188,5 +167,20 @@ function normalizeDraft(value: { name: string; defaultUnit: string; categoryId: 
 				:icon="getIcon('listCheck')"
 			/>
 		</UPageCard>
+
+		<SettingsItemEditModal
+			v-model:open="isEditModalOpen"
+			:item="selectedItemForEdit"
+			:category-options="categoryOptions"
+			:is-saving="settingsStore.isSaving"
+			@save="saveItem"
+			@update:open="
+				(open) => {
+					if (!open) {
+						closeEditModal()
+					}
+				}
+			"
+		/>
 	</div>
 </template>

@@ -447,6 +447,43 @@ describe('useSettingsStore', () => {
 		expect(store.items.map((item) => item.name)).toEqual(['Halfvolle melk', 'Bread'])
 	})
 
+	it('ignores stale item-vault fetch responses when a newer search resolves first', async () => {
+		const store = useSettingsStore()
+		let resolveSlow:
+			| ((_value: { items: Array<ReturnType<typeof settingsItem>> }) => void)
+			| null = null
+		let resolveFast:
+			| ((_value: { items: Array<ReturnType<typeof settingsItem>> }) => void)
+			| null = null
+
+		vi.spyOn(apiClient, 'apiFetch').mockImplementation((url) => {
+			if (url === '/api/settings/items') {
+				return new Promise((resolve) => {
+					resolveSlow = resolve as typeof resolveSlow
+				}) as never
+			}
+
+			if (url === '/api/settings/items?q=melk') {
+				return new Promise((resolve) => {
+					resolveFast = resolve as typeof resolveFast
+				}) as never
+			}
+
+			throw new Error(`Unexpected URL: ${String(url)}`)
+		})
+
+		const slowFetch = store.fetchItems()
+		const fastFetch = store.fetchItems('melk')
+
+		resolveFast?.({ items: [settingsItem({ id: 'milk', name: 'Melk' })] })
+		await expect(fastFetch).resolves.toEqual([settingsItem({ id: 'milk', name: 'Melk' })])
+		expect(store.items).toEqual([settingsItem({ id: 'milk', name: 'Melk' })])
+
+		resolveSlow?.({ items: [settingsItem({ id: 'bread', name: 'Bread' })] })
+		await expect(slowFetch).resolves.toEqual([settingsItem({ id: 'milk', name: 'Melk' })])
+		expect(store.items).toEqual([settingsItem({ id: 'milk', name: 'Melk' })])
+	})
+
 	it('clears household data and reloads items and stats', async () => {
 		const store = useSettingsStore()
 		store.items = [settingsItem()]

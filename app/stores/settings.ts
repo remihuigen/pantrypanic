@@ -93,6 +93,7 @@ export const useSettingsStore = defineStore('settings', () => {
 	const isLoading = ref(false)
 	const isSaving = ref(false)
 	const error = ref<AppError | null>(null)
+	let fetchItemsRequestId = 0
 	const uploadProfileAvatar = useUpload('/api/profile/avatar', {
 		formKey: 'avatar'
 	}) as unknown as (_files: File[]) => Promise<unknown>
@@ -318,13 +319,27 @@ export const useSettingsStore = defineStore('settings', () => {
 	}
 
 	async function fetchItems(q?: string) {
+		const requestId = ++fetchItemsRequestId
 		const params = new URLSearchParams()
 		if (q) params.set('q', q)
-		const data = await apiFetch<{ items: SettingsItem[] }>(
-			`/api/settings/items${params.toString() ? `?${params.toString()}` : ''}`
-		)
-		items.value = data.items
-		return data.items
+
+		try {
+			const data = await apiFetch<{ items: SettingsItem[] }>(
+				`/api/settings/items${params.toString() ? `?${params.toString()}` : ''}`
+			)
+
+			if (requestId === fetchItemsRequestId) {
+				items.value = data.items
+			}
+
+			return requestId === fetchItemsRequestId ? data.items : items.value
+		} catch (err) {
+			if (requestId === fetchItemsRequestId) {
+				throw setError(err)
+			}
+
+			throw err
+		}
 	}
 
 	async function updateItem(

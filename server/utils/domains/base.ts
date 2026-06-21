@@ -147,10 +147,12 @@ export function serializeRecipeItem(recipeItem: RecipeItemRow, item: ItemRow) {
 		recipeId: recipeItem.recipeId,
 		itemId: recipeItem.itemId,
 		name: item.name,
+		categoryId: optional(item.categoryId),
 		amount: optional(recipeItem.amount),
 		unit: optional(recipeItem.unit),
 		note: optional(recipeItem.note),
-		position: recipeItem.position
+		position: recipeItem.position,
+		updatedAt: recipeItem.updatedAt
 	}
 }
 

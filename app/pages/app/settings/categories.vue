@@ -5,10 +5,20 @@ definePageMeta({ layout: 'app' })
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
+const isLoadingCategories = shallowRef(true)
 
-const categoriesRequest = useLazyAsyncData(
-	'settings-categories',
-	async () => {
+const showCategoriesSkeleton = computed(
+	() => isLoadingCategories.value && settingsStore.categories.length === 0
+)
+
+onMounted(() => {
+	void loadCategories()
+})
+
+async function loadCategories() {
+	isLoadingCategories.value = true
+
+	try {
 		await settingsStore.fetchHouseholds()
 
 		if (!settingsStore.activeHouseholdId) {
@@ -16,25 +26,7 @@ const categoriesRequest = useLazyAsyncData(
 		}
 
 		await settingsStore.fetchCategories()
-	},
-	{
-		server: false
-	}
-)
-
-const showCategoriesSkeleton = computed(
-	() =>
-		(categoriesRequest.status.value === 'pending' || settingsStore.isLoading) &&
-		settingsStore.categories.length === 0
-)
-
-watch(
-	() => categoriesRequest.error.value,
-	(error) => {
-		if (!error) {
-			return
-		}
-
+	} catch (error) {
 		toast.add({
 			title:
 				error && typeof error === 'object' && 'message' in error
@@ -43,8 +35,10 @@ watch(
 			color: 'error',
 			icon: getIcon('error')
 		})
+	} finally {
+		isLoadingCategories.value = false
 	}
-)
+}
 </script>
 
 <template>
