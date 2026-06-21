@@ -70,7 +70,7 @@ const desktopNavigation: NavigationMenuItem[][] = [
 		</template>
 	</UHeader>
 	<nav
-		class="border-elevated/50 bg-default border-default fixed right-0 bottom-0 left-0 z-10 grid h-18 border-t py-2 shadow-2xl lg:hidden"
+		class="border-elevated/50 bg-default border-default fixed right-0 bottom-0 left-0 z-40 grid h-18 border-t py-2 shadow-2xl lg:hidden"
 	>
 		<div class="relative flex items-center justify-center gap-3 px-4">
 			<div class="relative grid h-full grid-cols-2 gap-4">

@@ -20,9 +20,9 @@ const entries = computed(() => (data.value ?? []) as EditorialPage[])
 
 useSeoMeta({
 	title: sectionConfig.pageTitle,
-	description: sectionConfig.heroDescription,
+	description: sectionConfig.metaDescription ?? sectionConfig.heroDescription,
 	ogTitle: sectionConfig.pageTitle,
-	ogDescription: sectionConfig.heroDescription
+	ogDescription: sectionConfig.metaDescription ?? sectionConfig.heroDescription
 })
 
 const { enterMotion } = useMotion()
