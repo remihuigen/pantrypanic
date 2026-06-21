@@ -25,7 +25,10 @@ const emit = defineEmits<{
 
 		<UCarousel
 			:items="recipes"
-			:ui="{ item: 'basis-[60%] sm:basis-1/2 lg:basis-1/3', container: 'pt-1 pb-5' }"
+			:ui="{
+				item: 'basis-[60%] sm:basis-1/2 lg:basis-1/3 min-h-full ps-1 first:ps-4',
+				container: 'pt-1 pb-5 items-stretch'
+			}"
 			class="-mx-1"
 		>
 			<template #default="{ item }">
