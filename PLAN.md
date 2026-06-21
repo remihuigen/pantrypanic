@@ -1,470 +1,406 @@
-# Local-first offline support and audit trails
+# Local-first offline support, audit trails, and platform refactor
 
 ## Purpose
 
-This is the implementation plan for [issue #72](https://github.com/remihuigen/pantrypanic/issues/72): make the authenticated product app genuinely usable offline, replace polling-as-the-primary-data-model with local-first synchronisation, and introduce durable audit trails.
+This plan implements [issue #72](https://github.com/remihuigen/pantrypanic/issues/72): a genuinely local-first Pantry Panic app, durable server-side audit trails, and a staged platform refactor that remains reviewable at every point.
 
-The plan deliberately avoids a single cross-cutting rewrite. Every numbered delivery checkpoint below ends in a deployable, usable application state, retains the existing API routes and response envelopes, and has an explicit human approval gate before the next slice starts.
+Every checkpoint ends in a deployable working state, is validated on a new staging environment before it is eligible for production, and has a human approval gate. The intent is to replace the current data model deliberately, not to preserve every internal implementation or unused API route.
 
-## Outcome and boundaries
+## Decisions now fixed
 
-### Target outcome
+| Decision | Plan consequence |
+| --- | --- |
+| `/app/**` may become SPA-only. | Adopt client rendering for the authenticated app, while retaining server API routes and public/marketing rendering as appropriate. Add a global SPA loading template. This removes SSR/deep-link constraints from the PWA app shell. |
+| Production app compatibility is not a goal. | Internal app routes, stores, and APIs may be redesigned or removed. The non-negotiable compatibility requirement is a clean, tested migration of production data with no loss. |
+| Pinia is UI state only. | Pinia does not own or persist entity collections. Dexie is the local data source; query composables expose bounded reactive result sets to components. |
+| Use Dexie core. | Add `dexie` only (not Dexie Cloud) to the Nuxt app. Use its typed tables, transactions, and live-query integration where appropriate. |
+| Reduce database transactions. | Coalesce unsent changes for the same record in the durable outbox. Revisions record committed meaningful mutations, not every UI interaction. |
+| Server conflict rule. | Server-side last-write-wins in acceptance order; no user conflict dialog or CRDT. |
+| Audit data is metadata only. | Never persist record snapshots, request bodies, passwords, tokens, access links, emails, raw IP addresses, or other sensitive values in the audit trail. |
+| Retention is out of scope. | Keep revisions, activity rows, and receipts indefinitely. Build all access paths to remain indexed, bounded, and cursor-paginated; revisit deletion/archive policy later. |
+| Move to a monorepo. | Create `apps/nuxt` for the current application and a pnpm workspace root, leaving room for future backup and D1↔R2 migration workers. Those workers are explicitly outside this plan. |
+| Staging precedes feature work. | Stop automatic deploys from `main`. Deploy manually to `staging` or `production` through a selected GitHub Environment, each with isolated Cloudflare resources and secrets. |
+| Feature flags use environment variables. | No database/admin flag system. Flags are explicit `NUXT_*` environment variables parsed once in runtime configuration. |
 
-For supported household data, a user can:
+## Goals and boundaries
 
-- open a previously used `/app` installation without a network connection;
-- view the last synchronised household state immediately;
-- create and edit supported data while offline, including after a page reload;
-- see a small, truthful pending/offline status indicator;
-- reconnect and have changes synchronised exactly once, without a conflict-resolution dialog;
-- inspect a searchable, filtered household activity log in Settings.
+### Target behaviour
 
-The server remains authoritative for validation, permissions, household membership, and final ordering. Local state is authoritative for responsiveness and durability on a particular device.
+For a supported household data family, a user can open a previously used `/app` installation offline, immediately query the last synchronised data, make changes, reload without losing them, and later reconnect without duplicate writes. The UI shows accurate local/pending/synchronising/error state.
 
-### Initial scope
+The server remains authoritative for authentication, permissions, validation, household membership, and final write order. Dexie is authoritative for durable local data on one browser/device.
 
-The first offline vertical slice is shopping lists and manual list-item operations: create/edit/archive/delete a list; add/edit/check/uncheck/delete an item; and list/item reordering. This is the highest-frequency workflow and exercises client-generated IDs, tombstones, ordering, optimistic local state, retries, and cross-device changes.
+### Initial and deferred product scope
 
-Subsequent slices cover categories/canonical items, recipes and recipe items, then the meal planner. Each is independently releasable. Auth, registration, password changes, avatar/blob uploads, household membership/ownership, invitation links, account deletion, and destructive household actions remain online-only in this programme. They are still included in the activity audit trail.
+The first local-first slice is the actual shopping-list usage path: list overview/detail, manual item add/edit/check/uncheck/delete, list archive/delete, and list/item reordering. It proves stable client IDs, local durability, outbox coalescing, tombstones, aliases, ordering, and two-device convergence.
 
-### Explicit non-goals for the first release
+Then migrate categories/canonical items and recipes/recipe items by validated vertical slice. The meal planner has no established current usage pattern, so do **not** redesign or migrate it into a new store early: leave it on its current implementation until product usage/research defines the desired model.
+
+Authentication, registration, password/profile security changes, avatar/blob uploads, household membership/ownership, invitations, account deletion, and destructive household actions remain online-only. They are nevertheless activity-audited.
+
+### Non-goals
 
 - No CRDT, WebSocket, or real-time collaboration system.
-- No request interception that blindly queues all `POST`/`PATCH` requests in Workbox.
-- No new dependency by default. Use browser IndexedDB and the already installed `@vite-pwa/nuxt`, Pinia, Zod, and Vitest. A dependency proposal requires a separate approval.
-- No change to current route paths, current API response envelopes, current content collections, or editor-managed `content/` files.
-- No automatic R2 archival before measurements justify it.
-- No attempt to make security-sensitive operations work without an authenticated live server.
+- No Workbox interception that queues arbitrary authenticated requests.
+- No implementation of backup or D1↔R2 migration workers; only their future workspace location is prepared.
+- No retention, pruning, deletion, or R2 archival system in this programme.
+- No database snapshots, request payloads, or sensitive data in audit rows.
+- No need to keep unused app APIs or the current large Pinia stores alive after their usage inventory has been reviewed.
 
-## What was researched and observed
+## Research and current-state findings
 
-### Issue decisions incorporated
+### Issue requirements incorporated
 
-The issue and all three comments establish these requirements:
+The issue and comments require local-first behaviour, hidden conflict handling, client-generated IDs, a separate revision and activity audit model, and a Settings audit view with search/filter. The comments also correctly identify D1 access patterns—not raw row count—as the primary performance/cost concern.
 
-1. Persisted Pinia plus optimistic requests and periodic refresh is not local-first or reliable offline.
-2. Client-created records need stable client IDs, and concurrent changes must be resolved without exposing a conflict UI.
-3. Audit data should be separated into **revisions** (record data used for synchronisation) and **activity** (security/operation metadata without record payloads).
-4. D1 scale is an indexing, bounded-query, and retention problem, not a small fixed row-count problem.
-5. The audit view belongs in Settings and needs search/filter support.
+### Repository observations
 
-### Current repository findings
-
-| Area | Current state | Consequence |
+| Area | Current state | Required change |
 | --- | --- | --- |
-| Client state | `app/stores/lists.ts`, `recipes.ts`, and `meal-planner.ts` use normalized Pinia state persisted through `pinia-plugin-persistedstate`. | The data is a cache in browser storage, but mutations are not durable commands. Pinia remains a UI projection; it must stop being the persistence layer for local-first data. |
-| Synchronisation | `app/composables/useStoreRefresh.ts` polls the data for the active route, defaulting to 5 seconds; `data-hydration.client.ts` starts it after auth hydration. | Polling hides races and does not provide an ordered change log. It becomes a temporary fallback, then is removed only after all relevant slices are on sync. |
-| PWA | `@vite-pwa/nuxt` is installed with scope `/app/`; static assets are precached and `/app/**` navigation is currently excluded from Workbox fallback. | The current worker cannot be assumed to provide an offline application shell. This must be verified and fixed separately from data sync. |
-| Server | Domain routes are folder-based, use Zod at the API boundary, return the shared success/error envelope, and delegate to `server/utils/domains/*`. | Add a versioned sync API and a command/revision layer beside existing routes; do not replace all routes at once. |
-| IDs | Domain rows use text UUID v7 IDs; `domainIdSchema` accepts bounded strings; the client currently uses temporary IDs for optimistic creates. | Sync commands can carry browser-generated `crypto.randomUUID()` IDs. The sync-only command handlers accept them; legacy routes keep server ID creation unchanged. |
-| Database | NuxtHub/Drizzle uses local SQLite and production Cloudflare D1. Domain rows already have `created/updated(_by)` fields. | Those columns are useful row metadata but cannot reconstruct changes or serve a reliable cursor. Immutable revision and activity tables are still required. |
-| Tests | The project already has Vitest unit suites for stores, domain utilities, API helpers, and refresh scheduling. | New repository, command, revision, and migration tests can follow the current test structure without adding a test framework. |
+| State | `lists`, `recipes`, and `meal-planner` Pinia stores hold normalized entity maps/arrays and persist them with `pinia-plugin-persistedstate`. | Inventory actual component use, delete/rebuild the stores around UI-only state, and move entity persistence/querying into Dexie. |
+| Sync | `useStoreRefresh.ts` polls the active route roughly every five seconds. | Replace route snapshot polling with cursor-based pull once a family is migrated; remove it after cutover. |
+| PWA | `/app/**` is controlled by a Workbox worker but excluded from navigation fallback to preserve SSR. | SPA-only `/app` enables a cacheable non-user-specific shell and predictable offline deep links. |
+| Server | Zod boundary validation, folder-based API routes, NuxtHub/Drizzle, D1 production, R2 blobs. | Add a focused sync command layer; remove unused routes only after an evidence-based route inventory. |
+| Deployment | `.github/workflows/deploy.yml` deploys from `main` and uses only the `production` GitHub Environment. | Add staging resources/secrets and a manual target-environment workflow; no push-based production deployment. |
 
-### External research and resulting decisions
+### External research and conclusions
 
-- IndexedDB is browser-native structured storage designed for significantly more data than Web Storage, and its changes are transactional. Use it for entity snapshots and the durable outbox; do not keep growing localStorage-backed Pinia snapshots. The implementation must make related clear/write operations one IndexedDB transaction, since splitting them risks an empty store if the browser stops between operations. [MDN IndexedDB terminology](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Basic_Terminology) and [Using IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB).
-- Workbox Background Sync retries network failures, but it does not retry ordinary 4xx/5xx responses unless explicitly extended, and its browser fallback is only replay when the service worker starts. It is not a complete application-level dependency/order/conflict protocol. The durable outbox and foreground synchroniser are therefore the correctness mechanism; Workbox may later provide an opportunistic wake-up only. [Workbox Background Sync](https://developer.chrome.com/docs/workbox/reference/workbox-background-sync).
-- The existing Nuxt PWA module is capable of generated Workbox-based offline support, so no new PWA library is justified. Its generated worker behavior must be tested against the project’s SSR `/app` routes rather than assumed from defaults. [@vite-pwa/nuxt documentation](https://nuxt.com/modules/vite-pwa-nuxt).
-- D1 charges/limits are driven by rows read and written. An unindexed query can scan many rows even when it returns few; indexes normally reduce that cost while adding write work. Revision/activity queries must always be household-scoped, indexed, cursor-paginated, and bounded. Cloudflare exposes rows-read/written metrics for validation after release. [D1 pricing and row accounting](https://developers.cloudflare.com/d1/platform/pricing/) and [D1 metrics](https://developers.cloudflare.com/d1/observability/metrics-analytics/).
+- Dexie provides typed IndexedDB tables, bulk operations, and explicit multi-table transactions. Use transactions for local entity/outbox/state changes together; do not await unrelated network work inside a Dexie transaction. [Dexie transactions](https://dexie.org/docs/Dexie/Dexie.transaction%28%29) and [Dexie tables](https://dexie.org/docs/Table/Table).
+- Workbox Background Sync only queues failed fetches by default and does not solve application-level ordering, session scope, or semantic 4xx/5xx failures. It is not the outbox correctness mechanism. [Workbox Background Sync](https://developer.chrome.com/docs/workbox/reference/workbox-background-sync).
+- Nuxt supports `ssr: false` route rules and a `spaLoadingTemplate`; Nuxt 4 uses `~/spa-loading-template.html` for the loading markup. [Nuxt SPA loading template](https://nuxt.com/docs/api/configuration/nuxt-config) and [Nuxt 4 upgrade guidance](https://nuxt.com/docs/4.x/getting-started/upgrade/).
+- Cloudflare environments need separate non-inheritable bindings and variables. Staging must use its own Worker, D1 database, R2 bucket, site URL, and session secret; it must never point to production data. [Cloudflare Workers environments](https://developers.cloudflare.com/workers/wrangler/environments/) and [D1 environments](https://developers.cloudflare.com/d1/configuration/environments/).
+- GitHub Actions supports a manually selected `environment` input, which can bind the deployment job to the corresponding protected Environment. [GitHub Actions workflow-dispatch inputs](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
+- D1 charges by rows read/written. Every revision/activity query must be household-scoped, indexed, cursor-paginated, and limited; keep the history forever for now, but never scan it globally. [Cloudflare D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/).
 
-## Strategy and rationale
-
-### Chosen model: local database + append-only server change feed
-
-Use a client-owned IndexedDB database as the durable local data store. Pinia stores become reactive, normalized views over that database. A durable **outbox** records each local command before the UI reports success. A single synchroniser pushes those commands in order and pulls accepted server revisions by a monotonic per-household cursor.
-
-This model solves the current failure modes directly:
-
-| Current behaviour | New behaviour |
-| --- | --- |
-| Optimistic action is lost or rolled back when offline. | Transactionally save local entity change and outbox mutation first; replay later. |
-| Polling fetches a new snapshot that can overwrite local optimistic state. | Pull immutable revisions, then reconcile only through one reducer and the local outbox. |
-| Temporary client IDs must be replaced after a POST succeeds. | Sync commands use durable client IDs from the outset. Server returns alias mappings only when canonical-item de-duplication chooses an existing ID. |
-| Two clients can race without a defined policy. | Server serialises accepted commands and emits the final revision sequence. Per-record last-writer-wins is deterministic; deletes are tombstones; list ordering is an atomic ordered-set command. |
-| Service worker owns too little or too much application logic. | Service worker owns the application shell/cache. The app owns authenticated, ordered data mutation and reconciliation. |
-
-### Compatibility and rollout model
-
-1. Keep all existing routes, request shapes, serializers, and store actions working during the rollout.
-2. Add only new database tables/columns, new `/api/sync/*` endpoints, and an owner-only audit route. Do not modify existing product data in place.
-3. Deploy server and migration changes before enabling client sync. Guard client activation with `NUXT_PUBLIC_OFFLINE_SYNC_ENABLED`; retain a server guard for sync endpoints.
-4. Use one offline feature family at a time. A page remains on existing routes until its sync slice is enabled.
-5. Keep the old polling scheduler for unconverted routes. Disable it only for a route once the local repository plus revision pull owns that route.
-6. On first local-database start, import only the existing persisted Pinia cache as an **unverified cache** if it exists, then bootstrap from the server. It must never create mutations or override the server.
-7. Scope IndexedDB keys by `userId + householdId`. On logout, household switch, or a different authenticated user, stop sync, clear in-memory projections, and never replay the prior scope’s outbox.
-
-## Technical design
-
-### Data flow
+## Architecture
 
 ```mermaid
 flowchart LR
-  UI["Vue component"] --> Store["Pinia UI projection"]
-  Store --> Repo["Local repository\nIndexedDB transaction"]
-  Repo --> Entities["entity snapshots"]
-  Repo --> Outbox["ordered mutation outbox"]
-  Outbox --> Sync["one foreground synchroniser"]
+  UI["Vue route/components"] --> Query["Dexie query composables"]
+  UI --> UIState["Small Pinia UI state"]
+  Query --> Dexie["Dexie / IndexedDB"]
+  UI --> Commands["Local command service"]
+  Commands --> Dexie
+  Dexie --> Outbox["coalesced durable outbox"]
+  Outbox --> Sync["single scoped synchroniser"]
   Sync --> Push["POST /api/sync/push"]
   Sync --> Pull["GET /api/sync/pull"]
-  Push --> Commands["validated command handlers"]
-  Commands --> DB["D1 domain write + receipt + revision"]
-  DB --> Revisions["immutable revisions"]
-  Commands --> Activity["immutable activity metadata"]
+  Push --> Server["validated command + D1 transaction"]
+  Server --> Domain["domain rows"]
+  Server --> Revisions["revisions"]
+  Server --> Activity["metadata-only activities"]
   Pull --> Revisions
-  Revisions --> Repo
-  Activity --> AuditUI["Settings activity page"]
+  Revisions --> Dexie
 ```
 
-### Client-local database
+### Monorepo layout
 
-Create a client-only, typed IndexedDB adapter under a feature directory such as `app/features/sync/`. It must use no Node APIs and must be guarded by `import.meta.client`.
+```text
+.
+├── apps/
+│   └── nuxt/                 # current Nuxt app, moved intact first
+│       ├── app/ server/ shared/ tests/ layer/
+│       ├── nuxt.config.ts
+│       └── package.json       # @pantrypanic/nuxt
+├── packages/                  # empty until shared code is genuinely needed
+├── workers/                   # reserved; no worker implementation in this plan
+├── pnpm-workspace.yaml        # apps/*, packages/*, workers/*
+├── package.json               # root orchestration scripts only
+└── pnpm-lock.yaml             # one workspace lockfile
+```
 
-Suggested object stores and keys:
+Move the current app first; do not simultaneously extract shared packages. Root scripts delegate with `pnpm --filter @pantrypanic/nuxt ...`; CI uses the same filtered commands. Keep dependency versions in the existing catalog/workspace arrangement and add Dexie to `apps/nuxt` only. Adjust all paths in Nuxt config, tests, deployment output, docs, git hooks, and workflows as part of the move.
 
-| Store | Primary key / indexes | Contents |
+### SPA `/app` route model
+
+- Set `routeRules` to `ssr: false` for `/app` and `/app/**`; public/auth/marketing routes keep their deliberately chosen rendering behavior.
+- Add `apps/nuxt/spa-loading-template.html`, branded but dependency-free, and configure `spaLoadingTemplate`/loader attributes in Nuxt. It must be accessible, avoid user data, and render before Vue hydration.
+- PWA caches the SPA shell and immutable build assets only. It does not cache authenticated `/api/**` responses; Dexie stores household data and enforces user/household scope.
+- Validate direct deep links, initial authenticated loading, redirects, PWA install/update, and offline cold launch on staging. If an app route depends on SSR-only behavior, refactor it during this checkpoint rather than retaining partial SSR support.
+
+### Pinia, Dexie, and UI boundaries
+
+Pinia contains only small UI/session-adjacent state: selected item/list ID, open drawer/modal state, active filters/sort values, route-scoped loading state, sync indicator state, and ephemeral form state when a component does not own it. It contains no `ById` maps, no server entity arrays, no item-vault catalog, no activity list, no audit pages, and no persisted domain state.
+
+Dexie owns durable entities, tombstones, sync cursor, aliases, and the outbox. Query composables issue bounded indexed queries and return only the records a current view needs:
+
+| Feature | Data access pattern |
+| --- | --- |
+| List overview/detail | `useListsQuery()` and `useListDetailQuery(listId)` query Dexie and expose read-only results. |
+| Item vault | `useItemVaultQuery(filters, cursor)` reads paged records from Dexie directly; no Pinia cache. |
+| Activity log | `useActivityLogQuery(filters, cursor)` reads cursor-paged rows directly from Dexie; no Pinia cache. |
+| Sync indicator | `useSyncController()` exposes minimal reactive status and actions; it does not duplicate entities. |
+
+Route components remain composition surfaces. Feature components receive typed props and emit typed events; commands live in focused composables/services. This is an opportunity to delete the bloated `lists`, `recipes`, and `settings` store designs after usage analysis rather than preserve their public action signatures. Leave the meal-planner store unchanged until its usage model is known.
+
+### Dexie schema and scope
+
+Create one client-only database, for example `pantrypanic-v2`, using Dexie core:
+
+| Table | Keys/indexes | Contents |
 | --- | --- | --- |
-| `entities` | `[scope, entityType, id]`; indexes `[scope, entityType]` and `[scope, updatedAt]` | Full sanitized sync documents, including a `deleted` tombstone marker and current server revision cursor. |
-| `mutations` | `mutationId`; indexes `[scope, status, createdAt]`, `[scope, sequence]` | Ordered commands, payload, retry state, error classification, client timestamp, and dependency references. |
-| `sync_state` | `scope` | Protocol version, device ID, last applied cursor, bootstrap state, and last successful sync time. |
-| `aliases` | `[scope, entityType, clientId]` | Client ID → canonical server ID mappings, needed when canonical item de-duplication chooses an existing item. |
+| `entities` | `[scope+entityType+id]`, `[scope+entityType]`, `[scope+entityType+updatedAt]` | Sanitized domain documents and tombstones. |
+| `mutations` | `mutationId`, `[scope+status+sequence]`, `[scope+entityType+entityId]` | Coalescible durable commands, dependency/order metadata, retry state, and safe error code. |
+| `syncState` | `scope` | Device ID, protocol version, cursor, bootstrap state, and sync timestamps. |
+| `aliases` | `[scope+entityType+clientId]` | Client-to-canonical server ID mappings. |
+| `activity` | `[scope+occurredAt+id]`, `[scope+operation+occurredAt]` | Locally cached, metadata-only audit pages. |
 
-`scope` is an opaque string formed from the authenticated user and active household. No stored data may be read before the current scope is known. The adapter exposes one transaction per user intent: apply the local reducer, write the mutation, and update the projection atomically.
+`scope` combines authenticated user ID and active household ID. No query runs until that scope is resolved. On logout, household switch, or user change, stop synchronisation, clear Vue/Pinia UI state, close the old Dexie context, and never replay its mutations. The persisted old scope may remain encrypted-by-browser storage policy or be cleared according to the selected logout UX, but it is never accessible under a new scope.
 
-Keep data access in a repository/composable boundary, not in components:
+### Sync and coalescing protocol
 
-- `syncDb.client.ts`: schema upgrades, transactions, quota/error conversion.
-- `syncRepository.client.ts`: typed entity queries, bootstrap import, reducers, outbox operations.
-- `useSyncController.ts`: lifecycle, online/visibility triggers, status, retry.
-- `syncReducer.ts`: pure application of local commands and server revisions.
-- Existing Pinia stores: queries/projections and actions delegated to the repository for converted operations.
+New, versioned routes under `server/api/sync/`:
 
-The Pinia plugin’s persistent picks are removed only from the converted store/fields after the equivalent IndexedDB read/write path has passed the migration tests. Transient loading, save, and error state remains in Pinia and is never persisted.
-
-### Sync protocol
-
-Add versioned routes under `server/api/sync/` without altering existing routes:
-
-| Route | Role |
+| Route | Responsibility |
 | --- | --- |
-| `POST /api/sync/bootstrap` | Returns a complete, bounded, household snapshot and a safe starting cursor for a new/recovered device. |
-| `POST /api/sync/push` | Applies a bounded ordered batch of idempotent client commands for the authenticated active household. |
-| `GET /api/sync/pull?cursor=<n>&limit=<n>` | Returns revisions after a cursor, ordered ascending, plus `nextCursor` and `hasMore`. |
-| `GET /api/settings/activity` | Owner-authorized, cursor-paginated activity metadata with filters. |
+| `POST /api/sync/bootstrap` | Full current household snapshot plus a cursor captured before snapshot read. |
+| `POST /api/sync/push` | Applies bounded, idempotent, coalesced commands for the authenticated active household. |
+| `GET /api/sync/pull?cursor=&limit=` | Returns ascending revisions after a cursor, with bounded pagination. |
+| `GET /api/settings/activity` | Owner-authorized, metadata-only activity pages, filterable and cursor-paginated. |
 
-All sync input is defined once in shared Zod discriminated unions with a `protocolVersion`. Strict input validation occurs at the route boundary. The server rejects unsupported versions with a machine-readable compatibility error; the client then does not silently retry forever.
+The local command service applies the visible state and updates/creates its outbox record in one Dexie transaction. It immediately returns success to the UI once that transaction commits. A single synchroniser per scope runs at hydration, reconnect, foreground, explicit retry, and after local commands.
 
-Illustrative push shape (the exact field names are finalised in checkpoint 1):
+#### Required coalescing rules
 
-```ts
-{
-  protocolVersion: 1,
-  deviceId: 'browser-installation-id',
-  mutations: [{
-    mutationId: 'uuid',
-    type: 'list-item.set-checked',
-    createdAt: 1760000000000,
-    payload: { listItemId: 'client-or-server-id', checked: true }
-  }]
-}
-```
+Coalescing happens only while a mutation is pending and has not entered an active push batch. It reduces both D1 writes and revision/activity noise without losing the final local state.
 
-The client serialises push execution: one active sync per scope, bounded batches, and mutation sequence order. It triggers at app hydration after session resolution, `online`, foreground/visibility return, explicit retry, and immediately after a local mutation when online. A failed network attempt leaves the outbox untouched. Exponential backoff is bounded; a successful pull always occurs after push and before the controller reports that the scope is caught up.
-
-Bootstrap records the current household revision cursor **before** reading the complete snapshot and returns that earlier cursor. If a concurrent command lands while the snapshot is read, the later pull repeats a revision rather than skipping it; reducers are idempotent by revision sequence. Bootstrap is capped and paged only after a measured size threshold; the initial implementation must not invent a fragile server-side snapshot cache.
-
-### Server command and revision layer
-
-Add a narrow command facade under `server/utils/sync/`, initially wrapping only the vertical-slice list domain functions. A command handler must:
-
-1. resolve the existing authenticated household/authorization context;
-2. validate the command payload;
-3. check `sync_mutations` for `(household_id, actor_user_id, mutation_id)` before mutation;
-4. apply the domain write, mutation receipt, activity row, and every resulting revision in one database transaction/batch supported by the deployed D1 driver;
-5. return a deterministic duplicate response when the same mutation is replayed;
-6. return the server-normalized documents/aliases needed by the client, while pull remains the source of broad reconciliation.
-
-Before implementation, include a short D1/Drizzle transaction spike. It must prove that the exact NuxtHub D1 driver supports the intended atomic path locally and in preview. If Drizzle’s high-level transaction cannot be relied on, use D1’s supported batch/transaction primitive behind a server-only helper; do not simulate atomicity with independent writes.
-
-Existing REST routes keep calling their existing domain functions. Once a domain command facade is proven, a small follow-up can make the legacy route call the same facade with a server-generated mutation ID. This gradually gives legacy writes revisions and activity without requiring every route to migrate before the first offline slice.
-
-### Revisions, receipts, and activity schema
-
-Use three distinct tables. Revisions and activity meet the product/audit requirements; the receipt table is a small technical necessity for exactly-once command application.
-
-| Table | Purpose and minimum fields |
+| Sequence for one record | Durable outbox result |
 | --- | --- |
-| `revisions` | Synchronisation source of truth: `sequence INTEGER PRIMARY KEY`, immutable UUID, household ID, mutation ID, entity type, entity ID, operation (`upsert`/`delete`), complete sanitized sync-document JSON or tombstone, actor user ID, and server timestamp. |
-| `activities` | Human/security audit metadata only: immutable UUID, timestamp, optional household/actor user IDs, request ID, operation namespace, outcome, target type/ID, IP field, user agent, and a small allow-listed metadata JSON object. It never contains record snapshots, passwords, tokens, access-link values, or request bodies. |
-| `sync_mutations` | Idempotency receipt: household ID, actor user ID, mutation UUID, device ID, received/applied timestamp, result status, and request ID. Unique on `(household_id, actor_user_id, mutation_id)`. |
+| Create → one or more field edits | One create command with final field values. |
+| Update → update | One merged patch containing the final values. |
+| Check → uncheck, or repeated scalar edits | One final status/patch command. |
+| Create → delete before any push | Remove the local created entity and its outbox command; no server transaction or revision is needed. |
+| Reorder repeatedly for one list | One latest complete ordered-set command per list. |
+| A command already being pushed | Immutable; subsequent interactions create a new pending command. |
+| Commands with distinct server-side side effects (`clear`, recipe-to-list, merge) | Never coalesce unless their domain semantics are explicitly proven equivalent. |
 
-Required initial indexes:
+Use a short debounced push after an edit plus a finite maximum delay; offline/reload safety comes from the immediate Dexie transaction, not the debounce. The protocol carries client-generated UUIDs and a `protocolVersion`. The server stores idempotency receipts so a dropped response can safely be replayed.
 
-```text
-revisions:       (household_id, sequence)
-revisions:       (household_id, entity_type, entity_id, sequence)
-revisions:       (household_id, mutation_id)
-activities:      (household_id, occurred_at DESC, id DESC)
-activities:      (actor_user_id, occurred_at DESC, id DESC)
-activities:      (household_id, operation, occurred_at DESC, id DESC)
-sync_mutations:  UNIQUE (household_id, actor_user_id, mutation_id)
-```
+### Server commands, revisions, and activity
 
-Use an integer server sequence as the sync cursor, not timestamps or UUID lexical ordering. A command that changes several records emits several revision rows carrying the same mutation ID, in one transaction. Revisions contain the complete post-write document necessary to rebuild local state. Bulk operations emit a tombstone/upsert revision for each affected supported entity rather than one opaque "clear" event.
+The server validates every command with shared strict Zod discriminated unions. It resolves the authenticated household, checks the receipt, applies the domain write(s), receipt, revision(s), and activity row in one proven D1 atomic operation. Before use, run an atomicity spike against local SQLite and **staging D1**; if the high-level Drizzle transaction is unsuitable, use a server-only supported D1 batch/transaction helper.
 
-The activity operation vocabulary is a typed, reviewed allow-list, for example:
-
-```text
-auth.login.succeeded       auth.login.failed       auth.logout
-user.created               user.updated            user.deleted
-household.created          household.member_removed household.settings_updated
-list.created               list.updated            list.archived
-list_item.created          list_item.checked        list_item.deleted
-sync.mutation_rejected     sync.bootstrap_recovered
-```
-
-Use `CF-Connecting-IP` only when running behind the trusted Cloudflare deployment; use a development-safe nullable source otherwise. The implementation must never trust a client-submitted IP header. IP and user-agent collection requires a policy decision at checkpoint 1: the proposed default is raw IP retained for 30 days for security investigations, then nullified while the remaining activity metadata follows the standard retention policy. This is intentionally a decision gate because it has privacy and legal implications.
-
-### Conflict, ordering, and deletion policy
-
-There is no user-facing conflict dialog. The deterministic rules are:
-
-| Situation | Rule |
+| Table | Minimum data |
 | --- | --- |
-| Independent records edited on different devices | Both commands apply; pull merges the separate revisions. |
-| Same scalar field edited concurrently | Server acceptance order wins (last accepted command wins). The later revision is authoritative and replaces the local field. |
-| Concurrent creates | Client IDs prevent collision. Canonical items remain deduplicated by existing normalized-name rules; aliases reconcile a locally created candidate to the canonical server item. |
-| Delete vs update | Server acceptance order wins. A delete emits a tombstone. A later allowed recreate/update must be explicit; it does not resurrect silently. |
-| Reorder vs reorder | Treat the full ordered ID set/group as one atomic command. The later accepted complete order wins. |
-| Reorder referencing missing/deleted item | Server filters/rejects invalid references according to a documented command rule, returns the resulting authoritative order, and the client converges without prompting for a merge. |
-| Duplicate network replay | Receipt uniqueness returns the prior accepted result; no duplicate domain row, revision, or activity row is written. |
+| `revisions` | Integer monotonic sequence, UUID, household ID, mutation ID, entity type/ID, `upsert`/`delete`, complete sanitized post-commit sync document or tombstone, actor user ID, timestamp. |
+| `activities` | UUID, timestamp, optional household/actor IDs, request ID, typed operation, outcome, target type/ID, and allow-listed non-sensitive metadata. No payload/document, raw IP, user agent, email, token, password, access-link value, or request body. |
+| `sync_mutations` | Household ID, actor user ID, mutation UUID, device ID, status, timestamp, request ID; unique `(household_id, actor_user_id, mutation_id)`. |
 
-This is intentionally simpler than a CRDT. Grocery-list edits are short-lived, server serialisation is understandable, and the activity/revision trail preserves the explanation for a later support investigation. If product evidence shows harmful overwrite rates, field-level versions can be introduced for that entity in a later, isolated decision record.
+Required indexes: revisions by `(household_id, sequence)`, `(household_id, entity_type, entity_id, sequence)`, and `(household_id, mutation_id)`; activities by `(household_id, occurred_at DESC, id DESC)`, `(actor_user_id, occurred_at DESC, id DESC)`, and `(household_id, operation, occurred_at DESC, id DESC)`; receipt uniqueness as above.
 
-### Retention and growth strategy
+A revision is written only for a server-committed command after local coalescing. It is not a trace of keystrokes, toggles that were reversed before sync, or transient UI state. A bulk command emits final revisions/tombstones for every affected sync entity so a device can reconstruct the materialized state.
 
-Do not impose a 30-day revision deletion policy in the first release: an offline device could legitimately return later. Instead:
+Activity operation names are an allow-listed vocabulary such as `auth.login.succeeded`, `auth.login.failed`, `household.member_removed`, `list.created`, `list_item.checked`, and `sync.mutation_rejected`. Failed login audit entries use neither an email nor an IP. This meets the security/audit value without recording sensitive data.
 
-1. Ship bounded cursor reads, the indexes above, and observability first.
-2. Track revision/activity count, storage, rows read/written, oldest cursor, bootstrap recovery count, and sync latency. Use D1 dashboard metrics and query metadata.
-3. Add a `sync_devices` heartbeat/cursor table only when retention work begins. A device returning behind the retained revision floor receives `RESET_REQUIRED`, keeps its local outbox, bootstraps fresh state, and then replays eligible pending commands.
-4. At the retention checkpoint, choose explicit policy from measurements. Proposed starting policy: retain live revisions for 180 days, retain activity metadata for 365 days, redact raw IP after 30 days, and archive only approved historical revision payloads to the existing R2 bucket after 12 months.
-5. Run pruning/archival as a bounded, observable maintenance job; never run an unbounded `DELETE` or global activity query in a request path.
+### Conflict, deletion, and migration rules
 
-The archive is deliberately deferred. D1 can hold a large history when queries are correctly indexed and paged, while premature R2 querying would complicate the audit UI and sync recovery.
+The server acceptance sequence is the conflict resolver:
 
-### PWA shell and UI design
+- independent records both apply;
+- concurrent scalar edits: the later accepted command wins;
+- delete/update: acceptance order wins; deletes are tombstones;
+- reorder: the later accepted full order wins;
+- duplicate replay: receipt returns the prior result without new data/revision/activity;
+- canonical-item name collision: server selects the existing canonical item and returns an alias mapping;
+- invalid commands (for example, references to a remote-deleted entity) resolve to authoritative server state and a safe local error/sync status, not a merge dialog.
 
-The PWA work is separate from data correctness:
+Migration is a production-data preservation task, not application backwards compatibility. Each schema/data migration must be additive or have a tested deterministic forward transform, be rehearsed against a production-derived anonymised fixture in staging, run before app code relies on it, and include a D1 export/restore runbook. No deployed app version may delete or reinterpret production domain rows until the new code has verified the expected counts and referential invariants.
 
-1. Add a production-build/preview test of the generated service worker, its `/app/` scope, deep-link navigation, update prompt, and offline cold launch.
-2. Cache only the application shell and immutable build assets. Do not cache authenticated `/api/**` responses in Workbox; IndexedDB holds household data and the sync protocol enforces scope.
-3. Replace the current `/app/**` navigation denial only after confirming an online `NetworkFirst` navigation continues to use SSR and an offline navigation safely falls back to a non-user-specific shell. If the generated configuration cannot express that safely, use a small custom worker rather than a broad cache rule.
-4. Present offline/pending/error state from `useSyncController`, not from `navigator.onLine` alone. `navigator.onLine` is a hint; a successful pull determines "up to date".
+### API inventory and removal
 
-For the Settings audit feature, keep route views thin and split the feature into:
+Before removing any route, build an inventory from application imports/calls, server route tests, docs, GitHub workflows/scripts, and production/staging request logs. Classify each as app-required, deployment/admin-required, future-worker contract, or unused.
 
-| Component/composable | Responsibility |
-| --- | --- |
-| `app/pages/app/settings/activity.vue` | Route composition and authorization boundary. |
-| `SettingsActivitySection.vue` | Coordinates filters, results, loading, and pagination. |
-| `ActivityFilters.vue` | Typed filter inputs; emits a filter value, never mutates store data. |
-| `ActivityTimeline.vue` | Presentational, cursor-paginated activity rows. |
-| `useActivityLog.ts` / settings-store action | Fetches and retains only the current filtered page sequence. |
-| `SyncStatusIndicator.vue` | Reusable pending/offline/retry UI fed by the sync controller. |
+Remove an unused route only after its callers/tests/docs are removed in the same checkpoint and staging has run without it. Keep required admin/deployment endpoints even if the Vue app does not call them. Sync routes replace migrated app data routes; there is no obligation to retain their legacy equivalents once the inventory proves they are unused.
 
-Use Composition API with typed props/emits. The activity view must not expose raw revision payloads, secret metadata, or other users’ private auth events. Household owners can inspect household activity; a user can inspect their own relevant auth activity only if the selected policy permits it.
+## Delivery checkpoints and human validation
 
-## Delivery plan and human checkpoints
+All checkpoints run `pnpm lint`, `pnpm typecheck`, relevant `pnpm test:run`, and `pnpm build` for Nuxt/runtime/config work. Every deploy is manually run against **staging** first. Production deploy is a separate manual dispatch of the same tested commit, after the human approval gate.
 
-Each checkpoint is a small pull request or tightly scoped series of commits. Do not merge the next checkpoint until the human validation gate is accepted. All checkpoints run `pnpm lint`, `pnpm typecheck`, and relevant `pnpm test:run`; PWA/config/runtime checkpoints additionally run `pnpm build` and a preview verification.
+### Checkpoint -1 — pnpm monorepo and staging delivery pipeline
 
-### Checkpoint 0 — contracts, baselines, and feature flags
-
-**Goal:** establish a measured, reversible baseline without changing user behavior.
+**Goal:** create the safe delivery foundation before product refactoring.
 
 **Implementation:**
 
-- Document the mutation inventory by domain and classify each as offline-v1, later offline, or online-only.
-- Add no-op sync feature flags (server and public client) defaulting to disabled.
-- Add automated tests that lock current store persistence, legacy API envelopes, and refresh scheduler behavior.
-- Record PWA production preview behavior: first app launch, previously opened app offline, deep link offline, service-worker update, and login/logout boundaries.
-- Capture a small production-safe D1 query/size baseline and current polling request count; do not collect sensitive data.
+- Move the Nuxt project to `apps/nuxt` without changing its runtime behavior; create `pnpm-workspace.yaml`, root orchestration `package.json`, and filtered scripts.
+- Update all relative paths, NuxtHub migration discovery, generated Worker output paths, lint/typecheck/test/build scripts, docs, `.agents/`, git hooks, and GitHub Actions.
+- Create separate Cloudflare staging Worker, D1 database, R2 bucket, site URL, and session secret. Configure GitHub `staging` and `production` Environments with separate secrets/variables.
+- Change deployment to `workflow_dispatch` only, with a required environment input (`staging` or `production`). Bind the job to `${{ inputs.environment }}`; select its resources only from that GitHub Environment. Remove the `push: main` deployment trigger.
+- Build, apply migrations, deploy, and seed against the selected environment. Make Worker names/environment-specific Nuxt config values explicit, rather than relying on inherited Cloudflare bindings.
+- Add a deployment provenance check: record commit SHA, target environment, Worker name, D1 database ID fingerprint, and app URL in the workflow summary. Production must require GitHub Environment approval.
 
-**Working app state:** exactly today’s product behavior, with disabled flags and stronger regression coverage.
+**Working app state:** current functionality is unchanged, but the app runs from `apps/nuxt`; staging and production are manually deployable and physically data-isolated.
 
-**Human master validates:** the mutation classification, the baseline evidence, and that the rollout flag is acceptable before schema/API work begins.
+**Human master validates:** the staging URL has separate data, a staging migration cannot touch production, production no longer auto-deploys from `main`, and commands/workflows work from the new workspace paths.
 
-### Checkpoint 1 — audit/revision foundation and atomicity spike
+### Checkpoint 0 — SPA app shell, usage inventory, and runtime flags
 
-**Goal:** land the schema and shared audit vocabulary without moving the app to local-first.
+**Goal:** remove SSR as an `/app` constraint and establish the actual refactor scope.
 
 **Implementation:**
 
-- Add additive Drizzle schema and migration(s) for `revisions`, `activities`, and `sync_mutations`; generate and review migration SQL.
-- Add typed shared operation names, revision document envelopes, Zod protocol schemas, request-ID extraction, safe IP/user-agent extraction, and allow-listed activity metadata helpers.
-- Implement a server-only D1 atomic-write spike with a temporary/test command: domain write + receipt + revision + activity are all committed or all absent. Verify on local SQLite and Cloudflare preview.
-- Define deletion/anonymisation behavior for household and account deletion in code/tests before foreign-key choices are finalised.
-- Add unit and migration tests for indexes, duplicate receipt detection, payload redaction, and no-secret activity data.
+- Set `/app` and `/app/**` to client rendering; add the global SPA loading template and test direct/open/offline app routes on staging.
+- Confirm the PWA shell works offline after one online visit without caching authenticated API responses.
+- Inventory every component/store/action/API route by actual app usage. Identify the smallest store replacement for lists, recipes, settings, and item vault; mark meal planner as deferred.
+- Inventory routes for future removal, but do not remove them yet.
+- Replace scattered feature decisions with one environment-derived flag module. Initial flags include `NUXT_PUBLIC_OFFLINE_SYNC_ENABLED`, `NUXT_PUBLIC_OFFLINE_SYNC_LISTS_ENABLED`, and private matching `ENABLE_OFFLINE_SYNC*` guards. Public flags only enable UI/protocol paths; server authorization remains mandatory.
+- Capture production-safe counts/invariants for existing data and document the staging rehearsal fixture process.
 
-**Working app state:** all existing screens/routes keep using legacy data paths. The new tables are empty except for tests/spike fixtures; no user-facing audit page yet.
+**Working app state:** `/app` is an SPA with a loading screen; existing functionality remains available, and all new feature flags are disabled by environment.
+
+**Human master validates:** SPA deep links/auth redirects/PWA shell work on staging, the usage and route inventory is credible, and flags are sourced only from environment configuration.
+
+### Checkpoint 1 — audit/revision schema and production-data migration rehearsal
+
+**Goal:** prove durable server primitives and safe data migration before offline writes.
+
+**Implementation:**
+
+- Add additive Drizzle schema/migrations for revisions, activities, and receipts with the indexes above.
+- Add shared operation vocabulary, strict sync schemas, request ID helpers, and metadata allow-list/redaction tests.
+- Prove domain write + receipt + revision + activity all commit or all roll back in a staging-D1 atomicity test.
+- Add migration verification commands: table counts, referential checks, row checksum/sample checks, and a documented D1 backup/export before the production migration. Rehearse the complete migration on staging with representative anonymised production data.
+- Do not add retention work, R2 archive code, or IP/user-agent collection.
+
+**Working app state:** existing product data and app behavior are intact; new audit/sync tables and migrations are production-ready but do not yet power the UI.
+
+**Human master validates:** migration rehearsal output, count/invariant checks, schema/indexes, atomicity evidence, and proof that audit data contains only allowed metadata.
+
+### Checkpoint 2 — audit activity slice and API pruning preparation
+
+**Goal:** deliver a useful audit page while proving server history reads are bounded.
+
+**Implementation:**
+
+- Add paginated `/api/settings/activity` and owner authorization. Filter by date, operation, actor ID, target type/ID, using only indexed cursor access.
+- Emit metadata-only activity rows for auth, household, and a small set of list operations. Capture no payload or sensitive identifiers beyond the authorized actor/target IDs.
+- Add the Settings activity route/components. `useActivityLogQuery()` stores and reads activity pages directly in Dexie; Pinia only holds current filter/drawer UI state.
+- Add `GET /api/sync/pull` with strict cursor/limit validation and bounded revision queries.
+- Use the completed route inventory to delete only proven unused application routes, their client callers, tests, and documentation.
+
+**Working app state:** owners can search/filter a safe activity history; the rest of the app remains current behavior. Deleted routes have no callers and are verified absent on staging.
+
+**Human master validates:** audit filters/authorization, no sensitive value in database/API/UI, D1 query bounds, and each proposed route deletion.
+
+### Checkpoint 3 — Dexie foundation and store redesign (read-only lists)
+
+**Goal:** replace entity-heavy Pinia state with direct Dexie queries before enabling local writes.
+
+**Implementation:**
+
+- Add Dexie core to `apps/nuxt`; define schema upgrades, scope isolation, aliases, bootstrap state, and test helpers.
+- Implement `POST /api/sync/bootstrap`, then hydrate list data into Dexie and pull revisions to the captured cursor.
+- Rebuild list pages around `useListsQuery()` and `useListDetailQuery()`. Replace/remove the current list store’s persisted entity maps. Keep only explicitly justified UI state in a small store or local component state.
+- Remove Pinia persisted entity state for converted features; import old localStorage state only as an untrusted transitional cache, then replace it from bootstrap. It never creates commands or overrides server data.
+- Implement the sync status controller read-only: bootstrap, offline cached state, pull, retry, scope reset.
+
+**Working app state:** list overview/detail render directly from Dexie and can reload offline after one successful online bootstrap; edits still use the existing online path. Item vault/activity are not loaded into Pinia.
+
+**Human master validates:** a reload offline renders the last list state, a different user/household cannot view old scope data, list UI behavior is preserved or intentionally improved, and Pinia no longer carries list entities.
+
+### Checkpoint 4 — local-first shopping-list commands with coalescing
+
+**Goal:** deliver the first offline mutation path and validate cost-conscious revisions.
+
+**Implementation:**
+
+- Implement sync push command handlers for lists and list items, client IDs, aliases, idempotency receipts, tombstones, and complete final revision documents.
+- Replace direct list mutation APIs with local command service calls. Components use the same feature-level command interface; no new large store is introduced.
+- Implement and test the coalescing table rules. Confirm a burst of changes produces one final outbound command/revision/activity per record where semantics allow.
+- Migrate list reorder to one complete ordered-set command; treat clear/merge-style side effects as non-coalescible until proven.
+- Enable only the list sync flags in staging. Remove legacy list routes only after inventory evidence shows the migrated SPA no longer uses them.
+
+**Working app state:** enabled staging users can create, edit, check, reorder, archive, and delete supported list data offline; reload; reconnect; and converge without duplicate records or a conflict dialog.
 
 **Human master validates:**
 
-- exact tables, indexes, operation vocabulary, and protocol version;
-- retention/privacy policy, especially raw-IP retention and household/account deletion behavior;
-- successful local and preview atomicity evidence.
+1. Offline mutation + hard reload + reconnect applies exactly once.
+2. Two browsers concurrently edit/delete/reorder and converge to server last-write-wins state.
+3. A response-loss replay does not duplicate data/audit/revision rows.
+4. A burst of field/status changes yields the expected minimal mutation/revision count.
+5. Logout/user/household switching cannot replay or display another scope’s data.
 
-### Checkpoint 2 — read-only change feed and activity vertical slice
+### Checkpoint 5 — complete audit coverage and list cutover
 
-**Goal:** prove the server can serve bounded, safe history before accepting offline writes.
-
-**Implementation:**
-
-- Introduce `GET /api/sync/pull` with household authorization, strict cursor/limit validation, ascending cursor pagination, and no unbounded scans.
-- Add a legacy-route audit wrapper/facade for one small domain (for example list creation/update) so normal online writes emit an activity and revision. Existing route request/response shapes remain unchanged.
-- Add owner-authorized `GET /api/settings/activity` with typed date/operation/actor/target filters and cursor pagination.
-- Add `app/pages/app/settings/activity.vue`, navigation entry, focused activity UI components, and owner authorization. The UI initially displays activity only; no revision payloads.
-- Verify activity creation for login/logout and selected household/list operations. Failed authentication logs only safe failure metadata.
-
-**Working app state:** users see the current app plus an owner-only, paginated activity timeline; all product writes still work through current routes and polling.
-
-**Human master validates:** an owner can find expected events, filters/cursors do not leak across households, and a non-owner cannot access the endpoint or page.
-
-### Checkpoint 3 — local repository and safe app shell, still read-only sync
-
-**Goal:** establish durable local read state before any local write can be queued.
+**Goal:** make the audit foundation complete enough for production and remove list-era dead code.
 
 **Implementation:**
 
-- Implement the client-only IndexedDB adapter, typed entity repository, scope isolation, database upgrade tests, and Pinia projection hydration for the list overview/detail.
-- Add `POST /api/sync/bootstrap` and use it to populate the repository, then `pull` to catch up. Preserve the old network fetch path as a feature-flagged fallback.
-- One-time import the current Pinia persisted list cache as unverified data, then replace it with the server bootstrap. Do not import old optimistic temporary IDs as mutations.
-- Add the sync-status controller/UI with read-only statuses: initialising, offline cache, synchronising, up-to-date, and recoverable error.
-- Run the PWA shell spike. Implement the smallest verified Workbox/custom-worker configuration that allows a previously used authenticated app shell to launch offline without caching user API responses. Test production preview, not only dev mode.
+- Route auth, user/profile, household, access-link, and list operations through the activity helper; add success/failure events where safe.
+- Ensure app-originated list writes go only through commands; retire list polling and remove proven-unused legacy list APIs, temporary-ID logic, and entity-heavy store code.
+- Add metrics/logging for command count, coalescing ratio, duplicate receipt rate, rejected command rate, cursor lag, rows read/written, and bootstrap time. Do not log user payloads.
+- Update `docs/` and `.agents/` together with architecture, deployment, migration runbook, audit vocabulary, and test procedures.
 
-**Working app state:** with sync disabled, behavior is unchanged. With the read-only flag enabled for a test household, list pages load from IndexedDB immediately and reconcile online; editing still uses current routes. A previously used app opens offline showing last synchronised list data and an honest read-only/offline status.
+**Working app state:** shopping lists are local-first in staging and eligible for production; audit activity covers specified security/household/list operations; no old list data store/polling path remains.
 
-**Human master validates:** offline cold-start behavior on target browsers, user/household switching cannot reveal prior data, and no authenticated API response appears in Cache Storage.
+**Human master validates:** migration/data integrity checks, audit samples, staged deployment evidence, cost/metrics, and the exact production rollout commit.
 
-### Checkpoint 4 — offline shopping-list vertical slice
+### Checkpoint 6 — additional proven data families
 
-**Goal:** make the first end-to-end workflow truly local-first.
+**Goal:** migrate one actual usage family at a time; do not begin with meal planner.
 
-**Implementation:**
+For each family—categories/canonical items, then recipes/recipe items—repeat: UI usage review; small direct-Dexie query composables; command union; coalescing rules; revision/activity semantics; staging offline/reload/two-device tests; route inventory and removal; human validation; production release.
 
-- Add `POST /api/sync/push` for the list/list-item command union only. Support client IDs, idempotency receipts, aliases for canonical item de-duplication, tombstones, and complete revision documents.
-- Move list overview/detail actions one by one from direct `apiFetch` calls to local transaction + outbox enqueue + synchroniser trigger. Preserve function signatures so components require minimal changes.
-- Enable optimistic presentation only through the local reducer; remove the converted actions’ ad-hoc rollback/temporary-ID code. A validation rejection becomes a persisted recoverable sync state and converges from server revisions.
-- Implement list and list-item reorder as atomic ordered-set commands, then add check/uncheck, archive/delete, and clear operations with correct tombstone emission.
-- Enable the sync route for an explicit test household behind the flag. Keep legacy list APIs live for other clients and keep polling only as a temporary read fallback for unconverted routes.
-- Add unit tests for reducer idempotence, local transaction atomicity, aliases, retry ordering, duplicate replay, tombstone application, and scope wipe. Add server integration tests for each command and revision output.
+Canonical item merge/delete and recipe-to-list remain non-coalescible server-side effects unless an equivalent final-state command is formally defined. The meal planner remains on its existing implementation until a separate discovery phase identifies its UX and data ownership requirements.
 
-**Working app state:** the enabled household can create/change/reorder shopping lists and items while offline, reload, reconnect, and converge. Other household/product routes continue to operate as before.
+**Working app state:** each completed family is local-first; incomplete/deferred families remain usable, with no half-migrated store or route.
 
-**Human master validates:**
+**Human master validates per family:** usage model, destructive-operation semantics, offline/reload/two-device evidence, mutation coalescing expectations, and staging-to-production release.
 
-1. Go offline, create/edit/check/reorder items, reload the app, then reconnect: every expected change arrives once.
-2. Use two browsers on the same list and perform concurrent edit/delete/reorder actions: both converge to the documented server order without a conflict dialog.
-3. Simulate a network drop after request delivery: replay does not duplicate a list or list item.
-4. Log out and into a different account before reconnect: no prior outbox entry is replayed or displayed.
+### Checkpoint 7 — programme cutover and future-worker handoff
 
-### Checkpoint 5 — audit coverage and production observability
-
-**Goal:** make audit trails reliable across all current server-side security and household operations before widening offline scope.
+**Goal:** finish the agreed migration without adding retention/worker scope.
 
 **Implementation:**
 
-- Route remaining auth, profile/user, household, access-link, and converted list operations through the activity helper; add activity entries for successes and security-relevant failures.
-- Migrate remaining list legacy writes to the command facade so online and sync-originated writes share revisions/activity semantics.
-- Add operational metrics/log fields: sync request/command counts, duplicate receipts, rejected commands, bootstrap recoveries, cursor lag, batch size, and revision/activity query rows read.
-- Add a small owner-visible sync/audit diagnostic summary only if it is safe and useful; no raw secrets or cross-household data.
-- Add a deployment runbook, privacy/retention policy, operation vocabulary, and rollback instructions under both `docs/` and `.agents/`, as required by repository policy.
+- Remove full route polling and legacy app data APIs only after all agreed active data families are migrated and used successfully in production.
+- Remove the old Pinia persisted-state dependency/configuration if no remaining UI-only use needs it.
+- Preserve indefinitely growing revisions/activity/receipts with indexed access and monitoring. Explicitly defer retention and archival decisions.
+- Create only documentation/placeholders for future `workers/backup` and `workers/data-migration`; do not build or deploy them.
+- Finalize mirrored human/agent docs, migration runbooks, deployment policy, and feature flag removal plan.
 
-**Working app state:** full activity coverage for intended operations, existing API contracts intact, and the first offline slice is production-observable and reversible by feature flag.
+**Working app state:** chosen active app workflows are local-first, Pinia is UI-only, audit is safe and queryable, deployments are manual/staged, and the repository is ready for future workers without expanding this scope.
 
-**Human master validates:** activity samples for auth, household, and list changes; dashboard/read-write cost is acceptable; and rollback to legacy list fetching leaves no data loss.
-
-### Checkpoint 6 — remaining offline domains, one independently validated slice at a time
-
-**Goal:** extend the proven protocol without a broad refactor.
-
-Apply the same sequence for each family; merge and validate one family before beginning the next:
-
-1. **Categories and canonical items:** define duplicate-name/merge semantics carefully; initially leave destructive merge/delete online-only if they cannot produce simple tombstones.
-2. **Recipes and recipe items:** support client-created recipe and ingredient IDs; ensure recipe-to-list is a server command that emits all affected list-item revisions.
-3. **Meal planner and placeholder items:** model day replacement and child-item deletion as one atomic command family; preserve the existing seven-day invariants.
-4. **Optional low-risk household settings:** only after confirming device/household scope and last-writer-wins expectations. Do not include ownership, invitation, or account/security actions.
-
-For each family: extend the shared command union additively, add server command/revision tests, add client reducer/repository tests, enable only that family’s flag, test offline reload and two-device convergence, then update the API/mutation inventory and human/agent docs.
-
-**Working app state:** every completed family is independently local-first; unfinished families stay on current APIs/polling. No partial migration makes an existing page unusable.
-
-**Human master validates per family:** the declared conflict/deletion rules, manual offline/reconnect test, two-device test, and production metrics after a short observation period.
-
-### Checkpoint 7 — cutover, polling retirement, and retention decision
-
-**Goal:** simplify only after measured confidence.
-
-**Implementation:**
-
-- Remove Pinia persisted-state picks only for fully converted entity data after a one-release migration window; retain a safe local-cache migration/cleanup path.
-- Stop route polling for fully sync-owned pages. Keep an explicit manual refresh and a periodic lightweight pull while the app is active only if measurements show it is needed; background pull replaces the current full route snapshot polling.
-- Remove dead optimistic/temp-ID code and duplicated legacy facade paths only after feature flags have been fully enabled and rollback data is no longer needed.
-- Evaluate retention data, approve concrete windows, implement `sync_devices`, `RESET_REQUIRED` recovery, and bounded pruning. R2 archival remains a separate later checkpoint unless the agreed threshold is reached.
-- Update docs, `.agents/` guidance, testing checklists, and runbooks to describe the final architecture.
-
-**Working app state:** all chosen offline domains are local-first; normal app use no longer performs full route snapshot polling; migration rollback is no longer necessary because the new path is proven and documented.
-
-**Human master validates:** retention thresholds/policy, final data migration cleanup, production error/lag/cost trend, and the decision to remove the legacy path.
+**Human master validates:** final data counts/invariants, production behavior/cost, confirmed removal list, and explicit acknowledgement that retention/backups are separate future projects.
 
 ## Verification matrix
 
-Every checkpoint has its targeted tests, plus the common checks. The following scenarios are required before enabling the corresponding feature flag in production.
-
 | Scenario | Required evidence |
 | --- | --- |
-| Fresh online bootstrap | Local database is populated, UI matches server, cursor is persisted. |
-| Offline reload | Previously used app shell and local snapshot render without `/api` access. |
-| Offline mutation durability | Disconnect, mutate, hard reload, reconnect; queued command remains and applies once. |
-| Server replay | Re-send the exact command/mutation ID; no duplicate domain row, revision, or activity event. |
-| Cross-device convergence | Two sessions make ordered conflicting edits; both eventually render the same server state. |
-| Tombstone behavior | Remote deletion removes local entity and prevents stale local data from reappearing. |
-| Auth scope isolation | Logout, household switch, and different-user login stop/clear the old scope before any new projection is read. |
-| PWA update | A worker update preserves the IndexedDB database and prompts/reloads without a half-upgraded protocol. |
-| Audit authorization | Owner filtering/pagination works; non-owner/cross-household access is denied; payloads and secrets are absent. |
-| D1 boundedness | Explain/query-plan review verifies indexed household+cursor reads; metrics show expected rows read. |
-
-Automated coverage should include pure reducer and command tests, server route/domain integration tests against the project database harness, and store/composable tests. Browser-specific offline checks are manual until the project explicitly approves a browser E2E dependency.
+| Workspace move | Root and filtered commands run; app build/deploy paths are correct. |
+| Environment isolation | Staging Worker/D1/R2/secrets are distinct; a staging migration cannot affect production. |
+| Manual deployment | No push auto-deploy; staging then production deployment uses the same commit and selected GitHub Environment. |
+| SPA shell | `/app` direct routes, auth redirects, PWA update, and offline cold launch work on staging. |
+| Production data migration | Before/after counts, foreign keys/invariants, sample checks, and rollback/restore runbook pass. |
+| Dexie scope | User/household switch and logout never reveal/replay another scope. |
+| Offline durability | Mutate, disconnect, hard reload, reconnect; final command applies once. |
+| Coalescing | Repeated edits to one record emit only the documented final command/revision; side-effect commands remain distinct. |
+| Convergence | Two devices settle on identical server-ordered state. |
+| Audit safety | Row/API/UI inspection proves no payloads, secrets, email, raw IP, or user agent; authorization is correct. |
+| D1 boundedness | Query review and metrics prove indexed, household-scoped, limited activity/revision access. |
 
 ## Risks and controls
 
 | Risk | Control |
 | --- | --- |
-| A broad store rewrite blocks delivery. | Convert one route/family at a time behind flags; preserve public store action signatures initially. |
-| Workbox queues stale requests under the wrong session. | Do not use request interception as the outbox; scope and authenticate app-managed commands at replay time. |
-| Cache exposes household data after logout. | Never cache API data in Workbox; key IndexedDB by user+household; stop and clear projections on scope transition. |
-| Audit logging leaks sensitive values. | Allow-list metadata; prohibit bodies, passwords, tokens, and access-link values; test redaction. |
-| Large audit/revision tables become expensive. | Household/cursor indexes, bounded pagination, D1 metric monitoring, and a later recovery-safe retention policy. |
-| Concurrent reorders feel surprising. | Make server acceptance order explicit, show final order after sync, and preserve revisions for support; revisit only with evidence. |
-| New client protocol incompatible with an old server. | Version every command, deploy server first, keep flag disabled until both are present, and reject unsupported versions clearly. |
-| Partial D1 writes corrupt sync history. | Require preview-proven atomic database operation before command writes are enabled. |
-
-## Decisions requiring human approval
-
-These are intentionally not assumed by the implementation team:
-
-1. **Privacy policy:** raw IP retention duration, user-agent retention, access rights to own authentication history, and behavior of logs when a household/account is deleted.
-2. **Offline product scope:** confirm that v1 is shopping lists/list items, with account/household security and blob uploads online-only.
-3. **Conflict policy:** accept server-order last-writer-wins and atomic complete-order reorders for v1, rather than CRDTs or conflict dialogs.
-4. **Dependency policy:** confirm native IndexedDB is preferred; approve any later request for an IDB/browser-test library separately.
-5. **Retention policy:** approve concrete windows only after operational measurements, before pruning/archive code is written.
+| Monorepo move breaks build/deployment. | Deliver it alone at checkpoint -1; staging validates output paths, migrations, and Worker configuration before feature work. |
+| Staging contaminates production. | Separate Worker, D1, R2, URL, and secrets; workflow derives all values only from its selected GitHub Environment. |
+| SPA conversion breaks initial app loading. | Stage it separately; test deep links/auth redirects/PWA before data refactor. |
+| Data loss during redesign. | Production-data migration rehearsal, explicit invariants/count checks, backup/export runbook, and forward-only reviewed migrations. |
+| Dexie recreates a giant global store. | Direct bounded query composables; Pinia policy forbids entity collections, item-vault, and activity-log caches. |
+| Coalescing changes meaning. | Restrict it to same-record final-state operations; never coalesce known side effects; test command/revision counts. |
+| Audit data becomes sensitive. | Typed allow-list, deny-list tests, metadata-only API serializers, and no network identity/body fields. |
+| Infinite history raises cost. | Indexed/cursor-bounded queries and metrics now; retention is a future intentional project, not hidden scope. |
 
 ## Definition of done
 
-The programme is complete only when the agreed feature families pass the verification matrix, production rollout has completed without the legacy synchronisation path, and:
+The agreed active data families are local-first only when all checkpoints have passed their human gates and:
 
-- `pnpm lint`, `pnpm typecheck`, relevant `pnpm test:run`, and PWA/runtime `pnpm build` checks pass;
-- schema migrations, Cloudflare/D1 runtime behavior, and app-shell offline behavior have been verified in preview;
-- all modified/new APIs are Zod-validated and backward-compatible unless explicitly approved otherwise;
-- revision/activity indexes and retention behavior are documented and measured;
-- `docs/` and `.agents/` contain mirrored current architecture, operations, privacy/retention, and testing guidance.
+- production data has migrated with verified counts/invariants and no loss;
+- staging and production are isolated, manually selected deployment environments;
+- `pnpm lint`, `pnpm typecheck`, relevant `pnpm test:run`, and `pnpm build` pass from the workspace;
+- `/app` SPA loading/PWA offline behavior is verified on staging and production;
+- Pinia contains only small UI state; Dexie directly serves entity, item-vault, and activity queries;
+- outbox coalescing and server last-write-wins behavior pass the verification matrix;
+- audit records are metadata-only and all revision/activity paths are indexed and bounded;
+- human docs in `docs/` and agent docs in `.agents/` are updated together.
