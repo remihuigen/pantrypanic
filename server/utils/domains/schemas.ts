@@ -9,6 +9,7 @@ export {
 	createCategoryBodySchema,
 	createListBodySchema,
 	createOccurrenceBodySchema,
+	createRecipeItemBodySchema,
 	createRecipeBodySchema,
 	listItemParamsSchema,
 	listParamsSchema,
@@ -25,6 +26,7 @@ export {
 	updateListBodySchema,
 	updateListItemBodySchema,
 	updateOccurrenceBodySchema,
+	updateRecipeItemBodySchema,
 	updateRecipeBodySchema
 } from '#shared/utils/schemas/domain'
 

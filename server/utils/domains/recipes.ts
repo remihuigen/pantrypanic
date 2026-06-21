@@ -1,10 +1,10 @@
 import type { z } from 'zod'
 import type {
-	createOccurrenceBodySchema,
 	createRecipeBodySchema,
+	createRecipeItemBodySchema,
 	recipeQuerySchema,
-	updateOccurrenceBodySchema,
-	updateRecipeBodySchema
+	updateRecipeBodySchema,
+	updateRecipeItemBodySchema
 } from './schemas'
 
 import { createDomainId } from '#server/utils/api-helpers'
@@ -25,7 +25,8 @@ import {
 	serializeRecipeItem,
 	serializeRecipeSummary
 } from './base'
-import { findOrCreateItem } from './items'
+import { findCategoryOrThrow } from './categories'
+import { applyAssignedCategoryToItem, applyAssignedUnitToItem, findOrCreateItem } from './items'
 
 const DEFAULT_HOUSEHOLD_ID = 'household-1'
 
@@ -74,7 +75,9 @@ export async function createRecipe(
 ) {
 	const resolvedHouseholdId = typeof householdId === 'string' ? householdId : DEFAULT_HOUSEHOLD_ID
 	const resolvedInput =
-		typeof householdId === 'string' ? (input as z.infer<typeof createRecipeBodySchema>) : householdId
+		typeof householdId === 'string'
+			? (input as z.infer<typeof createRecipeBodySchema>)
+			: householdId
 	const resolvedUserId = typeof householdId === 'string' ? Number(userId) : Number(input)
 	const audit = createAudit(resolvedUserId)
 	const [recipe] = await db
@@ -97,11 +100,18 @@ export async function createRecipe(
 	const recipeItems = []
 
 	for (const [index, ingredient] of (resolvedInput.items ?? []).entries()) {
+		const inputCategory = ingredient.categoryId
+			? await findCategoryOrThrow(resolvedHouseholdId, ingredient.categoryId)
+			: null
 		const item = await findOrCreateItem({
 			householdId: resolvedHouseholdId,
 			name: ingredient.name,
+			defaultUnit: ingredient.unit ?? null,
+			categoryId: inputCategory?.id ?? null,
 			auditUserId: resolvedUserId
 		})
+		await applyAssignedUnitToItem(item, ingredient.unit, resolvedUserId)
+		await applyAssignedCategoryToItem(item, inputCategory?.id, resolvedUserId)
 		const [recipeItem] = await db
 			.insert(schema.recipeItems)
 			.values({
@@ -247,12 +257,23 @@ export async function deleteRecipe(householdId: string, recipeId: string, userId
 export async function addRecipeItem(
 	householdId: string,
 	recipeId: string,
-	input: z.infer<typeof createOccurrenceBodySchema>,
+	input: z.infer<typeof createRecipeItemBodySchema>,
 	userId: number
 ) {
 	await findRecipeOrThrow(recipeId, householdId)
 	const audit = createAudit(userId)
-	const item = await findOrCreateItem({ householdId, name: input.name, auditUserId: userId })
+	const inputCategory = input.categoryId
+		? await findCategoryOrThrow(householdId, input.categoryId)
+		: null
+	const item = await findOrCreateItem({
+		householdId,
+		name: input.name,
+		defaultUnit: input.unit ?? null,
+		categoryId: inputCategory?.id ?? null,
+		auditUserId: userId
+	})
+	await applyAssignedUnitToItem(item, input.unit, userId)
+	await applyAssignedCategoryToItem(item, inputCategory?.id, userId)
 	const position = await getNextRecipeItemPosition(recipeId, householdId)
 	const [recipeItem] = await db
 		.insert(schema.recipeItems)
@@ -383,14 +404,47 @@ export async function addRecipeToList(
 export async function updateRecipeItem(
 	householdId: string,
 	recipeItemId: string,
-	input: z.infer<typeof updateOccurrenceBodySchema>,
+	input: z.infer<typeof updateRecipeItemBodySchema>,
 	userId: number
 ) {
-	await findRecipeItemOrThrow(recipeItemId, householdId)
+	const existingRecipeItem = await findRecipeItemOrThrow(recipeItemId, householdId)
+	const [currentItem] = await db
+		.select()
+		.from(schema.items)
+		.where(
+			and(
+				eq(schema.items.id, existingRecipeItem.itemId),
+				eq(schema.items.householdId, householdId)
+			)
+		)
+		.limit(1)
+
+	const existingItem = assertRow(currentItem)
+	const nextCategoryId =
+		input.categoryId === undefined ? existingItem.categoryId : input.categoryId
+
+	if (nextCategoryId) {
+		await findCategoryOrThrow(householdId, nextCategoryId)
+	}
+
+	const item =
+		input.name === undefined
+			? existingItem
+			: await findOrCreateItem({
+					householdId,
+					name: input.name,
+					defaultUnit: input.unit ?? existingItem.defaultUnit ?? null,
+					categoryId: nextCategoryId ?? null,
+					auditUserId: userId
+				})
+
+	await applyAssignedUnitToItem(item, input.unit, userId)
+	await applyAssignedCategoryToItem(item, nextCategoryId, userId)
 	const audit = createAudit(userId)
 	const [row] = await db
 		.update(schema.recipeItems)
 		.set({
+			...(input.name === undefined ? {} : { itemId: item.id }),
 			...(input.amount === undefined ? {} : { amount: input.amount }),
 			...(input.unit === undefined ? {} : { unit: input.unit }),
 			...(input.note === undefined ? {} : { note: input.note }),
@@ -405,8 +459,7 @@ export async function updateRecipeItem(
 		)
 		.returning()
 
-	const recipeItem = assertRow(row)
-	return { recipeItem: { id: recipeItem.id, updatedAt: recipeItem.updatedAt } }
+	return { recipeItem: serializeRecipeItem(assertRow(row), item) }
 }
 
 /**

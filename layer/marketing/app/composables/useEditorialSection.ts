@@ -28,6 +28,7 @@ type EditorialSectionConfig = {
 	displayDateField: 'dateCreated' | 'dateUpdated'
 	sortField?: 'dateCreated' | 'dateUpdated'
 	structuredDataType: 'blog' | 'none'
+	metaDescription?: string
 }
 
 const SECTION_CONFIG: Record<EditorialSectionKey, EditorialSectionConfig> = {
@@ -36,7 +37,9 @@ const SECTION_CONFIG: Record<EditorialSectionKey, EditorialSectionConfig> = {
 		pageTitle: 'Blog',
 		heroTitle: 'Notes from Aisle 7',
 		heroDescription:
-			'Dispatches on grocery chaos, overbuilt software, and the tiny domestic systems that keep a household from quietly collapsing.',
+			'Welcome to the Pantry Panic Blog, where we share thoughts, observations and occasional rants about human behavior, technology, and everything in between.',
+		metaDescription:
+			'Where we share thoughts, observations and occasional rants about human behavior, technology, and everything in between.',
 		breadcrumbIcon: getIcon('blog'),
 		displayDateField: 'dateCreated',
 		sortField: 'dateCreated',

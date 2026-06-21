@@ -47,4 +47,28 @@ describe('useRecipeUsage', () => {
 
 		expect(storage.value.anonymous).toEqual({ 'recipe-public': 2 })
 	})
+
+	it('falls back to anonymous empty usage when no profile-specific storage exists yet', () => {
+		const profile = shallowRef<{ id: number } | null>(null)
+		const storage = shallowRef<RecipeUsageCountsByUser>({})
+		vi.stubGlobal('useSettingsStore', () => ({
+			get profile() {
+				return profile.value
+			}
+		}))
+		vi.stubGlobal('useLocalStorage', vi.fn(() => storage))
+
+		const usage = useRecipeUsage()
+
+		expect(usage.usageCounts.value).toEqual({})
+		expect(usage.getUsageCount('recipe-new')).toBe(0)
+
+		usage.incrementUsage('recipe-new')
+
+		expect(storage.value).toEqual({
+			anonymous: {
+				'recipe-new': 1
+			}
+		})
+	})
 })

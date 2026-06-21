@@ -199,6 +199,16 @@ export default defineNuxtConfig({
 		}
 	},
 
+	routeRules: {
+		'/app': { prerender: false },
+		'/app/**': { prerender: false },
+		'/join': { prerender: false },
+		'/login': { prerender: false },
+		'/logout': { prerender: false },
+		'/register': { prerender: false },
+		'/reset-access': { prerender: false }
+	},
+
 	compatibilityDate: '2025-01-15',
 
 	hub: {
@@ -334,5 +344,5 @@ export default defineNuxtConfig({
 
 	turnstile: {
 		siteKey: turnstileSiteKey
-	},
+	}
 })

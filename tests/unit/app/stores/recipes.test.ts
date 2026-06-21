@@ -281,12 +281,23 @@ describe('useRecipesStore', () => {
 			note: 'oud'
 		})
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
-			recipeItem: { id: 'ri-1', updatedAt: 12 }
+			recipeItem: createRecipeItem({
+				id: 'ri-1',
+				name: 'Kaas',
+				unit: 'kg',
+				updatedAt: 12
+			})
 		})
 
-		await store.updateRecipeItem('ri-1', { amount: null, unit: 'kg', note: null })
+		await store.updateRecipeItem('ri-1', {
+			name: 'Kaas',
+			amount: null,
+			unit: 'kg',
+			note: null
+		})
 
 		expect(store.recipeItemsById['ri-1']).toMatchObject({
+			name: 'Kaas',
 			unit: 'kg',
 			updatedAt: 12
 		})
@@ -496,14 +507,19 @@ describe('useRecipesStore', () => {
 	it('updates missing recipe items without local merge side effects', async () => {
 		const store = useRecipesStore()
 		vi.spyOn(apiClient, 'apiFetch').mockResolvedValueOnce({
-			recipeItem: { id: 'missing', updatedAt: 11 }
+			recipeItem: createRecipeItem({ id: 'missing', updatedAt: 11 })
 		})
 
-		await expect(store.updateRecipeItem('missing', { amount: null, unit: null })).resolves.toEqual({
+		await expect(
+			store.updateRecipeItem('missing', { amount: null, unit: null })
+		).resolves.toMatchObject({
 			id: 'missing',
 			updatedAt: 11
 		})
-		expect(store.recipeItemsById.missing).toBeUndefined()
+		expect(store.recipeItemsById.missing).toMatchObject({
+			id: 'missing',
+			updatedAt: 11
+		})
 	})
 
 	it('removes stale recipe items when fetched details no longer include them', async () => {

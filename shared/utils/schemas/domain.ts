@@ -167,6 +167,8 @@ export const createOccurrenceBodySchema = z.strictObject({
 	note: noteSchema
 })
 
+export const createRecipeItemBodySchema = createOccurrenceBodySchema
+
 export const updateOccurrenceBodySchema = z
 	.strictObject({
 		amount: nullableAmountSchema,
@@ -176,6 +178,24 @@ export const updateOccurrenceBodySchema = z
 	.refine(
 		(value) =>
 			value.amount !== undefined || value.unit !== undefined || value.note !== undefined,
+		{ error: 'Minimaal een veld is verplicht.' }
+	)
+
+export const updateRecipeItemBodySchema = z
+	.strictObject({
+		name: nameSchema.optional(),
+		categoryId: domainIdSchema.nullable().optional(),
+		amount: nullableAmountSchema,
+		unit: nullableUnitSchema,
+		note: nullableNoteSchema
+	})
+	.refine(
+		(value) =>
+			value.name !== undefined ||
+			value.categoryId !== undefined ||
+			value.amount !== undefined ||
+			value.unit !== undefined ||
+			value.note !== undefined,
 		{ error: 'Minimaal een veld is verplicht.' }
 	)
 
@@ -215,7 +235,7 @@ export const mergeCategoryBodySchema = z.strictObject({
 	targetCategoryId: domainIdSchema
 })
 
-const recipeIngredientSchema = createOccurrenceBodySchema.extend({
+const recipeIngredientSchema = createRecipeItemBodySchema.extend({
 	position: z
 		.number({ error: 'Positie moet een getal zijn.' })
 		.int({ error: 'Positie moet een getal zijn.' })
@@ -234,8 +254,8 @@ export const createRecipeBodySchema = z.strictObject({
 	servings: z
 		.number({ error: 'Porties moet een getal zijn.' })
 		.int({ error: 'Porties moet een getal zijn.' })
-			.positive({ error: 'Porties moet groter zijn dan 0.' })
-			.optional(),
+		.positive({ error: 'Porties moet groter zijn dan 0.' })
+		.optional(),
 	sourceUrl: z.url({ error: 'Bron moet een geldige URL zijn.' }).optional(),
 	items: z
 		.array(recipeIngredientSchema, { error: 'Ingrediënten moeten een lijst zijn.' })
@@ -355,6 +375,8 @@ export const recipeItemSchema = z.strictObject({
 	recipeId: domainIdSchema,
 	itemId: domainIdSchema,
 	name: z.string(),
+	categoryId: domainIdSchema.optional(),
+	categoryName: z.string().optional(),
 	amount: z.number().optional(),
 	unit: z.string().optional(),
 	note: z.string().optional(),
@@ -438,7 +460,9 @@ export type CurrentUser = z.infer<typeof currentUserSchema>
 export type CreateListInput = z.infer<typeof createListBodySchema>
 export type UpdateListInput = z.infer<typeof updateListBodySchema>
 export type OccurrenceInput = z.infer<typeof createOccurrenceBodySchema>
+export type CreateRecipeItemInput = z.infer<typeof createRecipeItemBodySchema>
 export type UpdateOccurrenceInput = z.infer<typeof updateOccurrenceBodySchema>
+export type UpdateRecipeItemInput = z.infer<typeof updateRecipeItemBodySchema>
 export type UpdateListItemInput = z.infer<typeof updateListItemBodySchema>
 export type CreateCategoryInput = z.infer<typeof createCategoryBodySchema>
 export type UpdateCategoryInput = z.infer<typeof updateCategoryBodySchema>

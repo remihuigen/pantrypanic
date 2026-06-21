@@ -1,6 +1,3 @@
-import { db } from 'hub:db'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import {
 	addListItem,
 	addMealPlannerDayItem,
@@ -34,8 +31,8 @@ import {
 	listShoppingLists,
 	mealPlannerDayBodySchema,
 	recipeQuerySchema,
-	reorderListItems,
 	reorderCategorizedListItems,
+	reorderListItems,
 	reorderMealPlannerDayItems,
 	reorderRecipeItems,
 	reorderShoppingLists,
@@ -59,8 +56,12 @@ import {
 	createSelectBuilder,
 	createUpdateBuilder
 } from '#tests/support/drizzle-builders'
+import { db } from 'hub:db'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
+	applyAssignedCategoryToItem: vi.fn(),
+	applyAssignedUnitToItem: vi.fn(),
 	createDomainId: vi.fn(() => 'new-id'),
 	findOrCreateItem: vi.fn(),
 	seedInitialDomainData: vi.fn()
@@ -77,6 +78,8 @@ vi.mock('#server/utils/domains/items', async () => {
 
 	return {
 		...actual,
+		applyAssignedCategoryToItem: mocks.applyAssignedCategoryToItem,
+		applyAssignedUnitToItem: mocks.applyAssignedUnitToItem,
 		findOrCreateItem: mocks.findOrCreateItem
 	}
 })
@@ -98,6 +101,8 @@ describe('pantry api domain helpers', () => {
 		vi.mocked(db.insert).mockReset()
 		vi.mocked(db.update).mockReset()
 		vi.mocked(db.delete).mockReset()
+		mocks.applyAssignedCategoryToItem.mockReset()
+		mocks.applyAssignedUnitToItem.mockReset()
 		mocks.createDomainId.mockClear()
 		mocks.findOrCreateItem.mockReset()
 		mocks.findOrCreateItem.mockResolvedValue(itemRow())
@@ -211,6 +216,7 @@ describe('pantry api domain helpers', () => {
 			.mockReturnValueOnce(createSelectBuilder([recipeRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([recipeRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([recipeItemRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([itemRow()]) as never)
 
 		vi.mocked(db.insert)
 			.mockReturnValueOnce(
@@ -238,7 +244,11 @@ describe('pantry api domain helpers', () => {
 				]) as never
 			)
 			.mockReturnValueOnce(createUpdateBuilder([recipeRow({ updatedAt: 51 })]) as never)
-			.mockReturnValueOnce(createUpdateBuilder([recipeItemRow({ updatedAt: 52 })]) as never)
+			.mockReturnValueOnce(
+				createUpdateBuilder([
+					recipeItemRow({ updatedAt: 52, amount: 1, unit: 'kg', note: 'Fresh' })
+				]) as never
+			)
 			.mockReturnValueOnce(createSelectBuilder([{ count: 2 }]) as never)
 		await expect(createShoppingList({ name: 'Hardware' }, 1)).resolves.toMatchObject({
 			list: { id: 'empty-position-list', position: 0 }
@@ -295,7 +305,9 @@ describe('pantry api domain helpers', () => {
 				},
 				1
 			)
-		).resolves.toEqual({ recipeItem: { id: 'ri-1', updatedAt: 52 } })
+		).resolves.toMatchObject({
+			recipeItem: { id: 'ri-1', amount: 1, unit: 'kg', note: 'Fresh', updatedAt: 52 }
+		})
 	})
 
 	it('handles alternate meal planner day transitions and conflicts', async () => {
@@ -461,7 +473,9 @@ describe('pantry api domain helpers', () => {
 				]) as never
 			)
 			.mockReturnValueOnce(
-				createSelectBuilder([categoryRow({ id: 'produce', householdId: 'household' })]) as never
+				createSelectBuilder([
+					categoryRow({ id: 'produce', householdId: 'household' })
+				]) as never
 			)
 			.mockReturnValueOnce(
 				createSelectBuilder([
@@ -533,7 +547,9 @@ describe('pantry api domain helpers', () => {
 				]) as never
 			)
 			.mockReturnValueOnce(
-				createSelectBuilder([categoryRow({ id: 'produce', householdId: 'household' })]) as never
+				createSelectBuilder([
+					categoryRow({ id: 'produce', householdId: 'household' })
+				]) as never
 			)
 			.mockReturnValueOnce(createSelectBuilder([{ position: 3 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([]) as never)
@@ -586,11 +602,11 @@ describe('pantry api domain helpers', () => {
 			listItem: { id: 'li-categorized', categoryId: 'produce', categoryPosition: 5 }
 		})
 
-		await expect(addListItem('household', 'list-1', { name: 'Water' }, 1)).resolves.toMatchObject(
-			{
-				listItem: { id: 'li-default', categoryId: undefined, categoryPosition: 9 }
-			}
-		)
+		await expect(
+			addListItem('household', 'list-1', { name: 'Water' }, 1)
+		).resolves.toMatchObject({
+			listItem: { id: 'li-default', categoryId: undefined, categoryPosition: 9 }
+		})
 	})
 
 	it('updates list items when moving to another list without a category', async () => {
@@ -599,29 +615,38 @@ describe('pantry api domain helpers', () => {
 		vi.mocked(db.select)
 			.mockReturnValueOnce(
 				createSelectBuilder([
-					listItemRow({ id: 'li-9', listId: 'list-1', itemId: 'item-1', categoryId: 'produce' })
+					listItemRow({
+						id: 'li-9',
+						listId: 'list-1',
+						itemId: 'item-1',
+						categoryId: 'produce'
+					})
 				]) as never
 			)
 			.mockReturnValueOnce(
 				createSelectBuilder([
-					listRow({ id: 'list-2', householdId: 'household', uncategorizedCategoryPosition: 4 })
+					listRow({
+						id: 'list-2',
+						householdId: 'household',
+						uncategorizedCategoryPosition: 4
+					})
 				]) as never
 			)
 			.mockReturnValueOnce(createSelectBuilder([{ position: 6 }]) as never)
 
 		vi.mocked(db.update).mockReturnValueOnce(
-				createUpdateBuilder([
-					listItemRow({
-						id: 'li-9',
-						listId: 'list-2',
-						itemId: 'item-9',
-						categoryId: null,
-						position: 7,
-						amount: 2,
-						unit: null,
-						note: 'Verplaatst'
-					})
-				]) as never
+			createUpdateBuilder([
+				listItemRow({
+					id: 'li-9',
+					listId: 'list-2',
+					itemId: 'item-9',
+					categoryId: null,
+					position: 7,
+					amount: 2,
+					unit: null,
+					note: 'Verplaatst'
+				})
+			]) as never
 		)
 
 		await expect(
@@ -710,6 +735,7 @@ describe('pantry api domain helpers', () => {
 			)
 			.mockReturnValueOnce(createSelectBuilder([{ position: 0 }]) as never)
 			.mockReturnValueOnce(createSelectBuilder([recipeItemRow()]) as never)
+			.mockReturnValueOnce(createSelectBuilder([itemRow()]) as never)
 			.mockReturnValueOnce(createSelectBuilder([recipeItemRow()]) as never)
 
 		vi.mocked(db.insert)
@@ -731,7 +757,9 @@ describe('pantry api domain helpers', () => {
 				createUpdateBuilder([recipeRow({ status: 'deleted', deletedAt: 32 })]) as never
 			)
 			.mockReturnValueOnce(createUpdateBuilder([{ id: 'ri-1', position: 0 }]) as never)
-			.mockReturnValueOnce(createUpdateBuilder([recipeItemRow({ updatedAt: 33 })]) as never)
+			.mockReturnValueOnce(
+				createUpdateBuilder([recipeItemRow({ updatedAt: 33, note: 'Updated' })]) as never
+			)
 
 		vi.mocked(db.delete).mockReturnValue(createDeleteBuilder() as never)
 
@@ -764,10 +792,94 @@ describe('pantry api domain helpers', () => {
 		await expect(addRecipeToList('recipe-1', 'list-1', 1)).resolves.toMatchObject({
 			addedItems: [{ id: 'li-copy' }]
 		})
-		await expect(updateRecipeItem('ri-1', { note: 'Updated' }, 1)).resolves.toEqual({
-			recipeItem: { id: 'ri-1', updatedAt: 33 }
+		await expect(updateRecipeItem('ri-1', { note: 'Updated' }, 1)).resolves.toMatchObject({
+			recipeItem: { id: 'ri-1', note: 'Updated', updatedAt: 33 }
 		})
 		await expect(deleteRecipeItem('ri-1')).resolves.toEqual({ ok: true })
+	})
+
+	it('updates recipe items through the category lookup and item rename path', async () => {
+		mocks.findOrCreateItem.mockResolvedValueOnce(
+			itemRow({
+				id: 'item-2',
+				name: 'Parmezaan',
+				normalizedName: 'parmezaan',
+				defaultUnit: 'g',
+				categoryId: 'produce'
+			})
+		)
+
+		vi.mocked(db.select)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					recipeItemRow({
+						id: 'ri-1',
+						recipeId: 'recipe-1',
+						itemId: 'item-1'
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					itemRow({
+						id: 'item-1',
+						name: 'Kaas',
+						defaultUnit: 'stuk',
+						categoryId: null
+					})
+				]) as never
+			)
+			.mockReturnValueOnce(
+				createSelectBuilder([
+					categoryRow({
+						id: 'produce',
+						householdId: 'household',
+						name: 'Groente'
+					})
+				]) as never
+			)
+
+		vi.mocked(db.update).mockReturnValueOnce(
+			createUpdateBuilder([
+				recipeItemRow({
+					id: 'ri-1',
+					itemId: 'item-2',
+					unit: 'g',
+					updatedAt: 60
+				})
+			]) as never
+		)
+
+		await expect(
+			updateRecipeItem('household', 'ri-1', { name: 'Parmezaan', categoryId: 'produce' }, 1)
+		).resolves.toMatchObject({
+			recipeItem: {
+				id: 'ri-1',
+				itemId: 'item-2',
+				name: 'Parmezaan',
+				categoryId: 'produce',
+				unit: 'g',
+				updatedAt: 60
+			}
+		})
+
+		expect(mocks.findOrCreateItem).toHaveBeenCalledWith({
+			householdId: 'household',
+			name: 'Parmezaan',
+			defaultUnit: 'stuk',
+			categoryId: 'produce',
+			auditUserId: 1
+		})
+		expect(mocks.applyAssignedUnitToItem).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'item-2' }),
+			undefined,
+			1
+		)
+		expect(mocks.applyAssignedCategoryToItem).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'item-2' }),
+			'produce',
+			1
+		)
 	})
 
 	it('handles meal planner workflows', async () => {

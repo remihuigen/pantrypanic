@@ -51,7 +51,7 @@ watch(
 	<div class="pb-20 lg:pb-0">
 		<EditItemDrawer />
 		<EditListDrawer />
-		<AppNavigation class="z-10" />
+		<AppNavigation />
 		<UContainer class="mx-auto flex min-h-screen max-w-2xl flex-col">
 			<AppHouseholdGate v-if="resolvedHouseholdState && settingsStore.hasNoHousehold" />
 			<slot v-else />

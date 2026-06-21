@@ -5,35 +5,28 @@ definePageMeta({ layout: 'app' })
 
 const settingsStore = useSettingsStore()
 const toast = useToast()
+const isLoadingVault = shallowRef(true)
 
-const itemVaultRequest = useLazyAsyncData(
-	'settings-item-vault',
-	async () => {
+const showItemVaultSkeleton = computed(
+	() => isLoadingVault.value && settingsStore.items.length === 0
+)
+
+onMounted(() => {
+	void loadItemVault()
+})
+
+async function loadItemVault() {
+	isLoadingVault.value = true
+
+	try {
 		await settingsStore.fetchHouseholds()
+
 		if (!settingsStore.activeHouseholdId) {
 			return
 		}
 
 		await Promise.all([settingsStore.fetchItems(), settingsStore.fetchCategories()])
-	},
-	{
-		server: false
-	}
-)
-
-const showItemVaultSkeleton = computed(
-	() =>
-		(itemVaultRequest.status.value === 'pending' || settingsStore.isLoading) &&
-		settingsStore.items.length === 0
-)
-
-watch(
-	() => itemVaultRequest.error.value,
-	(error) => {
-		if (!error) {
-			return
-		}
-
+	} catch (error) {
 		toast.add({
 			title:
 				error && typeof error === 'object' && 'message' in error
@@ -42,8 +35,10 @@ watch(
 			color: 'error',
 			icon: getIcon('error')
 		})
+	} finally {
+		isLoadingVault.value = false
 	}
-)
+}
 </script>
 
 <template>

@@ -1,13 +1,14 @@
 import type { AppError } from '~~/shared/types/api'
 import type {
 	CreateRecipeInput,
+	CreateRecipeItemInput,
 	EntityMap,
 	RecipeDetail,
 	RecipeItem,
 	RecipeStatus,
 	RecipeSummary,
-	UpdateOccurrenceInput,
-	UpdateRecipeInput
+	UpdateRecipeInput,
+	UpdateRecipeItemInput
 } from '~~/shared/utils/schemas/domain'
 
 import { apiFetch, normalizeAppError } from '~/utils/api-client'
@@ -283,10 +284,7 @@ export const useRecipesStore = defineStore(
 			}
 		}
 
-		async function addRecipeItem(
-			recipeId: string,
-			input: { name: string; amount?: number; unit?: string; note?: string }
-		) {
+		async function addRecipeItem(recipeId: string, input: CreateRecipeItemInput) {
 			isSaving.value = true
 			error.value = null
 
@@ -330,7 +328,7 @@ export const useRecipesStore = defineStore(
 			}
 		}
 
-		async function updateRecipeItem(recipeItemId: string, input: UpdateOccurrenceInput) {
+		async function updateRecipeItem(recipeItemId: string, input: UpdateRecipeItemInput) {
 			isSaving.value = true
 			error.value = null
 
@@ -339,6 +337,7 @@ export const useRecipesStore = defineStore(
 			if (existing) {
 				recipeItemsById.value[recipeItemId] = {
 					...existing,
+					...(input.name === undefined ? {} : { name: input.name }),
 					...(input.amount === undefined ? {} : { amount: input.amount ?? undefined }),
 					...(input.unit === undefined ? {} : { unit: input.unit ?? undefined }),
 					...(input.note === undefined ? {} : { note: input.note ?? undefined })
@@ -346,7 +345,7 @@ export const useRecipesStore = defineStore(
 			}
 
 			try {
-				const data = await apiFetch<{ recipeItem: { id: string; updatedAt: number } }>(
+				const data = await apiFetch<{ recipeItem: RecipeItem }>(
 					`/api/recipe-items/${recipeItemId}`,
 					{
 						method: 'PATCH',
@@ -354,14 +353,7 @@ export const useRecipesStore = defineStore(
 					}
 				)
 
-				const merged = recipeItemsById.value[data.recipeItem.id]
-
-				if (merged) {
-					recipeItemsById.value[data.recipeItem.id] = {
-						...merged,
-						updatedAt: data.recipeItem.updatedAt
-					}
-				}
+				upsertRecipeItem(data.recipeItem)
 
 				return data.recipeItem
 			} catch (err) {
