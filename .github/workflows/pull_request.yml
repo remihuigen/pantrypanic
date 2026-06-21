@@ -20,7 +20,7 @@ jobs:
     uses: ./.github/workflows/code_quality.yml
     with:
       runner: ubuntu-latest
-      build-command: pnpm exec nuxt prepare
+      build-command: pnpm --filter @pantrypanic/nuxt exec nuxt prepare
       build-before-lint: true
       build-before-typecheck: false
       typecheck-command: pnpm typecheck

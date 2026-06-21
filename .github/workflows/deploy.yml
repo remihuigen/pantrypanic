@@ -1,23 +1,30 @@
 name: Deploy
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
 
 permissions:
   contents: read
   deployments: write
 
 concurrency:
-  group: deploy-production
+  group: deploy-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy to Cloudflare
+    name: Deploy to ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ inputs.environment }}
 
     steps:
       - uses: actions/checkout@v6
@@ -26,15 +33,15 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run unit tests with coverage
-        run: pnpm test
+        run: pnpm test:coverage
 
       - name: Build Cloudflare Worker
-        run: pnpm build
+        run: pnpm --filter @pantrypanic/nuxt run build
         env:
           SKIP_ADMIN_SEED: '1'
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_DATABASE_ID }}
-          CLOUDFLARE_CACHE_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_CACHE_NAMESPACE_ID }}
-          CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
+          CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
           NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
@@ -48,33 +55,51 @@ jobs:
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
 
       - name: Verify generated Wrangler config
-        run: test -f .output/server/wrangler.json
+        run: test -f apps/nuxt/.output/server/wrangler.json
 
       - name: Apply D1 migrations
-        run:
-          pnpm exec wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json
+        run: >-
+          pnpm --dir apps/nuxt exec wrangler d1 migrations apply DB --remote --config
+          .output/server/wrangler.json
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Set Cloudflare secret
         run: |
-          echo "$NUXT_SESSION_PASSWORD" | pnpm exec wrangler secret put NUXT_SESSION_PASSWORD --name "${CLOUDFLARE_WORKER_NAME:-pantrypanic}"
+          echo "$NUXT_SESSION_PASSWORD" | pnpm --dir apps/nuxt exec wrangler secret put NUXT_SESSION_PASSWORD --name "${CLOUDFLARE_WORKER_NAME:-pantrypanic}"
         env:
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
+          CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy Worker
-        run: pnpm exec wrangler --cwd .output deploy
+        run: pnpm --dir apps/nuxt exec wrangler --cwd .output deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Seed initial admin user
-        run: pnpm seed:admin
+        run: pnpm --filter @pantrypanic/nuxt run seed:admin
         env:
           ADMIN_USER_EMAIL: ${{ secrets.ADMIN_USER_EMAIL }}
           ADMIN_USER_PASSWORD: ${{ secrets.ADMIN_USER_PASSWORD }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
+
+      - name: Write deployment summary
+        run: |
+          {
+            echo "## Cloudflare deployment"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Worker: \`${CLOUDFLARE_WORKER_NAME}\`"
+            echo "- D1 database ID: \`${CLOUDFLARE_D1_DATABASE_ID:0:8}…\`"
+            echo "- Site: ${NUXT_PUBLIC_SITE_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
           NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}

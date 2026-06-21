@@ -1,5 +1,8 @@
 # Database (Agent)
 
+The Nuxt application, including `server/db/`, now lives in `apps/nuxt`; source paths in this file
+are relative to that application directory.
+
 ## Current Schema
 
 The active schema is in `server/db/schema.ts`.

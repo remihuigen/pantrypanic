@@ -82,45 +82,53 @@ configuration-only for now and is not exposed in the app yet. If a user no longe
 household and household creation is disabled, they need a new invite from a household owner before
 they can use the app again.
 
-### 1️⃣ Step 1: Create Cloudflare Resources
+### 1️⃣ Step 1: Find Your Account ID and Create an API Token
 
-Create the following resources in your Cloudflare dashboard:
+Locate your Cloudflare Account ID in the dashboard URL:
 
-- [ ] A D1 database
-  - Write down the `database UUID`
-  - If you are located in the EU, consider opting into EU jurisdiction
-- [ ] An R2 bucket
-  - Write down the `bucket name`
-  - If you are located in the EU, consider opting into EU jurisdiction
-- [ ] A Workers KV namespace
-  - Write down the `namespace ID`
+```text
+https://dash.cloudflare.com/<account-id>
+```
+
+Create an API token scoped to the account with `D1 Write` and `Workers R2 Storage Write`
+permissions. Add `Turnstile Sites Write` only if you will create a Turnstile widget through the
+Cloudflare API.
+
+### 2️⃣ Step 2: Scaffold Cloudflare Resources
+
+From the repository root, scaffold the D1 database and R2 bucket for staging and production. The
+command records the Worker name used by the first deployment:
+
+```bash
+export CLOUDFLARE_ACCOUNT_ID=<account-id>
+export CLOUDFLARE_API_TOKEN=<api-token>
+
+pnpm infra:scaffold -- --environment staging --jurisdiction eu
+pnpm infra:scaffold -- --environment production --jurisdiction eu
+```
+
+The command creates or adopts the approved resources idempotently and writes their identifiers to
+ignored `infra/.staging.env` and `infra/.production.env` files. It never writes the API token or
+application secrets. `--jurisdiction` is optional; omit it to use Cloudflare's default placement, or
+pass `eu` (as above) or `fedramp` explicitly. Use `--dry-run` to inspect missing resources without
+changing Cloudflare.
+
+Create a Turnstile Widget separately if you want enhanced security. It can be created through the
+[Cloudflare API](https://developers.cloudflare.com/turnstile/get-started/widget-management/api/),
+but needs an explicit name, mode, and allowed hostname(s), so it is intentionally not part of the
+resource scaffold:
+
 - [ ] A Turnstile Widget (optional, but recommended for enhanced security)
   - Choose `invisible` widget mode. Make sure to reference
     [Turnstile Privacy Addendum](https://www.cloudflare.com/en-gb/turnstile-privacy-policy/) in your
     own policy.
   - Write down your `site key` and `secret key`
 
-### 2️⃣ Step 2: Create an API Token
-
-Navigate to **Account API Tokens** in the Cloudflare dashboard and create a new token with
-read/write access to Worker-related resources.
-
-Make sure to copy the token immediately and store it somewhere safe. Cloudflare will not show it
-again after creation.
-
-### 3️⃣ Step 3: Find Your Account ID
-
-Locate your Cloudflare Account ID. You can find it in the dashboard URL:
-
-```text
-https://dash.cloudflare.com/<account-id>
-```
-
-### 4️⃣ Step 4: Fork the Repository
+### 3️⃣ Step 3: Fork the Repository
 
 Fork this repository into your own GitHub account.
 
-### 5️⃣ Step 5: Generate Secrets
+### 4️⃣ Step 4: Generate Secrets
 
 Generate a hashing secret and admin API key:
 
@@ -130,7 +138,7 @@ openssl rand -hex 32
 
 Run it twice and store both values somewhere safe.
 
-### 6️⃣ Step 6: Configure GitHub Secrets and Variables
+### 5️⃣ Step 5: Configure GitHub Environments
 
 In your fork, navigate to:
 
@@ -138,13 +146,10 @@ In your fork, navigate to:
 Settings → Secrets and Variables → Actions
 ```
 
-Add the following secrets.
+Create `staging` and `production` GitHub Environments. Configure the following secrets in each;
+their values must be environment-specific.
 
 ```text
-# Cloudflare config
-CLOUDFLARE_D1_DATABASE_ID=<database-id>
-CLOUDFLARE_R2_BUCKET=<bucket-name>
-
 CLOUDFLARE_API_TOKEN=<api-token>
 CLOUDFLARE_ACCOUNT_ID=<account-id>
 
@@ -162,10 +167,13 @@ ADMIN_USER_EMAIL=<initial-user-email>
 ADMIN_USER_PASSWORD=<initial-user-password>
 ```
 
-Add the following variables:
+Add the following variables in each Environment. Copy the Cloudflare values from the corresponding
+generated `infra/.staging.env` or `infra/.production.env` file:
 
 ```text
-CLOUDFLARE_WORKER_NAME=<worker-name> # Defaults to `pantrypanic`
+CLOUDFLARE_WORKER_NAME=<worker-name>
+CLOUDFLARE_D1_DATABASE_ID=<database-id>
+CLOUDFLARE_R2_BUCKET=<bucket-name>
 NUXT_PUBLIC_SITE_URL=<instance-url> # Added after the first deployment
 
 # Household mode
@@ -178,9 +186,9 @@ ENABLE_TURNSTILE=true
 TURNSTILE_SITE_KEY="<turnstile-site-key>"
 ```
 
-### 7️⃣ Step 7: Deploy
+### 6️⃣ Step 6: Deploy to staging
 
-Navigate to **GitHub Actions** and manually run the **Deploy** workflow.
+Navigate to **GitHub Actions**, manually run the **Deploy** workflow, and select `staging`.
 
 The deployment workflow will:
 
@@ -189,7 +197,7 @@ The deployment workflow will:
 3. Deploy the Cloudflare Worker
 4. Seed the initial admin user
 
-### 8️⃣ Step 8: Configure Your Domain
+### 7️⃣ Step 7: Configure Your Domain
 
 After deployment finishes, determine how you want to access your instance.
 
@@ -206,7 +214,7 @@ Find the generated `workers.dev` URL:
 - In the Cloudflare dashboard
 - Or in the GitHub Actions deployment logs
 
-### 9️⃣ Step 9: Update the Site URL
+### 8️⃣ Step 8: Update the Site URL
 
 Return to your GitHub repository variables and update:
 
@@ -214,9 +222,10 @@ Return to your GitHub repository variables and update:
 NUXT_PUBLIC_SITE_URL=<your-domain-or-workers-url>
 ```
 
-### 🔟 Step 10: Redeploy
+### 9️⃣ Step 9: Redeploy staging, then production
 
-Run the Deploy workflow one more time.
+Run the Deploy workflow for staging again. Once verified, run the same commit with `production`
+selected. Production deployment is always manual; pushes to `main` do not deploy automatically.
 
 Your Pantry Panic instance should now be fully operational.
 
@@ -231,7 +240,8 @@ To update your instance:
 
 1. Sync your fork with the upstream repository
 2. Push or merge the changes
-3. GitHub Actions will automatically redeploy if new commits are detected
+3. Manually deploy the selected commit to staging, validate it, then manually deploy that commit to
+   production
 
 ## 💻 Local Setup
 
@@ -252,8 +262,8 @@ Install dependencies:
 pnpm install
 ```
 
-Copy `.example.env` to `.env` and update the values as needed. The important local configuration
-values are:
+Copy `apps/nuxt/.example.env` to `apps/nuxt/.env` and update the values as needed. The important
+local configuration values are:
 
 ```bash
 ENABLE_MULTI_TENANCY=false
@@ -347,7 +357,7 @@ Except Cloudflare. I don't like Cloudflare that much — but it's cheap.
 - NuxtHub
 - Drizzle ORM
 - Zod v4
-- Cloudflare D1, KV, and R2 (production)
+- Cloudflare D1 and R2 (production)
 
 ## 📝 License
 

@@ -1,5 +1,11 @@
 # Config
 
+## Workspace location
+
+The Nuxt application lives in `apps/nuxt`. Its runtime configuration is `apps/nuxt/nuxt.config.ts`,
+and local Nuxt environment files belong in `apps/nuxt/.env`. Root pnpm commands such as `pnpm dev`,
+`pnpm build`, and `pnpm typecheck` delegate to that workspace.
+
 ## Authentication
 
 Authentication is configured with `nuxt-auth-utils`.
@@ -38,7 +44,7 @@ NUXT_SESSION_PASSWORD=<at-least-32-characters>
 ## Turnstile
 
 Turnstile is configured through `runtimeConfig.turnstile` and `runtimeConfig.public.turnstile` in
-`nuxt.config.ts`.
+`apps/nuxt/nuxt.config.ts`.
 
 Relevant environment variables:
 
@@ -60,7 +66,7 @@ TURNSTILE_SITE_KEY=<site-key>
 
 ## Pantry Runtime Defaults
 
-Editable Pantry defaults are declared in `runtimeConfig.pantry` in `nuxt.config.ts`.
+Editable Pantry defaults are declared in `runtimeConfig.pantry` in `apps/nuxt/nuxt.config.ts`.
 
 These environment variables are read explicitly in `nuxt.config.ts` and mapped to the matching
 runtime config properties:

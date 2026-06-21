@@ -76,6 +76,8 @@ registry/
 .env.deploy.local
 .env.local
 .env.scw
+infra/.staging.env
+infra/.production.env
 
 # ===================================
 # 🧪 Diagnostic / Reports
@@ -158,3 +160,5 @@ infrastructure/internal-scripts/
 .fleet
 build-info.json
 code-review.md
+
+apps/nuxt/.data

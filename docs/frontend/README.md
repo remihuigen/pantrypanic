@@ -1,5 +1,7 @@
 # Frontend Data Layer
 
+The Nuxt application now lives in `apps/nuxt`; all source paths below are relative to that directory.
+
 The frontend data access layer is implemented with Pinia stores and shared API helpers.
 
 ## Stores

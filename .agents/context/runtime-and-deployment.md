@@ -1,5 +1,20 @@
 # Runtime And Deployment (Agent)
 
+## Workspace And Infrastructure
+
+- The repository is a pnpm workspace. The Nuxt application lives in `apps/nuxt`; root scripts
+  delegate through the `@pantrypanic/nuxt` workspace package.
+- `infra` is a separate Node/TypeScript workspace used only to scaffold Cloudflare resources. Run
+  `pnpm infra:scaffold -- --environment staging|production [--jurisdiction eu|fedramp]` with
+  `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` in the process environment. Jurisdiction is
+  unset unless explicitly requested.
+- The scaffold idempotently creates or adopts each environment's D1 database and R2 bucket, then writes
+  ignored `infra/.staging.env` or `infra/.production.env` files containing resource IDs and the Worker
+  name used by the first source-controlled deployment. It never writes API tokens or application secrets.
+- GitHub Environment and secret provisioning is manual. Create isolated `staging` and `production`
+  Environments, copy generated resource values into Environment variables, and put credentials in
+  Environment secrets.
+
 ## Nuxt Runtime
 
 - Nuxt 4.4.6
@@ -18,7 +33,8 @@
 
 ## Frontend State
 
-The product app UI is namespaced under `/app`:
+The product app UI is namespaced under `/app`. All code paths in this section are relative to
+`apps/nuxt`:
 
 - `app/pages/app/**` contains product routes such as `/app/lists`, `/app/lists/:id`, `/app/recipes`,
   `/app/recipes/:id`, `/app/meal-planner`, `/app/settings`, `/app/settings/household`,
@@ -86,6 +102,7 @@ Configured in `nuxt.config.ts`:
 
 Production environment variables currently referenced:
 
+- `CLOUDFLARE_WORKER_NAME`
 - `CLOUDFLARE_D1_DATABASE_ID`
 - `CLOUDFLARE_R2_BUCKET`
 - `ADMIN_USER_EMAIL`
@@ -251,15 +268,18 @@ migrations and Worker deployment complete.
 
 ## Deployment Workflow
 
-`.github/workflows/deploy.yml` deploys production on pushes to `main`.
+`.github/workflows/deploy.yml` is a manual `workflow_dispatch` deployment with an explicit
+`staging` or `production` choice. It never deploys a push to `main`; deploy to staging first, then
+deploy the same validated commit to production.
 
 The workflow:
 
+- uses the selected GitHub Environment for all Cloudflare resource values and secrets;
 - builds with `NITRO_PRESET=cloudflare_module`
 - disables admin seeding during build with `SKIP_ADMIN_SEED=1`
 - applies remote D1 migrations with
-  `wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json`
-- deploys the generated Worker with `wrangler --cwd .output deploy`
+  `pnpm --dir apps/nuxt exec wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json`
+- deploys the generated Worker with `pnpm --dir apps/nuxt exec wrangler --cwd .output deploy`
 - runs the HTTP admin seed after deploy
 
 Production D1 builds use `applyMigrationsDuringBuild: false`; migrations are handled by CI before
@@ -281,7 +301,8 @@ Package scripts:
 - `pnpm db:migrate`
 - `pnpm seed:admin`
 
-`pnpm test:coverage` runs Vitest against source-mirrored tests under `tests/unit/**`. Coverage
+`pnpm test:coverage` runs Vitest against source-mirrored Nuxt tests under `apps/nuxt/tests/unit/**`
+and the `infra` scaffold unit suite. Nuxt coverage
 includes `app/**/*.{ts,js,mjs}`, `server/utils/**/*.{ts,js,mjs}`, `scripts/**/*.mjs`,
 `content.config.ts`, `modules/**/*.{ts,js,mjs}`, and `layer/**/*.{ts,js,mjs}`. Coverage
 thresholds are 90% for statements, lines, and functions, and 80% for branches. Vue single-file

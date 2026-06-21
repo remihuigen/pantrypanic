@@ -9,7 +9,7 @@ Operational contract for AI coding agents working in this repository.
   code).
 - You MUST not add dependencies unless explicitly requested.
 - You MUST preserve existing route/file naming contracts unless explicitly asked to change them.
-- You MUST treat `content/` as editor-managed product content; avoid incidental rewrites.
+- You MUST treat `apps/nuxt/content/` as editor-managed product content; avoid incidental rewrites.
 - You MUST keep Docus/Nuxt Content collection contracts stable unless a schema change is requested.
 - You MUST keep docs synchronized:
   - `docs/` for humans
@@ -20,9 +20,11 @@ Operational contract for AI coding agents working in this repository.
 ## Working Defaults (SHOULD)
 
 - You SHOULD keep presentational concerns in components and reusable logic in composables.
-- You SHOULD keep route handlers in `server/api/*` and helper logic in `server/utils/*`.
-- You SHOULD keep API routes folder-based by domain and route segment, using `index.<method>.ts`
-  for segment roots such as `server/api/users/index.get.ts` instead of `server/api/users.get.ts`.
+- You SHOULD keep route handlers in `apps/nuxt/server/api/*` and helper logic in
+  `apps/nuxt/server/utils/*`.
+- You SHOULD keep API routes folder-based by domain and route segment, using `index.<method>.ts` for
+  segment roots such as `apps/nuxt/server/api/users/index.get.ts` instead of
+  `apps/nuxt/server/api/users.get.ts`.
 - You SHOULD use Zod for boundary validation.
 - You SHOULD prefer small, scoped changes following existing patterns.
 
@@ -80,4 +82,5 @@ pnpm build
 pnpm preview
 pnpm lint
 pnpm typecheck
+pnpm infra:scaffold -- --environment staging --dry-run
 ```

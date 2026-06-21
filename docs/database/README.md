@@ -1,5 +1,8 @@
 # Database
 
+The Nuxt database schema, migrations, and domain utilities now live below `apps/nuxt`; all source
+paths below are relative to that directory.
+
 ## Active Schema
 
 The database schema is defined in `server/db/schema.ts` and managed with NuxtHub/Drizzle

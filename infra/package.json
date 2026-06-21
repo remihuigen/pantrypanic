@@ -1,0 +1,22 @@
+{
+	"name": "@pantrypanic/infra",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"scaffold": "tsx scaffold.ts",
+		"lint": "eslint --config ../apps/nuxt/eslint.config.mjs .",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"eslint": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

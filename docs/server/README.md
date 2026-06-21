@@ -1,5 +1,8 @@
 # Server Routes
 
+The Nuxt server code now lives below `apps/nuxt`; all source paths below are relative to that
+directory.
+
 ## Authentication
 
 Authentication uses `nuxt-auth-utils` sessions with email/password login.

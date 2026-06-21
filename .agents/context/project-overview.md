@@ -49,6 +49,9 @@ Implemented:
 - optional marketing layer under `layer/marketing` with a local marketing module and Nuxt Content
   collections declared in `content.config.ts`, including shared editorial rendering for `/blog/**`
   and `/legal/**`
+- pnpm workspace with the Nuxt app in `apps/nuxt` and an `infra` workspace that scaffolds isolated
+  Cloudflare Worker, D1, and R2 resources for staging/production
+- manual, environment-selected GitHub deployment workflow; pushes to `main` do not deploy
 - human docs under `docs/`
 
 Not implemented yet:
@@ -58,21 +61,22 @@ Not implemented yet:
 
 ## Core Directories
 
-- `app/`: Nuxt frontend; product pages live under `app/pages/app/**` and map to `/app/**`.
-- `app/stores/`: Pinia domain stores for lists, recipes, and meal planner.
-- `app/utils/api-client.ts`: shared frontend API wrapper with normalized app errors.
-- `app/composables/useFormState.ts`: reusable normalized dirty-state helper for edit forms that
+- `apps/nuxt/app/`: Nuxt frontend; product pages live under `app/pages/app/**` and map to `/app/**`.
+- `apps/nuxt/app/stores/`: Pinia domain stores for lists, recipes, and meal planner.
+- `apps/nuxt/app/utils/api-client.ts`: shared frontend API wrapper with normalized app errors.
+- `apps/nuxt/app/composables/useFormState.ts`: reusable normalized dirty-state helper for edit forms that
   should not call APIs when payloads have not changed.
-- `app/composables/useStoreRefresh.ts`: route-aware refresh scheduler and reusable polling
+- `apps/nuxt/app/composables/useStoreRefresh.ts`: route-aware refresh scheduler and reusable polling
   lifecycle helper.
-- `shared/utils/schemas/domain.ts`: shared Zod schemas and inferred domain types reused by backend
+- `apps/nuxt/shared/utils/schemas/domain.ts`: shared Zod schemas and inferred domain types reused by backend
   and frontend.
-- `shared/types/api.ts`: shared API envelope and app error type contracts.
-- `server/api/`: server API route handlers.
-- `server/routes/`: non-API server routes, currently image blob serving.
-- `server/utils/`: reusable server-side API logic and validation.
-- `server/db/`: Drizzle schema and generated NuxtHub migrations.
-- `scripts/`: build-time and CI utilities, currently HTTP admin-user seeding.
+- `apps/nuxt/shared/types/api.ts`: shared API envelope and app error type contracts.
+- `apps/nuxt/server/api/`: server API route handlers.
+- `apps/nuxt/server/routes/`: non-API server routes, currently image blob serving.
+- `apps/nuxt/server/utils/`: reusable server-side API logic and validation.
+- `apps/nuxt/server/db/`: Drizzle schema and generated NuxtHub migrations.
+- `apps/nuxt/scripts/`: build-time and CI utilities, currently HTTP admin-user seeding.
+- `infra/`: Cloudflare resource scaffold, generated environment resource files, and its isolated tests.
 - `.github/workflows/`: CI checks and Cloudflare deployment with D1 migration handling.
 - `docs/`: human-facing implementation docs.
 - `.agents/`: agent-facing implementation docs and rules.
