@@ -111,6 +111,55 @@ flowchart LR
 
 Move the current app first; do not simultaneously extract shared packages. Root scripts delegate with `pnpm --filter @pantrypanic/nuxt ...`; CI uses the same filtered commands. Keep dependency versions in the existing catalog/workspace arrangement and add Dexie to `apps/nuxt` only. Adjust all paths in Nuxt config, tests, deployment output, docs, git hooks, and workflows as part of the move.
 
+### Cloudflare infrastructure scaffold
+
+Checkpoint `-1` adds a small workspace package that provisions the Cloudflare resources used by the Nuxt application before any deployment workflow attempts to consume them:
+
+```text
+infra/
+├── package.json             # @pantrypanic/infra; contains tsx and Zod
+├── constants.ts             # approved names, environment/resource definitions, API paths
+├── scaffold.ts              # idempotent `scaffoldInfrastructure` CLI entry point
+├── schema.ts                # Zod schemas for process input, CLI options, env files, CF responses
+├── .staging.env             # generated, untracked resource configuration
+└── .production.env          # generated, untracked resource configuration
+```
+
+`infra` is a pnpm workspace member. It uses Node's built-in `fetch`, `tsx`, and Zod—not a Cloudflare SDK—and exposes a root wrapper such as `pnpm infra:scaffold -- --environment staging`. The only required process inputs are:
+
+```text
+CLOUDFLARE_ACCOUNT_ID
+CLOUDFLARE_API_TOKEN
+```
+
+The command requires `--environment staging|production`; support `--dry-run` from the first version. `schema.ts` parses process input at the boundary and validates the relevant Cloudflare API envelopes. Errors identify the failing resource/operation but never echo the API token or response bodies containing credentials.
+
+`constants.ts` defines exactly one approved name set, for example `pantrypanic-staging`/`pantrypanic` for the Worker, D1 database, and R2 bucket. It also declares EU jurisdiction for the resources already intended to be EU-scoped. Production names must be reconciled with existing resources during implementation; the script must adopt the exact approved existing resource rather than create a near-duplicate.
+
+For the selected environment, `scaffold.ts` performs this sequence:
+
+1. validate account/token and CLI input;
+2. list/find the exact named D1 database and R2 bucket; create only a missing resource;
+3. ensure the named Worker service exists, but do not upload app code, configure routes, or set secrets—the first environment-specific `wrangler deploy` uploads the generated Nuxt Worker;
+4. re-read/validate every resource, then atomically write the target `infra/.<environment>.env` file;
+5. print a redacted summary of adopted/created resources and the next deployment command.
+
+The D1 and R2 calls use Cloudflare's account APIs (`POST /accounts/{account_id}/d1/database` and `POST /accounts/{account_id}/r2/buckets`) and are idempotent by exact-name lookup; Worker service creation uses the official Workers management API only when absent. If a resource has an unexpected name, account, or jurisdiction, the script fails safely and requires deliberate human correction—never silently creates a replacement. A partial failed run is safe to run again because the final env file is written only after all resources have been confirmed.
+
+The generated files contain resource configuration only:
+
+```dotenv
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_WORKER_NAME=pantrypanic-staging
+CLOUDFLARE_D1_DATABASE_ID=...
+CLOUDFLARE_R2_BUCKET=pantrypanic-staging
+CLOUDFLARE_ENV=staging
+```
+
+They never contain `CLOUDFLARE_API_TOKEN`, session/admin credentials, Turnstile secrets, or GitHub credentials. Add both generated paths to `.gitignore` despite the absence of tokens; configuration IDs and environment topology should not be committed by default. `NUXT_PUBLIC_SITE_URL` and application secrets remain explicit GitHub Environment configuration because the scaffold neither configures DNS/custom domains nor GitHub.
+
+The current workflow's `CLOUDFLARE_CACHE_NAMESPACE_ID` is not read by `nuxt.config.ts`; it is not scaffolded. Remove that stale secret/input after confirming no deployment/runtime contract depends on it. GitHub Environment/secret creation is explicitly deferred to a later infrastructure scope.
+
 ### SPA `/app` route model
 
 - Set `routeRules` to `ssr: false` for `/app` and `/app/**`; public/auth/marketing routes keep their deliberately chosen rendering behavior.
@@ -223,15 +272,18 @@ All checkpoints run `pnpm lint`, `pnpm typecheck`, relevant `pnpm test:run`, and
 **Implementation:**
 
 - Move the Nuxt project to `apps/nuxt` without changing its runtime behavior; create `pnpm-workspace.yaml`, root orchestration `package.json`, and filtered scripts.
+- Add the `infra` pnpm workspace package (`tsx` + Zod) and `scaffoldInfrastructure` command. It reads only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, idempotently provisions/adopts the selected environment's Worker, D1 database, and R2 bucket, and writes `infra/.staging.env` or `infra/.production.env` without secrets.
+- Add schema/unit tests with mocked Cloudflare API responses for create, reuse, dry-run, malformed response, mismatched-resource, and partial-failure/re-run behavior. Add the generated files to `.gitignore`; do not create GitHub Environments or secrets from this script.
 - Update all relative paths, NuxtHub migration discovery, generated Worker output paths, lint/typecheck/test/build scripts, docs, `.agents/`, git hooks, and GitHub Actions.
 - Create separate Cloudflare staging Worker, D1 database, R2 bucket, site URL, and session secret. Configure GitHub `staging` and `production` Environments with separate secrets/variables.
 - Change deployment to `workflow_dispatch` only, with a required environment input (`staging` or `production`). Bind the job to `${{ inputs.environment }}`; select its resources only from that GitHub Environment. Remove the `push: main` deployment trigger.
 - Build, apply migrations, deploy, and seed against the selected environment. Make Worker names/environment-specific Nuxt config values explicit, rather than relying on inherited Cloudflare bindings.
+- Remove the unused `CLOUDFLARE_CACHE_NAMESPACE_ID` workflow secret/input after the infrastructure/config audit confirms it has no consumer.
 - Add a deployment provenance check: record commit SHA, target environment, Worker name, D1 database ID fingerprint, and app URL in the workflow summary. Production must require GitHub Environment approval.
 
 **Working app state:** current functionality is unchanged, but the app runs from `apps/nuxt`; staging and production are manually deployable and physically data-isolated.
 
-**Human master validates:** the staging URL has separate data, a staging migration cannot touch production, production no longer auto-deploys from `main`, and commands/workflows work from the new workspace paths.
+**Human master validates:** the scaffold can safely run twice without creating duplicates; generated env files contain only expected resource identifiers; the staging URL has separate data; a staging migration cannot touch production; production no longer auto-deploys from `main`; and commands/workflows work from the new workspace paths.
 
 ### Checkpoint 0 — SPA app shell, usage inventory, and runtime flags
 
@@ -368,6 +420,7 @@ Canonical item merge/delete and recipe-to-list remain non-coalescible server-sid
 | Scenario | Required evidence |
 | --- | --- |
 | Workspace move | Root and filtered commands run; app build/deploy paths are correct. |
+| Infrastructure scaffold | Dry-run creates nothing; first run creates/adopts only approved resources; second run is idempotent; generated target env file is complete and secret-free. |
 | Environment isolation | Staging Worker/D1/R2/secrets are distinct; a staging migration cannot affect production. |
 | Manual deployment | No push auto-deploy; staging then production deployment uses the same commit and selected GitHub Environment. |
 | SPA shell | `/app` direct routes, auth redirects, PWA update, and offline cold launch work on staging. |
@@ -384,6 +437,8 @@ Canonical item merge/delete and recipe-to-list remain non-coalescible server-sid
 | Risk | Control |
 | --- | --- |
 | Monorepo move breaks build/deployment. | Deliver it alone at checkpoint -1; staging validates output paths, migrations, and Worker configuration before feature work. |
+| Scaffold creates or adopts the wrong Cloudflare resource. | Exact approved names, account/jurisdiction validation, dry-run, no deletion, atomic final env-file write, and idempotency/mismatch tests. |
+| API token leaks into a file or log. | Read it only from process environment; Zod/error handling redacts input; generated env files intentionally omit it and are ignored by Git. |
 | Staging contaminates production. | Separate Worker, D1, R2, URL, and secrets; workflow derives all values only from its selected GitHub Environment. |
 | SPA conversion breaks initial app loading. | Stage it separately; test deep links/auth redirects/PWA before data refactor. |
 | Data loss during redesign. | Production-data migration rehearsal, explicit invariants/count checks, backup/export runbook, and forward-only reviewed migrations. |
@@ -398,6 +453,7 @@ The agreed active data families are local-first only when all checkpoints have p
 
 - production data has migrated with verified counts/invariants and no loss;
 - staging and production are isolated, manually selected deployment environments;
+- the Cloudflare scaffold has idempotently provisioned/adopted each environment's required resource identifiers without writing credentials; GitHub resource/secrets scaffolding remains explicitly out of scope;
 - `pnpm lint`, `pnpm typecheck`, relevant `pnpm test:run`, and `pnpm build` pass from the workspace;
 - `/app` SPA loading/PWA offline behavior is verified on staging and production;
 - Pinia contains only small UI state; Dexie directly serves entity, item-vault, and activity queries;
