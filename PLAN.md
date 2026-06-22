@@ -12,19 +12,19 @@ current data model deliberately, not to preserve every internal implementation o
 
 ## Decisions now fixed
 
-| Decision                                    | Plan consequence                                                                                                                                                                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/app/**` may become SPA-only.              | Adopt client rendering for the authenticated app, while retaining server API routes and public/marketing rendering as appropriate. Add a global SPA loading template. This removes SSR/deep-link constraints from the PWA app shell. |
-| Production app compatibility is not a goal. | Internal app routes, stores, and APIs may be redesigned or removed. The non-negotiable compatibility requirement is a clean, tested migration of production data with no loss.                                                       |
-| Pinia is UI state only.                     | Pinia does not own or persist entity collections. Dexie is the local data source; query composables expose bounded reactive result sets to components.                                                                               |
-| Use Dexie core.                             | Add `dexie` only (not Dexie Cloud) to the Nuxt app. Use its typed tables, transactions, and live-query integration where appropriate.                                                                                                |
-| Reduce database transactions.               | Coalesce unsent changes for the same record in the durable outbox. Revisions record committed meaningful mutations, not every UI interaction.                                                                                        |
-| Server conflict rule.                       | Server-side last-write-wins in acceptance order; no user conflict dialog or CRDT.                                                                                                                                                    |
-| Audit data is metadata only.                | Never persist record snapshots, request bodies, passwords, tokens, access links, emails, raw IP addresses, or other sensitive values in the audit trail.                                                                             |
-| Retention is out of scope.                  | Keep revisions, activity rows, and receipts indefinitely. Build all access paths to remain indexed, bounded, and cursor-paginated; revisit deletion/archive policy later.                                                            |
-| Move to a monorepo.                         | Create `apps/nuxt` for the current application and a pnpm workspace root, leaving room for future backup and D1↔R2 migration workers. Those workers are explicitly outside this plan.                                                |
-| Staging precedes feature work.              | Stop automatic deploys from `main`. Deploy manually to `staging` or `production` through a selected GitHub Environment, each with isolated Cloudflare resources and secrets.                                                         |
-| Feature flags use environment variables.    | No database/admin flag system. Flags are explicit `NUXT_*` environment variables parsed once in runtime configuration.                                                                                                               |
+| Decision                                                   | Plan consequence                                                                                                                                                                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/app/**` may become SPA-only.                             | Adopt client rendering for the authenticated app, while retaining server API routes and public/marketing rendering as appropriate. Add a global SPA loading template. This removes SSR/deep-link constraints from the PWA app shell. |
+| Production compatibility and data migration are not goals. | Internal app routes, stores, APIs, and persisted production data may be replaced. Final rollout deploys to new versioned Worker, D1, and R2 resources; legacy production data is not transferred.                                    |
+| Pinia is UI state only.                                    | Pinia does not own or persist entity collections. Dexie is the local data source; query composables expose bounded reactive result sets to components.                                                                               |
+| Use Dexie core.                                            | Add `dexie` only (not Dexie Cloud) to the Nuxt app. Use its typed tables, transactions, and live-query integration where appropriate.                                                                                                |
+| Reduce database transactions.                              | Coalesce unsent changes for the same record in the durable outbox. Revisions record committed meaningful mutations, not every UI interaction.                                                                                        |
+| Server conflict rule.                                      | Server-side last-write-wins in acceptance order; no user conflict dialog or CRDT.                                                                                                                                                    |
+| Audit data is metadata only.                               | Never persist record snapshots, request bodies, passwords, tokens, access links, emails, raw IP addresses, or other sensitive values in the audit trail.                                                                             |
+| Retention is out of scope.                                 | Keep revisions, activity rows, and receipts indefinitely. Build all access paths to remain indexed, bounded, and cursor-paginated; revisit deletion/archive policy later.                                                            |
+| Move to a monorepo.                                        | Create `apps/nuxt` for the current application and a pnpm workspace root, leaving room for future backup and D1↔R2 migration workers. Those workers are explicitly outside this plan.                                                |
+| Staging precedes feature work.                             | Stop automatic deploys from `main`. Deploy manually to `staging` or `production` through a selected GitHub Environment, each with isolated Cloudflare resources and secrets.                                                         |
+| Feature flags use environment variables.                   | No database/admin flag system. Flags are explicit `NUXT_*` environment variables parsed once in runtime configuration.                                                                                                               |
 
 ## Goals and boundaries
 
@@ -64,6 +64,9 @@ online-only. They are nevertheless activity-audited.
 - No database snapshots, request payloads, or sensitive data in audit rows.
 - No need to keep unused app APIs or the current large Pinia stores alive after their usage
   inventory has been reviewed.
+- No production-data migration, data-preservation guarantee, compatibility layer, export/import
+  rehearsal, or rollback-to-old-data procedure. The legacy production environment remains separate
+  and untouched by the new deployment.
 
 ## Research and current-state findings
 
@@ -99,7 +102,7 @@ performance/cost concern.
   [Nuxt SPA loading template](https://nuxt.com/docs/api/configuration/nuxt-config) and
   [Nuxt 4 upgrade guidance](https://nuxt.com/docs/4.x/getting-started/upgrade/).
 - Cloudflare environments need separate non-inheritable bindings and variables. Staging must use its
-  own Worker, D1 database, R2 bucket, site URL, and session secret; it must never point to
+  own Worker, D1 database, R2 bucket, site URL, and session secret; it must never point to legacy
   production data.
   [Cloudflare Workers environments](https://developers.cloudflare.com/workers/wrangler/environments/)
   and [D1 environments](https://developers.cloudflare.com/d1/configuration/environments/).
@@ -181,12 +184,11 @@ The command requires `--environment staging|production`; support `--dry-run` fro
 envelopes. Errors identify the failing resource/operation but never echo the API token or response
 bodies containing credentials.
 
-`constants.ts` defines exactly one approved name set, for example
-`pantrypanic-staging`/`pantrypanic` for the Worker, D1 database, and R2 bucket. Resource placement
-is intentionally unspecified unless the operator passes `--jurisdiction eu|fedramp`; this makes an
-EU restriction an explicit deployment decision rather than a hidden default. Production names must
-be reconciled with existing resources during implementation; the script must adopt the exact
-approved existing resource rather than create a near-duplicate.
+`constants.ts` defines exactly one approved, versioned name set, for example
+`pantrypanic-staging-v2`/`pantrypanic-v2` for the Worker, D1 database, and R2 bucket. These names
+must be new and must not resolve to legacy production resources. Resource placement is intentionally
+unspecified unless the operator passes `--jurisdiction eu|fedramp`; this makes an EU restriction an
+explicit deployment decision rather than a hidden default.
 
 For the selected environment, `scaffold.ts` performs this sequence:
 
@@ -202,11 +204,10 @@ For the selected environment, `scaffold.ts` performs this sequence:
 The D1 and R2 calls use Cloudflare's account APIs (`POST /accounts/{account_id}/d1/database` and
 `POST /accounts/{account_id}/r2/buckets`) and are idempotent by exact-name lookup. A Worker script
 requires a code upload, so the scaffold deliberately leaves its creation to the first
-source-controlled `wrangler deploy` rather than publishing an unsafe placeholder. If a resource has
-an unexpected name, account, or an explicitly requested jurisdiction mismatch, the script fails
-safely and requires deliberate human correction—never silently creates a replacement. A partial
-failed run is safe to run again because the final env file is written only after all resources have
-been confirmed.
+source-controlled `wrangler deploy` rather than publishing an unsafe placeholder. The approved names
+are the isolation control: if any resolves to a legacy resource, stop and correct the name; never
+adopt or write to that resource. A partial failed run is safe to run again because the final env
+file is written only after all new resources have been confirmed.
 
 The generated files contain resource configuration only:
 
@@ -346,7 +347,7 @@ Activity operation names are an allow-listed vocabulary such as `auth.login.succ
 `sync.mutation_rejected`. Failed login audit entries use neither an email nor an IP. This meets the
 security/audit value without recording sensitive data.
 
-### Conflict, deletion, and migration rules
+### Conflict and deletion rules
 
 The server acceptance sequence is the conflict resolver:
 
@@ -360,12 +361,10 @@ The server acceptance sequence is the conflict resolver:
 - invalid commands (for example, references to a remote-deleted entity) resolve to authoritative
   server state and a safe local error/sync status, not a merge dialog.
 
-Migration is a production-data preservation task, not application backwards compatibility. Each
-schema/data migration must be additive or have a tested deterministic forward transform, be
-rehearsed against a production-derived anonymised fixture in staging, run before app code relies on
-it, and include a D1 export/restore runbook. No deployed app version may delete or reinterpret
-production domain rows until the new code has verified the expected counts and referential
-invariants.
+Schema migrations apply only to the new, versioned D1 database. They can freely reshape the app
+model because no legacy production rows are copied or interpreted. Keep normal migration tests for
+the new environment, but do not build a production-data export/import, preservation, or
+compatibility programme.
 
 ### API inventory and removal
 
@@ -401,8 +400,10 @@ is a separate manual dispatch of the same tested commit, after the human approva
   `.gitignore`; do not create GitHub Environments or secrets from this script.
 - Update all relative paths, NuxtHub migration discovery, generated Worker output paths,
   lint/typecheck/test/build scripts, docs, `.agents/`, git hooks, and GitHub Actions.
-- Create separate Cloudflare staging Worker, D1 database, R2 bucket, site URL, and session secret.
-  Configure GitHub `staging` and `production` Environments with separate secrets/variables.
+- Create separate, versioned Cloudflare staging and replacement-production Workers, D1 databases,
+  and R2 buckets, site URLs, and session secrets. Verify none of their identifiers reference the
+  legacy production environment. Configure GitHub `staging` and `production` Environments with those
+  new, separate secrets/variables.
 - Change deployment to `workflow_dispatch` only, with a required environment input (`staging` or
   `production`). Bind the job to `${{ inputs.environment }}`; select its resources only from that
   GitHub Environment. Remove the `push: main` deployment trigger.
@@ -416,11 +417,12 @@ is a separate manual dispatch of the same tested commit, after the human approva
   approval.
 
 **Working app state:** current functionality is unchanged, but the app runs from `apps/nuxt`;
-staging and production are manually deployable and physically data-isolated.
+staging and replacement production are manually deployable and physically isolated from legacy
+production resources.
 
 **Human master validates:** the scaffold can safely run twice without creating duplicates; generated
-env files contain only expected resource identifiers; the staging URL has separate data; a staging
-migration cannot touch production; production no longer auto-deploys from `main`; and
+env files contain only expected resource identifiers; staging and replacement-production identifiers
+are new and distinct from legacy production; production no longer auto-deploys from `main`; and
 commands/workflows work from the new workspace paths.
 
 ### Checkpoint 0 — SPA app shell, usage inventory, and runtime flags
@@ -440,8 +442,8 @@ commands/workflows work from the new workspace paths.
   include `NUXT_PUBLIC_OFFLINE_SYNC_ENABLED`, `NUXT_PUBLIC_OFFLINE_SYNC_LISTS_ENABLED`, and private
   matching `ENABLE_OFFLINE_SYNC*` guards. Public flags only enable UI/protocol paths; server
   authorization remains mandatory.
-- Capture production-safe counts/invariants for existing data and document the staging rehearsal
-  fixture process.
+- Record the approved new production resource identifiers and confirm the clean-environment rollout
+  deliberately has no legacy data transfer.
 
 **Working app state:** `/app` is an SPA with a loading screen; existing functionality remains
 available, and all new feature flags are disabled by environment.
@@ -449,9 +451,9 @@ available, and all new feature flags are disabled by environment.
 **Human master validates:** SPA deep links/auth redirects/PWA shell work on staging, the usage and
 route inventory is credible, and flags are sourced only from environment configuration.
 
-### Checkpoint 1 — audit/revision schema and production-data migration rehearsal
+### Checkpoint 1 — audit/revision schema and new-environment atomicity
 
-**Goal:** prove durable server primitives and safe data migration before offline writes.
+**Goal:** prove durable server primitives on the new database before offline writes.
 
 **Implementation:**
 
@@ -461,16 +463,15 @@ route inventory is credible, and flags are sourced only from environment configu
   allow-list/redaction tests.
 - Prove domain write + receipt + revision + activity all commit or all roll back in a staging-D1
   atomicity test.
-- Add migration verification commands: table counts, referential checks, row checksum/sample checks,
-  and a documented D1 backup/export before the production migration. Rehearse the complete migration
-  on staging with representative anonymised production data.
+- Verify a clean database can apply all schema migrations, seed the initial admin, and support the
+  new audit/sync tables with the required indexes.
 - Do not add retention work, R2 archive code, or IP/user-agent collection.
 
-**Working app state:** existing product data and app behavior are intact; new audit/sync tables and
+**Working app state:** the replacement environment can initialize cleanly; new audit/sync tables and
 migrations are production-ready but do not yet power the UI.
 
-**Human master validates:** migration rehearsal output, count/invariant checks, schema/indexes,
-atomicity evidence, and proof that audit data contains only allowed metadata.
+**Human master validates:** clean-database initialization output, schema/indexes, atomicity
+evidence, and proof that audit data contains only allowed metadata.
 
 ### Checkpoint 2 — audit activity slice and API pruning preparation
 
@@ -478,8 +479,8 @@ atomicity evidence, and proof that audit data contains only allowed metadata.
 
 **Implementation:**
 
-- Add paginated `/api/settings/activity` and owner authorization. Filter by date, operation, actor
-  ID, target type/ID, using only indexed cursor access.
+- Add paginated `/api/activity` and owner authorization. Filter by date, operation, actor ID, target
+  type/ID, using only indexed cursor access.
 - Emit metadata-only activity rows for auth, household, and a small set of list operations. Capture
   no payload or sensitive identifiers beyond the authorized actor/target IDs.
 - Add the Settings activity route/components. `useActivityLogQuery()` stores and reads activity
@@ -562,14 +563,14 @@ dialog.
   proven-unused legacy list APIs, temporary-ID logic, and entity-heavy store code.
 - Add metrics/logging for command count, coalescing ratio, duplicate receipt rate, rejected command
   rate, cursor lag, rows read/written, and bootstrap time. Do not log user payloads.
-- Update `docs/` and `.agents/` together with architecture, deployment, migration runbook, audit
-  vocabulary, and test procedures.
+- Update `docs/` and `.agents/` together with architecture, deployment, clean-environment rollout
+  runbook, audit vocabulary, and test procedures.
 
 **Working app state:** shopping lists are local-first in staging and eligible for production; audit
 activity covers specified security/household/list operations; no old list data store/polling path
 remains.
 
-**Human master validates:** migration/data integrity checks, audit samples, staged deployment
+**Human master validates:** clean-environment resource isolation, audit samples, staged deployment
 evidence, cost/metrics, and the exact production rollout commit.
 
 ### Checkpoint 6 — additional proven data families
@@ -594,7 +595,8 @@ release.
 
 ### Checkpoint 7 — programme cutover and future-worker handoff
 
-**Goal:** finish the agreed migration without adding retention/worker scope.
+**Goal:** finish the agreed refactor and cut over to the replacement environment without adding
+retention/worker scope.
 
 **Implementation:**
 
@@ -606,55 +608,56 @@ release.
   Explicitly defer retention and archival decisions.
 - Create only documentation/placeholders for future `workers/backup` and `workers/data-migration`;
   do not build or deploy them.
-- Finalize mirrored human/agent docs, migration runbooks, deployment policy, and feature flag
-  removal plan.
+- Finalize mirrored human/agent docs, clean-environment rollout runbook, deployment policy, and
+  feature flag removal plan.
 
 **Working app state:** chosen active app workflows are local-first, Pinia is UI-only, audit is safe
 and queryable, deployments are manual/staged, and the repository is ready for future workers without
 expanding this scope.
 
-**Human master validates:** final data counts/invariants, production behavior/cost, confirmed
+**Human master validates:** replacement resource isolation, production behavior/cost, confirmed
 removal list, and explicit acknowledgement that retention/backups are separate future projects.
 
 ## Verification matrix
 
-| Scenario                  | Required evidence                                                                                                                                           |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace move            | Root and filtered commands run; app build/deploy paths are correct.                                                                                         |
-| Infrastructure scaffold   | Dry-run creates nothing; first run creates/adopts only approved resources; second run is idempotent; generated target env file is complete and secret-free. |
-| Environment isolation     | Staging Worker/D1/R2/secrets are distinct; a staging migration cannot affect production.                                                                    |
-| Manual deployment         | No push auto-deploy; staging then production deployment uses the same commit and selected GitHub Environment.                                               |
-| SPA shell                 | `/app` direct routes, auth redirects, PWA update, and offline cold launch work on staging.                                                                  |
-| Production data migration | Before/after counts, foreign keys/invariants, sample checks, and rollback/restore runbook pass.                                                             |
-| Dexie scope               | User/household switch and logout never reveal/replay another scope.                                                                                         |
-| Offline durability        | Mutate, disconnect, hard reload, reconnect; final command applies once.                                                                                     |
-| Coalescing                | Repeated edits to one record emit only the documented final command/revision; side-effect commands remain distinct.                                         |
-| Convergence               | Two devices settle on identical server-ordered state.                                                                                                       |
-| Audit safety              | Row/API/UI inspection proves no payloads, secrets, email, raw IP, or user agent; authorization is correct.                                                  |
-| D1 boundedness            | Query review and metrics prove indexed, household-scoped, limited activity/revision access.                                                                 |
+| Scenario                 | Required evidence                                                                                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace move           | Root and filtered commands run; app build/deploy paths are correct.                                                                                         |
+| Infrastructure scaffold  | Dry-run creates nothing; first run creates/adopts only approved resources; second run is idempotent; generated target env file is complete and secret-free. |
+| Environment isolation    | Staging and replacement-production Worker/D1/R2/secrets are distinct and neither references a legacy production resource.                                   |
+| Manual deployment        | No push auto-deploy; staging then production deployment uses the same commit and selected GitHub Environment.                                               |
+| SPA shell                | `/app` direct routes, auth redirects, PWA update, and offline cold launch work on staging.                                                                  |
+| Clean production rollout | Versioned replacement Worker/D1/R2 identifiers are new, the new database initializes successfully, and no legacy data is transferred.                       |
+| Dexie scope              | User/household switch and logout never reveal/replay another scope.                                                                                         |
+| Offline durability       | Mutate, disconnect, hard reload, reconnect; final command applies once.                                                                                     |
+| Coalescing               | Repeated edits to one record emit only the documented final command/revision; side-effect commands remain distinct.                                         |
+| Convergence              | Two devices settle on identical server-ordered state.                                                                                                       |
+| Audit safety             | Row/API/UI inspection proves no payloads, secrets, email, raw IP, or user agent; authorization is correct.                                                  |
+| D1 boundedness           | Query review and metrics prove indexed, household-scoped, limited activity/revision access.                                                                 |
 
 ## Risks and controls
 
-| Risk                                                      | Control                                                                                                                                    |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Monorepo move breaks build/deployment.                    | Deliver it alone at checkpoint -1; staging validates output paths, migrations, and Worker configuration before feature work.               |
-| Scaffold creates or adopts the wrong Cloudflare resource. | Exact approved names, account/jurisdiction validation, dry-run, no deletion, atomic final env-file write, and idempotency/mismatch tests.  |
-| API token leaks into a file or log.                       | Read it only from process environment; Zod/error handling redacts input; generated env files intentionally omit it and are ignored by Git. |
-| Staging contaminates production.                          | Separate Worker, D1, R2, URL, and secrets; workflow derives all values only from its selected GitHub Environment.                          |
-| SPA conversion breaks initial app loading.                | Stage it separately; test deep links/auth redirects/PWA before data refactor.                                                              |
-| Data loss during redesign.                                | Production-data migration rehearsal, explicit invariants/count checks, backup/export runbook, and forward-only reviewed migrations.        |
-| Dexie recreates a giant global store.                     | Direct bounded query composables; Pinia policy forbids entity collections, item-vault, and activity-log caches.                            |
-| Coalescing changes meaning.                               | Restrict it to same-record final-state operations; never coalesce known side effects; test command/revision counts.                        |
-| Audit data becomes sensitive.                             | Typed allow-list, deny-list tests, metadata-only API serializers, and no network identity/body fields.                                     |
-| Infinite history raises cost.                             | Indexed/cursor-bounded queries and metrics now; retention is a future intentional project, not hidden scope.                               |
+| Risk                                                       | Control                                                                                                                                          |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Monorepo move breaks build/deployment.                     | Deliver it alone at checkpoint -1; staging validates output paths, migrations, and Worker configuration before feature work.                     |
+| Scaffold creates or adopts the wrong Cloudflare resource.  | Exact approved names, account/jurisdiction validation, dry-run, no deletion, atomic final env-file write, and idempotency/mismatch tests.        |
+| API token leaks into a file or log.                        | Read it only from process environment; Zod/error handling redacts input; generated env files intentionally omit it and are ignored by Git.       |
+| New deployment writes to legacy production.                | Use new versioned Worker, D1, and R2 names; verify generated identifiers before deploy; do not configure legacy bindings in GitHub Environments. |
+| SPA conversion breaks initial app loading.                 | Stage it separately; test deep links/auth redirects/PWA before data refactor.                                                                    |
+| Clean rollout is mistaken for a data-preserving migration. | Explicitly document the reset, isolate the legacy resources, and require human confirmation before replacement-production deployment.            |
+| Dexie recreates a giant global store.                      | Direct bounded query composables; Pinia policy forbids entity collections, item-vault, and activity-log caches.                                  |
+| Coalescing changes meaning.                                | Restrict it to same-record final-state operations; never coalesce known side effects; test command/revision counts.                              |
+| Audit data becomes sensitive.                              | Typed allow-list, deny-list tests, metadata-only API serializers, and no network identity/body fields.                                           |
+| Infinite history raises cost.                              | Indexed/cursor-bounded queries and metrics now; retention is a future intentional project, not hidden scope.                                     |
 
 ## Definition of done
 
 The agreed active data families are local-first only when all checkpoints have passed their human
 gates and:
 
-- production data has migrated with verified counts/invariants and no loss;
-- staging and production are isolated, manually selected deployment environments;
+- replacement production uses new versioned Worker, D1, and R2 resources, is seeded as a clean
+  environment, and has no legacy production data transfer;
+- staging and replacement production are isolated, manually selected deployment environments;
 - the Cloudflare scaffold has idempotently provisioned/adopted each environment's required resource
   identifiers without writing credentials; GitHub resource/secrets scaffolding remains explicitly
   out of scope;
